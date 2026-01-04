@@ -68,7 +68,7 @@ pub fn generate(root: &RootNode<'_>, options: CodegenOptions) -> CodegenResult {
         }
         ctx.deindent();
         ctx.newline();
-        ctx.push("]))");
+        ctx.push("], 64 /* STABLE_FRAGMENT */))");
     }
 
     ctx.deindent();

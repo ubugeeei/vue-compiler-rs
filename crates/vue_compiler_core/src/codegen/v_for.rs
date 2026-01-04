@@ -4,6 +4,7 @@ use crate::ast::*;
 
 use super::children::generate_children;
 use super::context::CodegenContext;
+use super::element::{generate_vshow_closing, has_vshow_directive};
 use super::expression::generate_expression;
 use super::node::generate_node;
 
@@ -134,6 +135,15 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
             let is_template = el.tag_type == ElementType::Template;
             let is_component = el.tag_type == ElementType::Component;
 
+            // Check for v-show directive
+            let has_vshow = has_vshow_directive(el);
+            if has_vshow {
+                ctx.use_helper(RuntimeHelper::WithDirectives);
+                ctx.use_helper(RuntimeHelper::VShow);
+                ctx.push(ctx.helper(RuntimeHelper::WithDirectives));
+                ctx.push("(");
+            }
+
             if is_stable {
                 // Stable fragment: use createElementVNode without block wrapper
                 ctx.use_helper(RuntimeHelper::CreateElementVNode);
@@ -167,6 +177,11 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 }
 
                 ctx.push(")");
+
+                // Close withDirectives for v-show
+                if has_vshow {
+                    generate_vshow_closing(ctx, el);
+                }
             } else {
                 // Dynamic list: wrap in block
                 ctx.use_helper(RuntimeHelper::OpenBlock);
@@ -257,6 +272,11 @@ pub fn generate_for_item(ctx: &mut CodegenContext, node: &TemplateChildNode<'_>,
                 }
 
                 ctx.push("))");
+
+                // Close withDirectives for v-show
+                if has_vshow {
+                    generate_vshow_closing(ctx, el);
+                }
             }
         }
         _ => generate_node(ctx, node),

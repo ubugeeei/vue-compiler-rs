@@ -31,8 +31,15 @@ pub fn calculate_element_patch_info(el: &ElementNode<'_>) -> (Option<i32>, Optio
     let mut dynamic_props: Vec<String> = Vec::with_capacity(4);
     let mut has_vshow = false;
     let mut has_custom_directive = false;
+    let mut has_ref = false;
 
     for prop in el.props.iter() {
+        // Check for ref attribute (static)
+        if let PropNode::Attribute(attr) = prop {
+            if attr.name == "ref" {
+                has_ref = true;
+            }
+        }
         if let PropNode::Directive(dir) = prop {
             match dir.name.as_str() {
                 "bind" => {
@@ -172,8 +179,8 @@ pub fn calculate_element_patch_info(el: &ElementNode<'_>) -> (Option<i32>, Optio
         }
     }
 
-    // Add NEED_PATCH for v-show or custom directives only if no other dynamic bindings exist
-    if (has_vshow || has_custom_directive) && flag == 0 {
+    // Add NEED_PATCH for v-show, custom directives, or ref only if no other dynamic bindings exist
+    if (has_vshow || has_custom_directive || has_ref) && flag == 0 {
         flag |= 512; // NEED_PATCH
     }
 
