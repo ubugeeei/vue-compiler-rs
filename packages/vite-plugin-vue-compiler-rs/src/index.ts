@@ -46,7 +46,8 @@ function loadWasm(): WasmModule {
 
   try {
     // Load CommonJS WASM module using require (Node.js target)
-    const wasmPath = path.resolve(__dirname, '../wasm/vue_bindings.js');
+    // Note: .cjs extension is required because package.json has "type": "module"
+    const wasmPath = path.resolve(__dirname, '../wasm/vue_bindings.cjs');
     if (fs.existsSync(wasmPath)) {
       wasmModule = require(wasmPath) as WasmModule;
       return wasmModule;
@@ -148,6 +149,11 @@ export function vueCompilerRs(options: VueCompilerRsOptions = {}): Plugin {
         }
 
         let output = result.script.code;
+
+        // Debug output for MonacoEditor
+        if (id.includes('MonacoEditor')) {
+          console.log(`\n=== Compiled ${id} ===\n${output}\n=== End ===\n`);
+        }
 
         // Inject CSS
         if (result.css) {

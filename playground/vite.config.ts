@@ -4,9 +4,9 @@ import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 
 // Toggle between @vitejs/plugin-vue and vite-plugin-vue-compiler-rs
-// In CI (production build), use official Vue compiler for stability
-// In development, try to use vue-compiler-rs for testing
-const USE_VUE_COMPILER_RS = process.env.CI !== "true";
+// Use vue-compiler-rs in both CI and development for self-hosting
+// Set VUE_COMPILER_RS_DISABLED=true to fall back to @vitejs/plugin-vue
+const USE_VUE_COMPILER_RS = process.env.VUE_COMPILER_RS_DISABLED !== "true";
 
 async function getVuePlugin() {
   if (USE_VUE_COMPILER_RS) {

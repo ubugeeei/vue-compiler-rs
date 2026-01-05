@@ -157,4 +157,134 @@ function onClick() {
             "emit should be bound to __emit"
         );
     }
+
+    #[test]
+    fn test_compile_sfc_with_component_import() {
+        let source = r#"
+<template>
+  <div>
+    <MyComponent />
+    {{ msg }}
+  </div>
+</template>
+
+<script setup>
+import MyComponent from './MyComponent.vue'
+
+const msg = "hello"
+</script>
+"#;
+        let descriptor = parse_sfc(source, Default::default()).unwrap();
+        let result = compile_sfc(&descriptor, SfcCompileOptions::default()).unwrap();
+
+        println!("Component import SFC output:\n{}", result.code);
+
+        // Import should be preserved
+        assert!(
+            result.code.contains("import MyComponent from"),
+            "Component import should be preserved. Got:\n{}",
+            result.code
+        );
+        // MyComponent should be referenced directly (not $setup.MyComponent in inline mode)
+        assert!(
+            !result.code.contains("$setup.MyComponent"),
+            "Should NOT have $setup.MyComponent prefix in inline mode. Got:\n{}",
+            result.code
+        );
+        // Component should be referenced directly
+        assert!(
+            result.code.contains("MyComponent") && !result.code.contains("_component_MyComponent"),
+            "Component should be referenced directly (not _component_). Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_compile_sfc_with_component_import_typescript() {
+        let source = r#"
+<template>
+  <div>
+    <MyComponent />
+    {{ msg }}
+  </div>
+</template>
+
+<script setup lang="ts">
+import MyComponent from './MyComponent.vue'
+import { type SomeType } from './types'
+
+const msg: string = "hello"
+</script>
+"#;
+        let descriptor = parse_sfc(source, Default::default()).unwrap();
+        let result = compile_sfc(&descriptor, SfcCompileOptions::default()).unwrap();
+
+        println!("TypeScript SFC output:\n{}", result.code);
+
+        // Import should be preserved (type imports should be stripped)
+        assert!(
+            result.code.contains("import MyComponent from"),
+            "Component import should be preserved. Got:\n{}",
+            result.code
+        );
+        // Type imports should be stripped
+        assert!(
+            !result.code.contains("type SomeType"),
+            "Type imports should be stripped. Got:\n{}",
+            result.code
+        );
+        // TypeScript type annotations should be stripped
+        assert!(
+            !result.code.contains(": string"),
+            "TypeScript annotations should be stripped. Got:\n{}",
+            result.code
+        );
+        // MyComponent should be referenced directly
+        assert!(
+            result.code.contains("_createVNode(MyComponent)"),
+            "Component should be referenced directly. Got:\n{}",
+            result.code
+        );
+    }
+
+    #[test]
+    fn test_compile_sfc_with_define_props_typescript() {
+        let source = r#"
+<template>
+  <div>{{ modelValue }}</div>
+</template>
+
+<script setup lang="ts">
+const props = defineProps<{
+  modelValue: string;
+  language?: string;
+}>();
+
+const count = 42;
+</script>
+"#;
+        let descriptor = parse_sfc(source, Default::default()).unwrap();
+        let result = compile_sfc(&descriptor, SfcCompileOptions::default()).unwrap();
+
+        println!("defineProps TypeScript output:\n{}", result.code);
+
+        // Type annotations should be stripped
+        assert!(
+            !result.code.contains(": string"),
+            "TypeScript annotations should be stripped. Got:\n{}",
+            result.code
+        );
+        // defineProps should be removed (as a macro call, transformed to __props binding)
+        assert!(
+            !result.code.contains("defineProps<"),
+            "defineProps should be transformed. Got:\n{}",
+            result.code
+        );
+        // props should be available via __props
+        assert!(
+            result.code.contains("__props"),
+            "__props should be used. Got:\n{}",
+            result.code
+        );
+    }
 }

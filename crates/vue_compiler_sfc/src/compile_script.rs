@@ -48,7 +48,14 @@ pub(crate) fn compile_script_setup_inline(
     is_ts: bool,
     template: TemplateParts<'_>,
 ) -> Result<ScriptCompileResult, SfcError> {
-    let mut ctx = ScriptCompileContext::new(content);
+    // First, transform TypeScript to JavaScript if needed
+    let js_content = if is_ts {
+        transform_typescript_to_js(content)
+    } else {
+        content.to_string()
+    };
+
+    let mut ctx = ScriptCompileContext::new(&js_content);
     ctx.analyze();
 
     let mut output = String::new();
@@ -81,6 +88,7 @@ pub(crate) fn compile_script_setup_inline(
     let mut hoisted_lines = Vec::new(); // const with literals go outside export default
 
     // Parse script content - extract imports and setup code
+    // Track function/block scope depth to avoid hoisting variables inside functions
     let mut in_import = false;
     let mut import_buffer = String::new();
     let mut in_destructure = false;
@@ -91,9 +99,29 @@ pub(crate) fn compile_script_setup_inline(
     let mut in_paren_macro_call = false;
     let mut paren_macro_depth: i32 = 0;
     let mut waiting_for_macro_close = false;
+    let mut function_depth: i32 = 0; // Track nested function/arrow function depth
 
-    for line in content.lines() {
+    for line in js_content.lines() {
         let trimmed = line.trim();
+
+        // Track function depth - detect function/arrow function starts
+        // This is a heuristic approach that handles common patterns
+        if !in_import && !in_destructure && !in_macro_call && !in_paren_macro_call {
+            // Count opening braces that follow function patterns (function or arrow)
+            let is_function_start =
+                trimmed.contains('{') && (trimmed.contains("function ") || trimmed.contains("=>"));
+            if is_function_start {
+                function_depth += 1;
+            } else if function_depth > 0 {
+                // Track brace depth within functions
+                let open_braces = trimmed.matches('{').count() as i32;
+                let close_braces = trimmed.matches('}').count() as i32;
+                function_depth += open_braces - close_braces;
+                if function_depth < 0 {
+                    function_depth = 0;
+                }
+            }
+        }
 
         // Handle multi-line macro calls
         if in_macro_call {
@@ -194,8 +222,9 @@ pub(crate) fn compile_script_setup_inline(
                 in_import = false;
             }
         } else if !trimmed.is_empty() && !is_macro_call_line(trimmed) {
-            // Check if this is a hoistable const (const with literal value, no function calls)
-            if is_hoistable_const(trimmed) {
+            // Only hoist const declarations at the top level (not inside functions)
+            // and only if it's a hoistable const (literal value, no function calls)
+            if function_depth == 0 && is_hoistable_const(trimmed) {
                 hoisted_lines.push(line.to_string());
             } else {
                 setup_lines.push(line.to_string());
@@ -227,17 +256,18 @@ pub(crate) fn compile_script_setup_inline(
         }
     }
 
-    // Start export default (blank line before)
+    // Start __sfc__ definition (blank line before)
+    // Use const __sfc__ = {...} pattern for HMR compatibility
     output.push('\n');
     let has_options = ctx.macros.define_options.is_some();
     if has_options {
         // Use Object.assign for defineOptions
-        output.push_str("export default /*@__PURE__*/Object.assign(");
+        output.push_str("const __sfc__ = /*@__PURE__*/Object.assign(");
         let options_args = ctx.macros.define_options.as_ref().unwrap().args.trim();
         output.push_str(options_args);
         output.push_str(", {\n");
     } else {
-        output.push_str("export default {\n");
+        output.push_str("const __sfc__ = {\n");
     }
     output.push_str("  __name: '");
     output.push_str(component_name);
@@ -401,20 +431,17 @@ pub(crate) fn compile_script_setup_inline(
     output.push_str("}\n");
     output.push('\n');
     if has_options {
-        output.push_str("})\n");
+        output.push_str("});\n");
     } else {
-        output.push_str("}\n");
+        output.push_str("};\n");
     }
+    // Export the __sfc__ component (required for HMR support)
+    output.push_str("export default __sfc__;\n");
 
-    // Transform TypeScript if needed
-    let final_code = if is_ts {
-        transform_typescript_to_js(&output)
-    } else {
-        output
-    };
-
+    // TypeScript transformation is already done at the start of this function,
+    // so output is already JavaScript
     Ok(ScriptCompileResult {
-        code: final_code,
+        code: output,
         bindings: Some(ctx.bindings),
     })
 }
@@ -1182,7 +1209,10 @@ pub(crate) fn transform_typescript_to_js(code: &str) -> String {
     let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
 
     // Transform TypeScript to JavaScript
-    let transform_options = TransformOptions::default();
+    // IMPORTANT: Set only_remove_type_imports=true to preserve value imports
+    // (they may be used in template but not in script, so OXC would otherwise remove them)
+    let mut transform_options = TransformOptions::default();
+    transform_options.typescript.only_remove_type_imports = true;
     let ret = Transformer::new(&allocator, std::path::Path::new(""), &transform_options)
         .build_with_symbols_and_scopes(symbols, scopes, &mut program);
 

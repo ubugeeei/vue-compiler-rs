@@ -31,7 +31,10 @@ run = "pnpm -C packages/vue-compiler-rs-native build"
 [tasks."build:wasm"]
 alias = "bw"
 description = "Build WASM bindings for vite-plugin (Node.js)"
-run = "wasm-pack build crates/vue_bindings --target nodejs --out-dir ../../packages/vite-plugin-vue-compiler-rs/wasm --features wasm --no-default-features"
+run = """
+wasm-pack build crates/vue_bindings --target nodejs --out-dir ../../packages/vite-plugin-vue-compiler-rs/wasm --features wasm --no-default-features
+mv packages/vite-plugin-vue-compiler-rs/wasm/vue_bindings.js packages/vite-plugin-vue-compiler-rs/wasm/vue_bindings.cjs
+"""
 
 [tasks."build:wasm-web"]
 alias = "bww"

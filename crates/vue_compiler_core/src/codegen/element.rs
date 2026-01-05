@@ -714,8 +714,11 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.use_helper(builtin);
                 ctx.push(ctx.helper(builtin));
             } else if ctx.is_component_in_bindings(&el.tag) {
-                // Use $setup.ComponentName if component is in binding metadata
-                ctx.push("$setup.");
+                // Component is in binding metadata (from script setup imports)
+                // In inline mode, reference directly; in non-inline mode, use $setup. prefix
+                if !ctx.options.inline {
+                    ctx.push("$setup.");
+                }
                 ctx.push(&el.tag);
             } else {
                 ctx.push("_component_");
@@ -909,9 +912,11 @@ pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.push(helper);
             ctx.push("(");
 
-            // Use $setup.ComponentName if component is in binding metadata
+            // Component reference: use $setup. prefix only in non-inline mode
             if ctx.is_component_in_bindings(&el.tag) {
-                ctx.push("$setup.");
+                if !ctx.options.inline {
+                    ctx.push("$setup.");
+                }
                 ctx.push(&el.tag);
             } else {
                 ctx.push("_component_");
