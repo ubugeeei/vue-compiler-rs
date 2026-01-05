@@ -327,6 +327,12 @@ impl ScriptCompileContext {
 
     /// Extract prop names from defineProps/withDefaults and add to bindings
     fn extract_props_bindings(&mut self, call: &MacroCall) {
+        // Handle type-based defineProps: defineProps<{ msg: string }>()
+        if let Some(ref type_args) = call.type_args {
+            self.extract_props_from_type_args(type_args);
+            return;
+        }
+
         // Parse args to extract prop names
         // Handle array syntax: ['msg', 'count']
         // Handle object syntax: { msg: String, count: Number }
@@ -366,6 +372,59 @@ impl ScriptCompileContext {
                         .bindings
                         .insert(part.to_string(), BindingType::Props);
                 }
+            }
+        }
+    }
+
+    /// Extract prop names from TypeScript type arguments
+    fn extract_props_from_type_args(&mut self, type_args: &str) {
+        let content = type_args.trim();
+        let content = if content.starts_with('{') && content.ends_with('}') {
+            &content[1..content.len() - 1]
+        } else {
+            content
+        };
+
+        // Split by commas/semicolons/newlines (but not inside nested braces)
+        let mut depth = 0;
+        let mut current = String::new();
+
+        for c in content.chars() {
+            match c {
+                '{' | '<' | '(' | '[' => {
+                    depth += 1;
+                    current.push(c);
+                }
+                '}' | '>' | ')' | ']' => {
+                    depth -= 1;
+                    current.push(c);
+                }
+                ',' | ';' | '\n' if depth == 0 => {
+                    self.extract_single_prop_from_type(&current);
+                    current.clear();
+                }
+                _ => current.push(c),
+            }
+        }
+        self.extract_single_prop_from_type(&current);
+    }
+
+    /// Extract a single prop name from a type definition segment
+    fn extract_single_prop_from_type(&mut self, segment: &str) {
+        let trimmed = segment.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+
+        // Parse "name?: Type" or "name: Type"
+        if let Some(colon_pos) = trimmed.find(':') {
+            let name_part = &trimmed[..colon_pos];
+            let name = name_part.trim().trim_end_matches('?').trim();
+
+            if !name.is_empty() && is_valid_identifier(name) {
+                self.bindings
+                    .bindings
+                    .insert(name.to_string(), BindingType::Props);
             }
         }
     }

@@ -494,7 +494,23 @@ fn compile_script_setup_inline(
 
     // Props definition
     if let Some(ref props_macro) = ctx.macros.define_props {
-        if !props_macro.args.is_empty() {
+        if let Some(ref type_args) = props_macro.type_args {
+            // Type-based props: extract prop definitions from type
+            let prop_types = extract_prop_types_from_type(type_args);
+            if !prop_types.is_empty() {
+                output.push_str("  props: {\n");
+                for (name, prop_type) in &prop_types {
+                    output.push_str("    ");
+                    output.push_str(name);
+                    output.push_str(": { type: ");
+                    output.push_str(&prop_type.js_type);
+                    output.push_str(", required: ");
+                    output.push_str(if prop_type.optional { "false" } else { "true" });
+                    output.push_str(" },\n");
+                }
+                output.push_str("  },\n");
+            }
+        } else if !props_macro.args.is_empty() {
             output.push_str("  props: ");
             output.push_str(&props_macro.args);
             output.push_str(",\n");
