@@ -47,6 +47,8 @@ pub fn default_helper_alias(helper: RuntimeHelper) -> &'static str {
         RuntimeHelper::Suspense => "_Suspense",
         RuntimeHelper::KeepAlive => "_KeepAlive",
         RuntimeHelper::BaseTransition => "_BaseTransition",
+        RuntimeHelper::Transition => "_Transition",
+        RuntimeHelper::TransitionGroup => "_TransitionGroup",
         RuntimeHelper::OpenBlock => "_openBlock",
         RuntimeHelper::CreateBlock => "_createBlock",
         RuntimeHelper::CreateElementBlock => "_createElementBlock",
@@ -101,13 +103,34 @@ pub fn capitalize_first(s: &str) -> String {
     }
 }
 
+/// Convert kebab-case to camelCase
+pub fn camelize(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut capitalize_next = false;
+
+    for c in s.chars() {
+        if c == '-' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.extend(c.to_uppercase());
+            capitalize_next = false;
+        } else {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
 /// Check if a component is a Vue built-in that should be imported directly
 pub fn is_builtin_component(name: &str) -> Option<RuntimeHelper> {
     match name {
         "Teleport" => Some(RuntimeHelper::Teleport),
         "Suspense" => Some(RuntimeHelper::Suspense),
         "KeepAlive" => Some(RuntimeHelper::KeepAlive),
-        "BaseTransition" | "Transition" => Some(RuntimeHelper::BaseTransition),
+        "BaseTransition" => Some(RuntimeHelper::BaseTransition),
+        "Transition" => Some(RuntimeHelper::Transition),
+        "TransitionGroup" => Some(RuntimeHelper::TransitionGroup),
         _ => None,
     }
 }

@@ -15,11 +15,20 @@ pub fn has_v_slot(el: &ElementNode<'_>) -> bool {
 }
 
 /// Get slot name from v-slot directive
+/// For dynamic slots, returns the raw source (without _ctx. prefix)
+/// For static slots, returns the content
 pub fn get_slot_name(dir: &DirectiveNode<'_>) -> String {
     dir.arg
         .as_ref()
         .map(|arg| match arg {
-            ExpressionNode::Simple(exp) => exp.content.clone(),
+            ExpressionNode::Simple(exp) => {
+                if exp.is_static {
+                    exp.content.clone()
+                } else {
+                    // For dynamic slot names, use raw source to avoid double _ctx. prefix
+                    exp.loc.source.clone()
+                }
+            }
             ExpressionNode::Compound(exp) => exp.loc.source.clone(),
         })
         .unwrap_or_else(|| String::new("default"))

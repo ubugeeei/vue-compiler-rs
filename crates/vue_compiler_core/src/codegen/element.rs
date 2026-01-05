@@ -10,6 +10,7 @@ use super::helpers::{escape_js_string, is_builtin_component};
 use super::node::generate_node;
 use super::patch_flag::{calculate_element_patch_info, patch_flag_name};
 use super::props::{generate_props, is_supported_directive};
+use super::slots::{generate_slots, has_dynamic_slots_flag, has_slot_children};
 use super::v_for::generate_for;
 use super::v_if::generate_if;
 
@@ -361,7 +362,24 @@ pub fn generate_v_once_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.push("]");
         }
 
-        // v-once children don't need patch flag (they're cached)
+        // v-once still needs patch flag for dynamic bindings (class/style)
+        let (patch_flag, _) =
+            calculate_element_patch_info(el, ctx.options.binding_metadata.as_ref());
+        if let Some(flag) = patch_flag {
+            // Only emit CLASS/STYLE flags for v-once, ignore PROPS
+            let filtered_flag = flag & (2 | 4); // CLASS | STYLE
+            if filtered_flag > 0 {
+                if el.children.is_empty() && !has_props {
+                    ctx.push(", null");
+                }
+                ctx.push(", ");
+                ctx.push(&format!(
+                    "{} /* {} */",
+                    filtered_flag,
+                    patch_flag_name(filtered_flag)
+                ));
+            }
+        }
         ctx.push(")");
     }
 
@@ -647,8 +665,52 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             ctx.push(ctx.helper(RuntimeHelper::CreateBlock));
             ctx.push("(");
 
-            // Check for built-in components (Teleport, KeepAlive, Suspense)
-            if let Some(builtin) = is_builtin_component(&el.tag) {
+            // Check for dynamic component (<component :is="..."> or <component is="...">)
+            let is_dynamic_component = el.tag == "component";
+            let (dynamic_is, static_is) = if is_dynamic_component {
+                // Check for :is="..." (dynamic binding)
+                let dynamic = el.props.iter().find_map(|p| {
+                    if let PropNode::Directive(dir) = p {
+                        if dir.name == "bind" {
+                            if let Some(ExpressionNode::Simple(arg)) = &dir.arg {
+                                if arg.content == "is" {
+                                    return dir.exp.as_ref();
+                                }
+                            }
+                        }
+                    }
+                    None
+                });
+                // Check for is="..." (static attribute)
+                let static_val = el.props.iter().find_map(|p| {
+                    if let PropNode::Attribute(attr) = p {
+                        if attr.name == "is" {
+                            return attr.value.as_ref().map(|v| v.content.as_str());
+                        }
+                    }
+                    None
+                });
+                (dynamic, static_val)
+            } else {
+                (None, None)
+            };
+
+            if let Some(is_exp) = dynamic_is {
+                // Dynamic component: resolveDynamicComponent(_ctx.component)
+                ctx.use_helper(RuntimeHelper::ResolveDynamicComponent);
+                ctx.push(ctx.helper(RuntimeHelper::ResolveDynamicComponent));
+                ctx.push("(");
+                generate_expression(ctx, is_exp);
+                ctx.push(")");
+            } else if let Some(component_name) = static_is {
+                // Static is: resolveDynamicComponent("componentName")
+                ctx.use_helper(RuntimeHelper::ResolveDynamicComponent);
+                ctx.push(ctx.helper(RuntimeHelper::ResolveDynamicComponent));
+                ctx.push("(\"");
+                ctx.push(component_name);
+                ctx.push("\")");
+            } else if let Some(builtin) = is_builtin_component(&el.tag) {
+                // Check for built-in components (Teleport, KeepAlive, Suspense)
                 ctx.use_helper(builtin);
                 ctx.push(ctx.helper(builtin));
             } else if ctx.is_component_in_bindings(&el.tag) {
@@ -661,8 +723,23 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
             }
 
             // Calculate patch flag and dynamic props for component
-            let (patch_flag, dynamic_props) =
+            let (mut patch_flag, dynamic_props) =
                 calculate_element_patch_info(el, ctx.options.binding_metadata.as_ref());
+
+            // For components with slot children, remove TEXT flag (1) since text is inside slot
+            if has_slot_children(el) {
+                if let Some(flag) = patch_flag {
+                    let new_flag = flag & !1; // Remove TEXT flag
+                    patch_flag = if new_flag > 0 { Some(new_flag) } else { None };
+                }
+            }
+
+            // Add DYNAMIC_SLOTS flag (1024) if component has dynamic slots
+            if has_dynamic_slots_flag(el) {
+                let dynamic_slots_flag = 1024;
+                patch_flag = Some(patch_flag.unwrap_or(0) | dynamic_slots_flag);
+            }
+
             let has_patch_info = patch_flag.is_some() || dynamic_props.is_some();
 
             // Generate props (only if there are renderable props, not just v-show)
@@ -673,10 +750,10 @@ pub fn generate_element_block(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.push(", null");
             }
 
-            // Generate children/slots
-            if !el.children.is_empty() {
+            // Generate children/slots - use slot generation for component children
+            if has_slot_children(el) {
                 ctx.push(", ");
-                generate_children(ctx, &el.children);
+                generate_slots(ctx, el);
             } else if has_patch_info {
                 ctx.push(", null");
             }
@@ -849,10 +926,10 @@ pub fn generate_element(ctx: &mut CodegenContext, el: &ElementNode<'_>) {
                 ctx.push(", null");
             }
 
-            // Generate children/slots
-            if !el.children.is_empty() {
+            // Generate children/slots - use slot generation for component children
+            if has_slot_children(el) {
                 ctx.push(", ");
-                generate_children(ctx, &el.children);
+                generate_slots(ctx, el);
             }
 
             ctx.push(")");

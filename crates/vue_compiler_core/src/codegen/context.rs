@@ -30,6 +30,8 @@ pub struct CodegenContext {
     pub(super) used_helpers: std::collections::HashSet<RuntimeHelper>,
     /// Cache index for v-once
     pub(super) cache_index: usize,
+    /// Slot parameters (identifiers that should not be prefixed with _ctx.)
+    pub(super) slot_params: std::collections::HashSet<std::string::String>,
 }
 
 /// Code generation result
@@ -56,7 +58,27 @@ impl CodegenContext {
             pure: false,
             used_helpers: std::collections::HashSet::new(),
             cache_index: 0,
+            slot_params: std::collections::HashSet::new(),
         }
+    }
+
+    /// Add slot parameters (identifiers that should not be prefixed)
+    pub fn add_slot_params(&mut self, params: &[std::string::String]) {
+        for param in params {
+            self.slot_params.insert(param.clone());
+        }
+    }
+
+    /// Remove slot parameters (when exiting slot scope)
+    pub fn remove_slot_params(&mut self, params: &[std::string::String]) {
+        for param in params {
+            self.slot_params.remove(param);
+        }
+    }
+
+    /// Check if an identifier is a slot parameter
+    pub fn is_slot_param(&self, name: &str) -> bool {
+        self.slot_params.contains(name)
     }
 
     /// Get next cache index for v-once

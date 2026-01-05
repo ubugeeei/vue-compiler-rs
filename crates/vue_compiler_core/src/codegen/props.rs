@@ -4,7 +4,7 @@ use crate::ast::*;
 
 use super::context::CodegenContext;
 use super::expression::{generate_event_handler, generate_expression};
-use super::helpers::{capitalize_first, is_valid_js_identifier};
+use super::helpers::{camelize, capitalize_first, is_valid_js_identifier};
 
 /// Generate props object
 pub fn generate_props(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
@@ -83,9 +83,13 @@ pub fn generate_props(ctx: &mut CodegenContext, props: &[PropNode<'_>]) {
         })
         .count();
 
-    // Check if any prop requires a normalizer (class/style bindings)
+    // Check if any prop requires a normalizer (class/style bindings) or uses helper functions (v-text)
     let has_normalizer = props.iter().any(|p| {
         if let PropNode::Directive(dir) = p {
+            // v-text uses _toDisplayString, which makes the output multiline
+            if dir.name == "text" {
+                return true;
+            }
             if dir.name == "bind" {
                 if let Some(ExpressionNode::Simple(exp)) = &dir.arg {
                     return exp.content == "class" || exp.content == "style";
@@ -216,7 +220,7 @@ pub fn is_supported_directive(dir: &DirectiveNode<'_>) -> bool {
             ExpressionNode::Compound(_) => true,
         });
     }
-    matches!(dir.name.as_str(), "bind" | "on")
+    matches!(dir.name.as_str(), "bind" | "on" | "html" | "text")
 }
 
 /// Check if element has dynamic v-model (with dynamic argument)
@@ -245,15 +249,36 @@ pub fn generate_directive_prop_with_static(
         "bind" => {
             let mut is_class = false;
             let mut is_style = false;
+
+            // Check for modifiers
+            let has_camel = dir.modifiers.iter().any(|m| m.content == "camel");
+            let has_prop = dir.modifiers.iter().any(|m| m.content == "prop");
+            let has_attr = dir.modifiers.iter().any(|m| m.content == "attr");
+
             if let Some(ExpressionNode::Simple(exp)) = &dir.arg {
                 let key = &exp.content;
                 is_class = key == "class";
                 is_style = key == "style";
-                let needs_quotes = !is_valid_js_identifier(key);
+
+                // Transform key based on modifiers
+                let transformed_key = if has_camel {
+                    // Convert kebab-case to camelCase
+                    camelize(key)
+                } else if has_prop {
+                    // Add . prefix for DOM property binding
+                    format!(".{}", key)
+                } else if has_attr {
+                    // Add ^ prefix for attribute binding
+                    format!("^{}", key)
+                } else {
+                    key.to_string()
+                };
+
+                let needs_quotes = !is_valid_js_identifier(&transformed_key);
                 if needs_quotes {
                     ctx.push("\"");
                 }
-                ctx.push(key);
+                ctx.push(&transformed_key);
                 if needs_quotes {
                     ctx.push("\"");
                 }
@@ -511,6 +536,28 @@ pub fn generate_directive_prop_with_static(
                     }
                 }
             }
+        }
+        "html" => {
+            // v-html="rawHtml" -> innerHTML: _ctx.rawHtml
+            ctx.push("innerHTML: ");
+            if let Some(exp) = &dir.exp {
+                generate_expression(ctx, exp);
+            } else {
+                ctx.push("undefined");
+            }
+        }
+        "text" => {
+            // v-text="message" -> textContent: _toDisplayString(_ctx.message)
+            ctx.use_helper(RuntimeHelper::ToDisplayString);
+            ctx.push("textContent: ");
+            ctx.push(ctx.helper(RuntimeHelper::ToDisplayString));
+            ctx.push("(");
+            if let Some(exp) = &dir.exp {
+                generate_expression(ctx, exp);
+            } else {
+                ctx.push("undefined");
+            }
+            ctx.push(")");
         }
         _ => {
             // Other directives are skipped by is_supported_directive()

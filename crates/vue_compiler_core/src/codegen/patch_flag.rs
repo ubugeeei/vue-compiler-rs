@@ -1,5 +1,6 @@
 //! Patch flag calculation and naming functions.
 
+use super::helpers::camelize;
 use crate::ast::*;
 use crate::options::{BindingMetadata, BindingType};
 
@@ -93,6 +94,11 @@ pub fn calculate_element_patch_info(
         if let PropNode::Directive(dir) = prop {
             match dir.name.as_str() {
                 "bind" => {
+                    // Check for modifiers
+                    let has_camel = dir.modifiers.iter().any(|m| m.content == "camel");
+                    let has_prop = dir.modifiers.iter().any(|m| m.content == "prop");
+                    let has_attr = dir.modifiers.iter().any(|m| m.content == "attr");
+
                     if let Some(arg) = &dir.arg {
                         if let ExpressionNode::Simple(exp) = arg {
                             if !exp.is_static {
@@ -103,11 +109,29 @@ pub fn calculate_element_patch_info(
                                 match key {
                                     "class" => flag |= 2, // CLASS
                                     "style" => flag |= 4, // STYLE
+                                    // key and ref are special props - don't add to patch flags
+                                    "key" | "ref" => {}
                                     _ => {
                                         // Skip modelModifiers and *Modifiers props (they are static)
                                         if !key.ends_with("Modifiers") {
                                             flag |= 8; // PROPS
-                                            dynamic_props.push(key.to_string());
+
+                                            // Transform key based on modifiers
+                                            let prop_name = if has_camel {
+                                                camelize(key)
+                                            } else if has_prop {
+                                                format!(".{}", key)
+                                            } else if has_attr {
+                                                format!("^{}", key)
+                                            } else {
+                                                key.to_string()
+                                            };
+                                            dynamic_props.push(prop_name);
+
+                                            // .prop modifier requires NEED_HYDRATION
+                                            if has_prop {
+                                                flag |= 32; // NEED_HYDRATION
+                                            }
                                         }
                                     }
                                 }
@@ -206,6 +230,7 @@ pub fn calculate_element_patch_info(
                                 // Events that don't need NEED_HYDRATION:
                                 // - Basic click/dblclick without special modifiers
                                 // - update:* events (v-model internal events)
+                                // - Component events (non-DOM element events)
                                 // Note: event name can be "update:modelValue" or "Update:modelValue"
                                 let lower_event = base_event.to_lowercase();
                                 let is_vmodel_update = lower_event.starts_with("update:");
@@ -214,8 +239,13 @@ pub fn calculate_element_patch_info(
                                     && !has_key_modifier
                                     && !has_right_modifier
                                     && !has_middle_modifier;
+                                let is_component_event = el.tag_type == ElementType::Component;
 
-                                if !is_simple_click && !is_vmodel_update && !handler_is_const {
+                                if !is_simple_click
+                                    && !is_vmodel_update
+                                    && !is_component_event
+                                    && !handler_is_const
+                                {
                                     flag |= 32; // NEED_HYDRATION
                                 }
                             }
@@ -227,6 +257,16 @@ pub fn calculate_element_patch_info(
                 "show" => {
                     // v-show requires NEED_PATCH, but only if no other flags are set
                     has_vshow = true;
+                }
+                "html" => {
+                    // v-html sets innerHTML - dynamic prop
+                    flag |= 8; // PROPS
+                    dynamic_props.push("innerHTML".to_string());
+                }
+                "text" => {
+                    // v-text sets textContent - dynamic prop
+                    flag |= 8; // PROPS
+                    dynamic_props.push("textContent".to_string());
                 }
                 _ => {
                     // Custom directive - requires NEED_PATCH

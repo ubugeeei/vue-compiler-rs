@@ -10,6 +10,7 @@ mod helpers;
 mod node;
 mod patch_flag;
 mod props;
+mod slots;
 mod v_for;
 mod v_if;
 
@@ -387,6 +388,11 @@ fn generate_assets(ctx: &mut CodegenContext, root: &RootNode<'_>) {
 
         // Skip built-in components - they are imported directly, not resolved
         if helpers::is_builtin_component(component).is_some() {
+            continue;
+        }
+
+        // Skip dynamic component (<component :is="...">) - it uses resolveDynamicComponent
+        if component == "component" {
             continue;
         }
 
