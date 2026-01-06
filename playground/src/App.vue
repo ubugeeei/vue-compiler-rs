@@ -131,13 +131,12 @@ function copyToClipboard(text: string) {
 
 function copyFullOutput() {
   if (!output.value) return;
-  const compiledCode = (output.value.preamble ? output.value.preamble + '\n\n' : '') + output.value.code;
   const fullOutput = `
 === COMPILER OUTPUT ===
 Compile Time: ${compileTime?.value?.toFixed(2) ?? 'N/A'}ms
 
 === CODE ===
-${compiledCode}
+${output.value.code}
 
 === HELPERS ===
 ${output.value.helpers?.join('\n') || 'None'}
@@ -269,9 +268,9 @@ onMounted(async () => {
             <div v-if="activeTab === 'code'" class="code-output">
               <h4>Compiled Code</h4>
               <div class="code-actions">
-                <button @click="copyToClipboard((output.preamble ? output.preamble + '\n\n' : '') + output.code)" class="btn-ghost">Copy</button>
+                <button @click="copyToClipboard(output.code)" class="btn-ghost">Copy</button>
               </div>
-              <CodeHighlight :code="(output.preamble ? output.preamble + '\n\n' : '') + output.code" language="javascript" show-line-numbers />
+              <CodeHighlight :code="output.code" language="javascript" show-line-numbers />
             </div>
 
             <!-- AST Tab -->
