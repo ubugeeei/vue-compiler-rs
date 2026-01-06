@@ -55,6 +55,7 @@ export interface SfcCompileResult {
   css?: string;
   errors?: string[];
   warnings?: string[];
+  bindingMetadata?: object;
 }
 
 export interface CssCompileOptions {

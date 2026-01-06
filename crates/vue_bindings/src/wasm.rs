@@ -26,6 +26,8 @@ pub struct SfcWasmResult {
     pub css: Option<String>,
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bindingMetadata: Option<serde_json::Value>,
 }
 
 /// Script compilation result
@@ -216,6 +218,11 @@ impl Compiler {
 
         // Build result with compiled script code
         // Convert descriptor to owned for serialization
+        let binding_metadata = sfc_result
+            .bindings
+            .as_ref()
+            .and_then(|b| serde_json::to_value(&b.bindings).ok());
+
         let result = SfcWasmResult {
             descriptor: descriptor.into_owned(),
             template: template_result,
@@ -228,6 +235,7 @@ impl Compiler {
             css: sfc_result.css,
             errors: sfc_result.errors.into_iter().map(|e| e.message).collect(),
             warnings: sfc_result.warnings.into_iter().map(|e| e.message).collect(),
+            bindingMetadata: binding_metadata,
         };
 
         serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))

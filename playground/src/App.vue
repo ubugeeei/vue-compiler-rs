@@ -270,6 +270,9 @@ onMounted(async () => {
               <div class="code-actions">
                 <button @click="copyToClipboard(output.code)" class="btn-ghost">Copy</button>
               </div>
+              <div v-if="sfcResult?.bindingMetadata" class="bindings-comment">
+                <CodeHighlight :code="'/* Analyzed bindings: ' + JSON.stringify(sfcResult.bindingMetadata, null, 2) + ' */'" language="javascript" />
+              </div>
               <CodeHighlight :code="output.code" language="javascript" show-line-numbers />
             </div>
 
