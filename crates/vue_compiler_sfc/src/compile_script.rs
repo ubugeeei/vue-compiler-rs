@@ -1636,6 +1636,35 @@ pub(crate) fn is_hoistable_const(line: &str) -> bool {
         return false;
     }
 
+    // Must not be an incomplete multiline generic (e.g., "const x = ref<")
+    // This would be part of a multiline type declaration
+    let open_angles = trimmed.matches('<').count();
+    let close_angles = trimmed.matches('>').count();
+    if open_angles > close_angles {
+        return false;
+    }
+
+    // Must end with a semicolon or be a complete statement
+    // (avoid hoisting incomplete lines)
+    if !trimmed.ends_with(';') && !trimmed.ends_with('}') && !trimmed.ends_with(']') {
+        // Check if it looks like a complete simple literal assignment
+        // const x = "value" or const x = 123 or const x = true
+        let after_eq = trimmed.split('=').nth(1).map(|s| s.trim()).unwrap_or("");
+        if after_eq.is_empty()
+            || after_eq.ends_with('<')
+            || (!after_eq.starts_with('"')
+                && !after_eq.starts_with('\'')
+                && !after_eq.starts_with('`')
+                && after_eq.parse::<f64>().is_err()
+                && after_eq != "true"
+                && after_eq != "false"
+                && after_eq != "null"
+                && after_eq != "undefined")
+        {
+            return false;
+        }
+    }
+
     true
 }
 

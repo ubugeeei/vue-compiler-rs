@@ -1,5 +1,6 @@
 ---
 source: crates/vue_compiler_sfc/src/snapshot_tests.rs
+assertion_line: 106
 expression: ts_output
 ---
 import { defineComponent } from 'vue'

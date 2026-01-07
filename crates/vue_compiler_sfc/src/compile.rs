@@ -800,12 +800,23 @@ const { items } = defineProps<{
             descriptor.script_setup.as_ref().map(|s| &s.content)
         );
 
-        let opts = SfcCompileOptions::default();
+        // Use is_ts = true to preserve TypeScript output
+        let opts = SfcCompileOptions {
+            script: ScriptCompileOptions {
+                is_ts: true,
+                ..Default::default()
+            },
+            template: TemplateCompileOptions {
+                is_ts: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
         let result = compile_sfc(&descriptor, opts).expect("Failed to compile SFC");
 
         eprintln!("=== COMPILED OUTPUT ===\n{}", result.code);
 
-        // Should contain the type import
+        // Should contain the type import (when is_ts = true, TypeScript is preserved)
         assert!(
             result.code.contains("RouteLocation") || result.code.contains("interface TabItem"),
             "Should contain type definitions from normal script. Got:\n{}",

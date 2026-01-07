@@ -69,6 +69,7 @@ Some Vue 3.3+ features are not yet fully supported:
 - **Component Resolution**: Custom components like `v-btn` now correctly generate `resolveComponent` calls in inline templates
 - **v-on Object Spread**: `v-on="handlers"` object spread syntax is now correctly compiled using `toHandlers`
 - **$emit Prefixing**: `$emit` and other Vue instance properties are now correctly prefixed with `_ctx.` in template expressions
+- **Normal Script Transpilation**: When using both `<script>` and `<script setup>`, the normal script block is now also transpiled to JavaScript in downcompile mode
 
 ## Quick Start
 
