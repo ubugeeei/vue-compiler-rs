@@ -490,25 +490,6 @@ pub(crate) fn compile_script_setup(
     // Check if we have props destructure
     let has_props_destructure = ctx.macros.props_destructure.is_some();
 
-    // Generate analyzed bindings comment
-    output.push_str("/* Analyzed bindings: {\n");
-    for (name, binding_type) in &ctx.bindings.bindings {
-        let type_str = match binding_type {
-            BindingType::Data => "data",
-            BindingType::Props => "props",
-            BindingType::PropsAliased => "props-aliased",
-            BindingType::SetupLet => "setup-let",
-            BindingType::SetupConst => "setup-const",
-            BindingType::SetupReactiveConst => "setup-reactive-const",
-            BindingType::SetupMaybeRef => "setup-maybe-ref",
-            BindingType::SetupRef => "setup-ref",
-            BindingType::Options => "options",
-            BindingType::LiteralConst => "literal-const",
-        };
-        output.push_str(&format!("  \"{}\": \"{}\",\n", name, type_str));
-    }
-    output.push_str("} */\n");
-
     // Extract and output imports
     let mut imports = Vec::new();
     let mut setup_lines = Vec::new();
@@ -1028,16 +1009,8 @@ pub(crate) fn compile_script_setup(
         output
     };
 
-    // Add binding metadata as a comment at the top of the code
-    let bindings_json =
-        serde_json::to_string_pretty(&ctx.bindings.bindings).unwrap_or_else(|_| "{}".to_string());
-    let code_with_bindings = format!(
-        "/* Analyzed bindings: {} */\n\n{}",
-        bindings_json, final_code
-    );
-
     Ok(ScriptCompileResult {
-        code: code_with_bindings,
+        code: final_code,
         bindings: Some(ctx.bindings),
     })
 }

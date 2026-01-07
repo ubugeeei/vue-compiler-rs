@@ -258,8 +258,10 @@ function createMockModule(): WasmModule {
       ? mockCompile(descriptor.template.content, options)
       : undefined;
 
-    // Generate mock script code
+    // Generate mock script code and extract bindings
     let scriptCode = '';
+    const bindings: Record<string, string> = {};
+
     if (descriptor.scriptSetup) {
       scriptCode = `// Mock compiled script setup\n`;
       scriptCode += `import { ref, computed } from 'vue'\n\n`;
@@ -272,6 +274,23 @@ function createMockModule(): WasmModule {
       if (templateResult) {
         scriptCode += `\n${templateResult.code}`;
       }
+
+      // Extract mock bindings from script setup content
+      const lines = descriptor.scriptSetup.content.split('\n');
+      for (const line of lines) {
+        // Match: const x = ref(...), const x = computed(...), or defineProps destructure
+        const constMatch = line.match(/const\s+(\w+)\s*=/);
+        if (constMatch) {
+          const varName = constMatch[1];
+          if (line.includes('ref(')) {
+            bindings[varName] = 'setup-ref';
+          } else if (line.includes('computed(')) {
+            bindings[varName] = 'setup-computed';
+          } else {
+            bindings[varName] = 'setup-const';
+          }
+        }
+      }
     } else if (descriptor.script) {
       scriptCode = descriptor.script.content;
     } else {
@@ -283,6 +302,7 @@ function createMockModule(): WasmModule {
       template: templateResult,
       script: { code: scriptCode },
       css: descriptor.styles.map(s => s.content).join('\n') || undefined,
+      bindingMetadata: Object.keys(bindings).length > 0 ? bindings : undefined,
     };
   };
 

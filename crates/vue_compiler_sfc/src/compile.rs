@@ -121,7 +121,19 @@ pub fn compile_sfc(
     }
 
     // Case 3: Script setup with inline template
-    let script_setup = descriptor.script_setup.as_ref().unwrap();
+    // If we reach here without script_setup, it means the SFC has no content
+    let script_setup = match descriptor.script_setup.as_ref() {
+        Some(s) => s,
+        None => {
+            return Err(SfcError {
+                message:
+                    "At least one <template> or <script> is required in a single file component."
+                        .to_string(),
+                code: None,
+                loc: None,
+            });
+        }
+    };
     let _template_content = descriptor.template.as_ref().map(|t| t.content.as_ref());
 
     // Analyze script first to get bindings

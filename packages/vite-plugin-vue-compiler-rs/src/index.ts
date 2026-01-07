@@ -46,12 +46,25 @@ function loadWasm(): WasmModule {
 
   try {
     // Load CommonJS WASM module using require (Node.js target)
-    const wasmPath = path.resolve(__dirname, '../wasm/vue_bindings.js');
-    if (fs.existsSync(wasmPath)) {
-      wasmModule = require(wasmPath) as WasmModule;
+    const wasmJsPath = path.resolve(__dirname, '../wasm/vue_bindings.js');
+    const wasmBinaryPath = path.resolve(__dirname, '../wasm/vue_bindings_bg.wasm');
+
+    if (fs.existsSync(wasmJsPath) && fs.existsSync(wasmBinaryPath)) {
+      const wasmModule_ = require(wasmJsPath);
+      const wasmBuffer = fs.readFileSync(wasmBinaryPath);
+
+      // Initialize the WASM module
+      if (wasmModule_.initSync) {
+        wasmModule_.initSync({ module: wasmBuffer });
+      }
+
+      // Extract the exported functions
+      wasmModule = {
+        compileSfc: wasmModule_.compileSfc,
+      } as WasmModule;
       return wasmModule;
     }
-    throw new Error('WASM module not found at: ' + wasmPath);
+    throw new Error('WASM module not found at: ' + wasmJsPath);
   } catch (e) {
     throw new Error(`Failed to load vue-compiler-rs WASM: ${e}`);
   }
