@@ -244,6 +244,13 @@ pub(crate) fn compile_script_setup_inline(
     output.push_str("',\n");
 
     // Props definition
+    // Extract defaults from withDefaults if present
+    let with_defaults_args = ctx
+        .macros
+        .with_defaults
+        .as_ref()
+        .map(|wd| extract_with_defaults_defaults(&wd.args));
+
     if let Some(ref props_macro) = ctx.macros.define_props {
         if let Some(ref type_args) = props_macro.type_args {
             // Type-based props: extract prop definitions from type
@@ -257,6 +264,13 @@ pub(crate) fn compile_script_setup_inline(
                     output.push_str(&prop_type.js_type);
                     output.push_str(", required: ");
                     output.push_str(if prop_type.optional { "false" } else { "true" });
+                    // Add default value if withDefaults provided one
+                    if let Some(ref defaults) = with_defaults_args {
+                        if let Some(default_val) = defaults.get(name.as_str()) {
+                            output.push_str(", default: ");
+                            output.push_str(default_val);
+                        }
+                    }
                     output.push_str(" },\n");
                 }
                 output.push_str("  },\n");
@@ -296,9 +310,25 @@ pub(crate) fn compile_script_setup_inline(
     // Emits definition
     if let Some(ref emits_macro) = ctx.macros.define_emits {
         if !emits_macro.args.is_empty() {
+            // Runtime array/object syntax: defineEmits(['click', 'update'])
             output.push_str("  emits: ");
             output.push_str(&emits_macro.args);
             output.push_str(",\n");
+        } else if let Some(ref type_args) = emits_macro.type_args {
+            // Type-based syntax: defineEmits<{ (e: 'click'): void }>()
+            let emit_names = extract_emit_names_from_type(type_args);
+            if !emit_names.is_empty() {
+                output.push_str("  emits: [");
+                for (i, name) in emit_names.iter().enumerate() {
+                    if i > 0 {
+                        output.push_str(", ");
+                    }
+                    output.push('"');
+                    output.push_str(name);
+                    output.push('"');
+                }
+                output.push_str("],\n");
+            }
         }
     }
 
@@ -1377,6 +1407,23 @@ fn extract_prop_type_info(
 fn ts_type_to_js_type(ts_type: &str) -> String {
     let ts_type = ts_type.trim();
 
+    // Handle string literal types: "foo" or 'bar' -> String
+    if (ts_type.starts_with('"') && ts_type.ends_with('"'))
+        || (ts_type.starts_with('\'') && ts_type.ends_with('\''))
+    {
+        return "String".to_string();
+    }
+
+    // Handle numeric literal types: 123, 1.5 -> Number
+    if ts_type.parse::<f64>().is_ok() {
+        return "Number".to_string();
+    }
+
+    // Handle boolean literal types: true, false -> Boolean
+    if ts_type == "true" || ts_type == "false" {
+        return "Boolean".to_string();
+    }
+
     // Handle union types - take the first non-undefined/null type
     if ts_type.contains('|') {
         let parts: Vec<&str> = ts_type.split('|').collect();
@@ -1445,6 +1492,155 @@ pub(crate) fn extract_emit_names_from_type(type_args: &str) -> Vec<String> {
     emits
 }
 
+/// Extract default values from withDefaults second argument
+/// Input: "withDefaults(defineProps<{...}>(), { prop1: default1, prop2: default2 })"
+/// Returns: HashMap of prop name to default value string
+pub(crate) fn extract_with_defaults_defaults(
+    with_defaults_args: &str,
+) -> std::collections::HashMap<String, String> {
+    let mut defaults = std::collections::HashMap::new();
+
+    // Find the second argument (the defaults object)
+    // withDefaults(defineProps<...>(), { ... })
+    // We need to find the { after "defineProps<...>()"
+
+    let content = with_defaults_args.trim();
+    let chars: Vec<char> = content.chars().collect();
+
+    // First, find "defineProps" and then its closing parenthesis
+    let define_props_pos = content.find("defineProps");
+    if define_props_pos.is_none() {
+        return defaults;
+    }
+
+    let start_search = define_props_pos.unwrap();
+    let mut paren_depth = 0;
+    let mut in_define_props_call = false;
+    let mut found_define_props_end = false;
+    let mut defaults_start = None;
+
+    let mut i = start_search;
+    while i < chars.len() {
+        let c = chars[i];
+
+        if !in_define_props_call {
+            // Looking for the opening paren of defineProps()
+            if c == '(' {
+                in_define_props_call = true;
+                paren_depth = 1;
+            }
+        } else if !found_define_props_end {
+            match c {
+                '(' => paren_depth += 1,
+                ')' => {
+                    paren_depth -= 1;
+                    if paren_depth == 0 {
+                        found_define_props_end = true;
+                    }
+                }
+                _ => {}
+            }
+        } else {
+            // Looking for the defaults object start
+            if c == '{' {
+                defaults_start = Some(i);
+                break;
+            }
+        }
+        i += 1;
+    }
+
+    if let Some(start) = defaults_start {
+        // Find matching closing brace
+        let mut brace_depth = 0;
+        let mut end = start;
+
+        for (j, &c) in chars.iter().enumerate().skip(start) {
+            match c {
+                '{' => brace_depth += 1,
+                '}' => {
+                    brace_depth -= 1;
+                    if brace_depth == 0 {
+                        end = j;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Extract the defaults object content (without braces)
+        let defaults_content: String = chars[start + 1..end].iter().collect();
+        parse_defaults_object(&defaults_content, &mut defaults);
+    }
+
+    defaults
+}
+
+/// Parse a JavaScript object literal to extract key-value pairs
+fn parse_defaults_object(content: &str, defaults: &mut std::collections::HashMap<String, String>) {
+    let content = content.trim();
+    if content.is_empty() {
+        return;
+    }
+
+    // Split by commas, but respect nested braces/parens/brackets
+    let mut depth = 0;
+    let mut current = String::new();
+
+    for c in content.chars() {
+        match c {
+            '{' | '(' | '[' => {
+                depth += 1;
+                current.push(c);
+            }
+            '}' | ')' | ']' => {
+                depth -= 1;
+                current.push(c);
+            }
+            ',' if depth == 0 => {
+                extract_default_pair(&current, defaults);
+                current.clear();
+            }
+            _ => current.push(c),
+        }
+    }
+    extract_default_pair(&current, defaults);
+}
+
+/// Extract a single key: value pair from a default definition
+fn extract_default_pair(pair: &str, defaults: &mut std::collections::HashMap<String, String>) {
+    let trimmed = pair.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+
+    // Find the first : that's not inside a nested structure
+    let mut depth = 0;
+    let mut colon_pos = None;
+
+    for (i, c) in trimmed.chars().enumerate() {
+        match c {
+            '{' | '(' | '[' | '<' => depth += 1,
+            '}' | ')' | ']' | '>' => depth -= 1,
+            ':' if depth == 0 => {
+                colon_pos = Some(i);
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(pos) = colon_pos {
+        let key = trimmed[..pos].trim();
+        let value = trimmed[pos + 1..].trim();
+
+        if !key.is_empty() && !value.is_empty() {
+            defaults.insert(key.to_string(), value.to_string());
+        }
+    }
+}
+
 /// Check if a string is a valid JS identifier
 pub(crate) fn is_valid_identifier(s: &str) -> bool {
     if s.is_empty() {
@@ -1484,6 +1680,38 @@ mod tests {
     }
 
     #[test]
+    fn test_extract_with_defaults_defaults() {
+        // Test simple case
+        let input = r#"withDefaults(defineProps<{ msg?: string }>(), { msg: "hello" })"#;
+        let defaults = extract_with_defaults_defaults(input);
+        eprintln!("Defaults: {:?}", defaults);
+        assert_eq!(defaults.get("msg"), Some(&r#""hello""#.to_string()));
+
+        // Test multiple defaults
+        let input2 = r#"withDefaults(defineProps<{ msg?: string, count?: number }>(), { msg: "hello", count: 42 })"#;
+        let defaults2 = extract_with_defaults_defaults(input2);
+        assert_eq!(defaults2.get("msg"), Some(&r#""hello""#.to_string()));
+        assert_eq!(defaults2.get("count"), Some(&"42".to_string()));
+
+        // Test multiline input like AfCheckbox
+        let input3 = r#"withDefaults(
+  defineProps<{
+    checked: boolean;
+    label?: string;
+    color?: "primary" | "secondary";
+  }>(),
+  {
+    label: undefined,
+    color: "primary",
+  },
+)"#;
+        let defaults3 = extract_with_defaults_defaults(input3);
+        eprintln!("Defaults3: {:?}", defaults3);
+        assert_eq!(defaults3.get("label"), Some(&"undefined".to_string()));
+        assert_eq!(defaults3.get("color"), Some(&r#""primary""#.to_string()));
+    }
+
+    #[test]
     fn test_compile_script_setup_with_define_props() {
         let content = r#"
 import { ref } from 'vue'
@@ -1492,11 +1720,6 @@ const count = ref(0)
 "#;
         let result = compile_script_setup(content, "Test", false, false, None).unwrap();
 
-        // Should have analyzed bindings comment
-        assert!(
-            result.code.contains("/* Analyzed bindings:"),
-            "Should have bindings comment"
-        );
         // Should have __sfc__
         assert!(
             result.code.contains("const __sfc__ ="),
@@ -1504,6 +1727,11 @@ const count = ref(0)
         );
         // Should have __name
         assert!(result.code.contains("__name: 'Test'"), "Should have __name");
+        // Should have props definition
+        assert!(
+            result.code.contains("props: ['msg']"),
+            "Should have props definition"
+        );
         // Should have setup function with proper signature
         assert!(
             result

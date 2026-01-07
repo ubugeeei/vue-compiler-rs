@@ -44,6 +44,41 @@ description = "Build vite-plugin-vue-compiler-rs"
 depends = ["build:wasm"]
 run = "pnpm -C packages/vite-plugin-vue-compiler-rs build"
 
+[tasks."build:cli"]
+alias = "bc"
+description = "Build CLI binary (vue-compiler)"
+run = "cargo build --release -p vue_compiler_cli"
+
+# =============================================================================
+# CLI (vuec - Vue Compiler)
+# =============================================================================
+# High-performance Vue SFC compiler with glob pattern matching
+# Usage: vuec <PATTERNS> [OPTIONS]
+#
+# OPTIONS:
+#   -o, --output <PATH>         Output directory (stdout if not specified)
+#   -f, --format <FORMAT>       Output format: js (default), json, stats
+#   --ssr                       Enable SSR mode
+#   -j, --threads <N>           Number of threads (default: num CPUs)
+#   -v, --verbose               Show verbose output
+#   --continue-on-error         Continue compilation even on errors
+
+[tasks.cli]
+description = "Install vuec (Vue Compiler) CLI to cargo bin (accessible from PATH)"
+run = "cargo install --path crates/vue_compiler_cli --force"
+
+[tasks."cli:help"]
+description = "Show vuec CLI help"
+run = "vuec --help"
+
+[tasks."cli:example"]
+description = "Example: Compile all .vue files in src/ to output/ directory"
+run = "vuec 'src/**/*.vue' -o output/"
+
+[tasks."cli:example-ssr"]
+description = "Example: Compile .vue files in SSR mode as JSON"
+run = "vuec 'src/**/*.vue' -f json --ssr -v"
+
 # =============================================================================
 # Test
 # =============================================================================

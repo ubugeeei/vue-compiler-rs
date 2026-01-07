@@ -69,19 +69,10 @@ fn get_element_static_type(el: &ElementNode<'_>) -> StaticType {
     let mut has_dynamic_text = false;
 
     for prop in el.props.iter() {
-        if let PropNode::Directive(dir) = prop {
-            // v-bind:key and v-bind:ref are special
-            if dir.name == "bind" {
-                if let Some(ExpressionNode::Simple(exp)) = &dir.arg {
-                    if exp.content == "key" || exp.content == "ref" {
-                        return StaticType::NotStatic;
-                    }
-                }
-            }
-            // Other directives make it dynamic
-            if dir.name != "bind" {
-                return StaticType::NotStatic;
-            }
+        if let PropNode::Directive(_) = prop {
+            // Any directive makes the element dynamic (non-static)
+            // This includes v-bind:class, v-bind:style, v-on:*, etc.
+            return StaticType::NotStatic;
         }
     }
 
@@ -457,6 +448,56 @@ mod tests {
     fn test_interpolation_not_static() {
         let allocator = Bump::new();
         let (root, _) = parse(&allocator, "{{ msg }}");
+
+        assert!(!is_static_node(&root.children[0]));
+    }
+
+    #[test]
+    fn test_nested_dynamic_class_not_static() {
+        let allocator = Bump::new();
+        let (root, _) = parse(
+            &allocator,
+            r#"<div class="checkbox"><span class="icon" :class="{ active: checked }" /></div>"#,
+        );
+
+        // The outer div should NOT be static because it contains a child with dynamic :class
+        assert!(!is_static_node(&root.children[0]));
+    }
+
+    #[test]
+    fn test_sibling_with_v_if() {
+        let allocator = Bump::new();
+        let (root, _) = parse(
+            &allocator,
+            r#"<div class="wrapper"><div class="checkbox"><span :class="{ active: checked }" /></div><label v-if="label">{{ label }}</label></div>"#,
+        );
+
+        // The outer div is not static because it has dynamic content
+        if let TemplateChildNode::Element(el) = &root.children[0] {
+            eprintln!(
+                "Outer div static type: {:?}",
+                get_static_type(&root.children[0])
+            );
+
+            // Check first child (div.checkbox)
+            if let TemplateChildNode::Element(checkbox_div) = &el.children[0] {
+                eprintln!("checkbox div props: {:?}", checkbox_div.props.len());
+                eprintln!("checkbox div children: {:?}", checkbox_div.children.len());
+
+                // Check nested span
+                if let TemplateChildNode::Element(span) = &checkbox_div.children[0] {
+                    eprintln!("span props count: {:?}", span.props.len());
+                    for prop in span.props.iter() {
+                        match prop {
+                            PropNode::Attribute(attr) => eprintln!("  attr: {}", attr.name),
+                            PropNode::Directive(dir) => {
+                                eprintln!("  directive: {} arg: {:?}", dir.name, dir.arg)
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         assert!(!is_static_node(&root.children[0]));
     }

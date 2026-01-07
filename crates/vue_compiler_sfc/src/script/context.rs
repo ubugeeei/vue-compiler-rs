@@ -303,6 +303,37 @@ impl ScriptCompileContext {
                 if let Some(macro_call) = extract_macro_from_expr(&expr_stmt.expression, source) {
                     self.register_macro(&macro_call.0, macro_call.1);
                 }
+
+                // Handle standalone withDefaults(defineProps<...>(), {...})
+                if let Expression::CallExpression(call) = &expr_stmt.expression {
+                    if is_call_of(call, "withDefaults") {
+                        self.macros.with_defaults = Some(MacroCall {
+                            start: call.span.start as usize,
+                            end: call.span.end as usize,
+                            args: source[call.span.start as usize..call.span.end as usize]
+                                .to_string(),
+                            type_args: None,
+                            binding_name: None,
+                        });
+
+                        // Also extract the inner defineProps
+                        if let Some(Argument::CallExpression(inner_call)) = call.arguments.first() {
+                            if is_call_of(inner_call, "defineProps") {
+                                let type_args = extract_type_args_from_call(inner_call, source);
+                                let props_call = MacroCall {
+                                    start: inner_call.span.start as usize,
+                                    end: inner_call.span.end as usize,
+                                    args: extract_args_from_call(inner_call, source),
+                                    type_args,
+                                    binding_name: None,
+                                };
+                                self.extract_props_bindings(&props_call);
+                                self.macros.define_props = Some(props_call);
+                                self.has_define_props_call = true;
+                            }
+                        }
+                    }
+                }
             }
             _ => {}
         }
