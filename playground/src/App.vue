@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, shallowRef } from 'vue';
 import MonacoEditor from './components/MonacoEditor.vue';
 import CodeHighlight from './components/CodeHighlight.vue';
 import { PRESETS, type PresetKey, type InputMode } from './presets';
-import { loadWasm, isWasmLoaded, type CompilerOptions, type CompileResult, type SfcCompileResult, type CssCompileResult, type CssCompileOptions } from './wasm/index';
+import { loadWasm, isWasmLoaded, isUsingMock, type CompilerOptions, type CompileResult, type SfcCompileResult, type CssCompileResult, type CssCompileOptions } from './wasm/index';
 import * as prettier from 'prettier/standalone';
 import * as parserBabel from 'prettier/plugins/babel';
 import * as parserEstree from 'prettier/plugins/estree';
@@ -44,6 +44,7 @@ const error = ref<string | null>(null);
 const options = ref<CompilerOptions>({
   mode: 'module',
   ssr: false,
+  scriptExt: 'preserve', // Keep TypeScript types in output
 });
 const activeTab = ref<TabType>('code');
 const isCompiling = ref(false);
@@ -249,7 +250,7 @@ watch(cssOptions, () => {
 // Lifecycle
 onMounted(async () => {
   compiler.value = await loadWasm();
-  wasmStatus.value = isWasmLoaded() ? 'ready' : 'mock';
+  wasmStatus.value = isUsingMock() ? 'mock' : 'ready';
   compile();
 });
 </script>

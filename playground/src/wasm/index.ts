@@ -7,6 +7,8 @@ export interface CompilerOptions {
   filename?: string;
   // Internal mock-only property for vapor mode detection
   outputMode?: 'vdom' | 'vapor';
+  // Script extension: 'preserve' keeps TypeScript, 'downcompile' (default) transpiles to JS
+  scriptExt?: 'preserve' | 'downcompile';
 }
 
 export interface CompileResult {
@@ -101,6 +103,7 @@ export interface WasmModule {
 
 let wasmModule: WasmModule | null = null;
 let loadPromise: Promise<WasmModule> | null = null;
+let usingMock = false;
 
 export async function loadWasm(): Promise<WasmModule> {
   if (wasmModule) {
@@ -117,11 +120,13 @@ export async function loadWasm(): Promise<WasmModule> {
       const wasm = await import('./vize_bindings.js');
       await wasm.default();
       wasmModule = wasm as unknown as WasmModule;
+      usingMock = false;
       return wasmModule;
     } catch (e) {
       console.warn('WASM module not found, using mock compiler:', e);
       // Return mock module if WASM is not available
       wasmModule = createMockModule();
+      usingMock = true;
       return wasmModule;
     }
   })();
@@ -447,5 +452,9 @@ function buildMockAst(template: string): object {
 }
 
 export function isWasmLoaded(): boolean {
-  return wasmModule !== null;
+  return wasmModule !== null && !usingMock;
+}
+
+export function isUsingMock(): boolean {
+  return usingMock;
 }
