@@ -49,6 +49,13 @@ single code-producing emit walk over the ladder in `emit_budget_observer`.
 This does not answer the fusion policy yet: transform groups are still
 serialized and the production build path is not switched.
 
+Prototype note (2026-09-07): profiled source-map-free DOM compiles now record
+the remaining pre-S2 template walk as `davinci.s2_dom.pre_s2.*` and reconcile
+`davinci.s2_dom.build.walks` as that walk plus the S2 observer total. Ladder
+evidence shows the emit walk is already at the one-walk target, while the
+build path remains at 8 walks (1 pre-S2 + 7 S2 observer) until parse-to-S2
+and S2 transform fusion land.
+
 ## Orphan analyses: productize or cut
 
 `RaceConditionTracker` and `ProvideInjectTracker` have zero consumers;

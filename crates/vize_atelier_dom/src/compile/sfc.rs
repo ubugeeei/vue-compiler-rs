@@ -47,7 +47,7 @@ pub(super) fn compile_template_inner_for_sfc_with_sections<'a>(
         if let Some(s2_options) = s2_options
             && let Ok(result) = profile!(
                 "atelier.dom.template.s2_codegen_sfc_fast",
-                stage_options::emit_s2(allocator, source, options.dialect, &s2_options)
+                stage_options::emit_s2(allocator, source, options.dialect, &s2_options, None)
             )
         {
             return (Vec::new(), result);

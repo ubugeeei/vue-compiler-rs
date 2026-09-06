@@ -8,6 +8,7 @@ use vize_atelier_core::options::{
     BindingMetadata, BindingType, CodegenMode, CodegenOptions, CustomElementMatcher, ParserOptions,
     TemplateSyntaxMode, TransformOptions,
 };
+use vize_atelier_core::walk_probe::WalkCounts;
 use vize_s0::Allocator;
 use vize_s0::profiler::global_profiler;
 use vize_s1_to_s2::{
@@ -154,6 +155,7 @@ pub(super) fn emit_s2(
     source: &str,
     dialect: vize_s0::config::VueVersion,
     options: &DomEmitOptions<'_>,
+    pre_s2_walks: Option<WalkCounts>,
 ) -> Result<CodegenResultWithSections, EmitError> {
     let caps = LegacyCaps::for_version(dialect);
     let profiler = global_profiler();
@@ -180,6 +182,15 @@ pub(super) fn emit_s2(
             "davinci.s2_dom.total.walks",
             u64::from(budget.total_walks()),
         );
+        if let Some(pre_s2) = pre_s2_walks {
+            let pre_s2_walks = pre_s2.total_walks();
+            profiler.record_counter_enabled("davinci.s2_dom.pre_s2.walks", pre_s2_walks);
+            profiler.record_counter_enabled("davinci.s2_dom.pre_s2.visits", pre_s2.total_visits());
+            profiler.record_counter_enabled(
+                "davinci.s2_dom.build.walks",
+                pre_s2_walks + u64::from(budget.total_walks()),
+            );
+        }
         observed.emit
     } else {
         vize_s1_to_s2::emit_dom_source_with_options(allocator, source, caps, options)?

@@ -9,9 +9,10 @@ use vize_atelier_core::{
     lane::transform_with_custom_elements_and_template_syntax_quirks_and_hoisted_scope_id,
     options::{CodegenOptions, CustomElementMatcher, TemplateSyntaxMode},
     parser::parse_with_options_custom_elements_and_template_syntax,
+    walk_probe::WalkCounts,
 };
 use vize_croquis::Croquis;
-use vize_s0::{Allocator, String, profile};
+use vize_s0::{Allocator, String, profile, profiler::global_profiler};
 
 mod pipeline;
 mod sfc;
@@ -293,14 +294,14 @@ fn compile_template_inner_with_sections<'a>(
         has_croquis,
         s2_emit_selection,
     );
-    // Project the public output options before consuming Croquis below. Croquis
-    // intentionally crosses the transform boundary by ownership and is not
-    // cloneable, while S2 only borrows the remaining compiler settings.
+    // Project output options before consuming Croquis; S2 only borrows them.
     let s2_custom_elements = custom_elements.clone();
     let s2_emit_source = use_s2_emit.then(|| (options.clone(), hoisted_scope_id.clone()));
     let transform_opts = stage_options::transform_options(&options);
     // Park the summary on the allocator so it shares the allocator lifetime.
     let analysis: Option<&Croquis> = options.croquis.map(|c| allocator.alloc_owned(*c));
+    let profiling_s2 = use_s2_emit && global_profiler().is_enabled();
+    let template_walk_before = profiling_s2.then(WalkCounts::snapshot);
     let transform_errors = profile!(
         "atelier.dom.template.transform",
         transform_with_custom_elements_and_template_syntax_quirks_and_hoisted_scope_id(
@@ -313,6 +314,7 @@ fn compile_template_inner_with_sections<'a>(
             hoisted_scope_id,
         )
     );
+    let template_walks = template_walk_before.map(|before| WalkCounts::snapshot().since(before));
 
     // Surface transform diagnostics (e.g. invalid expressions) alongside
     // parse errors instead of dropping them — the official compiler reports
@@ -320,7 +322,6 @@ fn compile_template_inner_with_sections<'a>(
     let mut errors = errors.to_vec();
     errors.extend(transform_errors);
 
-    // Codegen
     let s2_emit = s2_emit_source.and_then(|(s2_options_source, s2_hoisted_scope_id)| {
         let binding_table =
             stage_options::s2_binding_table(s2_options_source.binding_metadata.as_ref());
@@ -331,9 +332,10 @@ fn compile_template_inner_with_sections<'a>(
             binding_table.as_ref(),
             s2_hoisted_scope_id.as_deref(),
         )?;
+        let dialect = s2_options_source.dialect;
         Some(profile!(
             "atelier.dom.template.s2_codegen",
-            stage_options::emit_s2(allocator, source, s2_options_source.dialect, &s2_options)
+            stage_options::emit_s2(allocator, source, dialect, &s2_options, template_walks)
         ))
     });
     let codegen_result = match s2_emit {
