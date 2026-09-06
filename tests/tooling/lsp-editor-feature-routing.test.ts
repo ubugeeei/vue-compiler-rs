@@ -65,6 +65,10 @@ const DISABLED_REQUESTS: RequestCase[] = [
     params: (uri) => ({ textDocument: { uri }, position, context: { includeDeclaration: true } }),
   },
   {
+    method: "textDocument/documentHighlight",
+    params: (uri) => ({ textDocument: { uri }, position }),
+  },
+  {
     method: "textDocument/completion",
     params: (uri) => ({ textDocument: { uri }, position }),
   },
@@ -83,6 +87,20 @@ const DISABLED_REQUESTS: RequestCase[] = [
   {
     method: "textDocument/documentLink",
     params: (uri) => ({ textDocument: { uri } }),
+  },
+  {
+    method: "textDocument/documentColor",
+    params: (uri) => ({ textDocument: { uri } }),
+    expected: [],
+  },
+  {
+    method: "textDocument/colorPresentation",
+    params: (uri) => ({
+      textDocument: { uri },
+      color: { red: 1, green: 0, blue: 0, alpha: 1 },
+      range,
+    }),
+    expected: [],
   },
   {
     method: "textDocument/semanticTokens/full",
@@ -105,6 +123,10 @@ const DISABLED_REQUESTS: RequestCase[] = [
     params: (uri) => ({ textDocument: { uri } }),
   },
   {
+    method: "textDocument/selectionRange",
+    params: (uri) => ({ textDocument: { uri }, positions: [position] }),
+  },
+  {
     method: "textDocument/codeAction",
     params: (uri) => ({ textDocument: { uri }, range, context: { diagnostics: [] } }),
   },
@@ -117,6 +139,10 @@ const DISABLED_REQUESTS: RequestCase[] = [
     params: (uri) => ({ textDocument: { uri }, position, newName: "renamedMessage" }),
   },
   {
+    method: "textDocument/linkedEditingRange",
+    params: (uri) => ({ textDocument: { uri }, position }),
+  },
+  {
     method: "textDocument/formatting",
     params: (uri) => ({ textDocument: { uri }, options: { tabSize: 2, insertSpaces: true } }),
   },
@@ -126,6 +152,27 @@ const DISABLED_REQUESTS: RequestCase[] = [
       textDocument: { uri },
       range,
       options: { tabSize: 2, insertSpaces: true },
+    }),
+  },
+  {
+    method: "textDocument/onTypeFormatting",
+    params: (uri) => ({
+      textDocument: { uri },
+      position,
+      ch: "}",
+      options: { tabSize: 2, insertSpaces: true },
+    }),
+  },
+  {
+    method: "textDocument/prepareCallHierarchy",
+    params: (uri) => ({ textDocument: { uri }, position }),
+  },
+  {
+    method: "volar/client/autoInsert",
+    params: (uri) => ({
+      textDocument: { uri },
+      selection: position,
+      change: { rangeOffset: 0, rangeLength: 0, text: ">" },
     }),
   },
   {

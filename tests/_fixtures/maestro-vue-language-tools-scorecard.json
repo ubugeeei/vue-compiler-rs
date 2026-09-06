@@ -378,6 +378,7 @@
         "textDocument/foldingRange",
         "textDocument/codeLens",
         "textDocument/documentColor",
+        "textDocument/colorPresentation",
         "textDocument/selectionRange"
       ],
       "mustInclude": [
@@ -411,11 +412,15 @@
       "mustExclude": [
         {
           "id": "document-feature-lifecycle",
-          "summary": "Unopened and empty documents return null or empty results instead of stale structure.",
+          "summary": "Unopened, empty, and disabled documents return null or empty results instead of stale structure.",
           "evidence": [
             {
               "file": "tests/tooling/lsp-document-features.test.ts",
               "contains": ["unopenedSymbols", "emptySymbols.length, 0"]
+            },
+            {
+              "file": "tests/tooling/lsp-editor-feature-routing.test.ts",
+              "contains": ["textDocument/documentColor", "textDocument/colorPresentation"]
             },
             {
               "file": "tests/tooling/lsp-smoke.test.ts",
