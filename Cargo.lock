@@ -3622,6 +3622,7 @@ dependencies = [
  "vize_carton",
  "vize_croquis",
  "vize_relief",
+ "vize_s1_to_s2",
  "vize_s2",
 ]
 

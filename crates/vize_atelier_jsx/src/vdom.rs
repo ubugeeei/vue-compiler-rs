@@ -11,6 +11,8 @@
 //! `_ctx.`. Static hoisting and handler caching default off for predictable,
 //! `@vue/babel-plugin-jsx`-shaped output; callers can opt in.
 
+mod s2_emit;
+
 use vize_atelier_core::codegen::generate_with_vnode_factory_and_merge_props;
 use vize_atelier_core::lane::transform_with_jsx_compatibility;
 use vize_atelier_core::options::{CodegenMode, CodegenOptions, TransformOptions};
@@ -155,7 +157,7 @@ pub(crate) fn compile_root_to_vdom(
 ) -> VdomComponent {
     let LoweredRoot {
         mut root,
-        s2: _,
+        s2,
         mode,
         component_name,
         component_setup,
@@ -170,6 +172,26 @@ pub(crate) fn compile_root_to_vdom(
     // the codegen via `CodegenOptions.scope_id` below.
     let scoped_style =
         scoped_css.map(|css| build_scoped_style(component_name.as_deref(), css.as_str()));
+
+    if let Some(emit) = s2_emit::try_emit_s2_vdom(
+        allocator,
+        s2,
+        is_ts,
+        component_name.as_deref(),
+        scoped_style.as_ref().map(|style| style.scope_id.as_str()),
+        options,
+        &compat,
+    ) {
+        return VdomComponent {
+            component_name,
+            component_setup,
+            mode: mode.unwrap_or(JsxOutputMode::Vdom),
+            code: emit.code,
+            preamble: emit.preamble,
+            map: None,
+            scoped_style,
+        };
+    }
 
     let transform_opts = TransformOptions {
         // JSX render fns close over the setup scope; don't prefix `_ctx.`.

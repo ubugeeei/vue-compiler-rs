@@ -15,6 +15,7 @@ vize_s2 = { workspace = true }
 vize_relief = { workspace = true }
 vize_croquis = { workspace = true }
 vize_atelier_core = { workspace = true }
+vize_s1_to_s2 = { workspace = true }
 vize_atelier_vapor = { workspace = true }
 # Reused for the first-cut JSX Vapor SSR render path (#1533): the lowered
 # RootNode is the same `vize_relief` type the SSR codegen consumes, so the
