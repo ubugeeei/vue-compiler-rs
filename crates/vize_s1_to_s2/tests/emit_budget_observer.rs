@@ -47,12 +47,12 @@ fn observed_dom_emit_keeps_output_and_walk_budget() {
             fixture.name
         );
         assert_eq!(
-            observed.budget.transform.walks, 6,
+            observed.budget.transform.walks, 5,
             "{} transform walks",
             fixture.name
         );
         assert_eq!(
-            observed.budget.transform.passes, 6,
+            observed.budget.transform.passes, 5,
             "{} transform passes",
             fixture.name
         );
@@ -115,6 +115,26 @@ fn observed_dom_emit_keeps_output_and_walk_budget() {
             baseline.visits
         );
     }
+}
+
+#[test]
+fn model_bindings_keep_the_model_diagnostic_pass_in_the_emit_budget() {
+    let observed_allocator = Allocator::new();
+    let plain_allocator = Allocator::new();
+    let source = r#"<input v-model="msg">"#;
+    let observed = emit_dom_source_observed(&observed_allocator, source)
+        .expect("observed model emit succeeds");
+    let plain = emit_dom_source(&plain_allocator, source).expect("plain model emit succeeds");
+
+    assert_eq!(
+        observed.emit.assembled(),
+        plain.assembled(),
+        "the profiling observer must not change model output"
+    );
+    assert_eq!(observed.budget.transform.walks, 6);
+    assert_eq!(observed.budget.transform.passes, 6);
+    assert_eq!(observed.budget.emit_walks, 1);
+    assert_eq!(observed.budget.total_walks(), 7);
 }
 
 fn s2_dom_emit_count(fixture: &str) -> TraversalBudget {

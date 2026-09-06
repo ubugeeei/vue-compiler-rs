@@ -57,11 +57,11 @@ fn profile_reports_real_s2_dom_walks() {
     assert_eq!(result.code, unobserved.code);
     assert_eq!(result.preamble, unobserved.preamble);
     assert_eq!(counter(&counters, "davinci.s2_dom.files"), 1);
-    assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 6);
-    assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 6);
+    assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 5);
+    assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 5);
     assert_eq!(counter(&counters, "davinci.s2_dom.emit.walks"), 1);
     assert!(counter(&counters, "davinci.s2_dom.emit.visits") > 0);
-    assert_eq!(counter(&counters, "davinci.s2_dom.total.walks"), 7);
+    assert_eq!(counter(&counters, "davinci.s2_dom.total.walks"), 6);
 }
 
 #[test]
@@ -104,13 +104,13 @@ fn profile_reports_ladder_s2_dom_walk_budget() {
             fixture.name
         );
         assert_eq!(counter(&counters, "davinci.s2_dom.files"), 1);
-        assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 6);
-        assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 6);
+        assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 5);
+        assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 5);
         assert_eq!(counter(&counters, "davinci.s2_dom.emit.walks"), expected.0);
         assert_eq!(counter(&counters, "davinci.s2_dom.emit.visits"), expected.1);
         assert_eq!(
             counter(&counters, "davinci.s2_dom.total.walks"),
-            6 + expected.0
+            5 + expected.0
         );
     }
 }

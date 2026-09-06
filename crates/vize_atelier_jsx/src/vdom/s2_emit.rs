@@ -1,6 +1,7 @@
 //! JSX VDOM bridge for the P2-16 S2 re-targeting slice.
 
 use vize_s0::{Allocator, String};
+use vize_s1_to_s2::lower::LoweringFeatures;
 use vize_s1_to_s2::pass::S2Facts;
 use vize_s1_to_s2::{
     DomEmitMode, DomEmitOptions, LegacyCaps, Lowered as S2Lowered, emit_dom_with_options,
@@ -50,6 +51,7 @@ pub(super) fn try_emit_s2_vdom<'a>(
         texts: Default::default(),
         wrappers: Default::default(),
         for_wrappers: Default::default(),
+        features: LoweringFeatures::EMPTY,
         caps: LegacyCaps::VUE3,
     };
     let facts = S2Facts::default();

@@ -52,9 +52,10 @@ serialized and the production build path is not switched.
 Prototype note (2026-09-07): profiled source-map-free DOM compiles now record
 the remaining pre-S2 template walk as `davinci.s2_dom.pre_s2.*` and reconcile
 `davinci.s2_dom.build.walks` as that walk plus the S2 observer total. Ladder
-evidence shows the emit walk is already at the one-walk target, while the
-build path remains at 8 walks (1 pre-S2 + 7 S2 observer) until parse-to-S2
-and S2 transform fusion land.
+evidence shows the emit walk is already at the one-walk target; model-free
+artifacts also skip the `v-model` diagnostic pass, dropping the observed
+build path to 7 walks (1 pre-S2 + 6 S2 observer). P2-12b still needs
+parse-to-S2 and S2 transform fusion to reach the phase target.
 
 ## Orphan analyses: productize or cut
 

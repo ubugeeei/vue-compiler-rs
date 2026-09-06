@@ -11,7 +11,7 @@ use std::vec::Vec as StdVec;
 use vize_davinci::id::NodeId;
 use vize_davinci::side_table::SideTable;
 use vize_s0::{Allocator, Box as ArenaBox, Span, String as VString, Vec as ArenaVec};
-use vize_s1_to_s2::lower::{ForWrapper, WrapperKey};
+use vize_s1_to_s2::lower::{ForWrapper, LoweringFeatures, WrapperKey};
 use vize_s1_to_s2::pass::{
     S2Facts, SlotCarrier, SlotFacts, SlotGroup, SlotName, SlotParams, TextFacts,
 };
@@ -208,6 +208,7 @@ fn lowered<'a>(a: &'a Allocator, root: Region<'a>) -> Lowered<'a> {
         texts: SideTable::new(),
         wrappers: SideTable::new(),
         for_wrappers: SideTable::new(),
+        features: LoweringFeatures::EMPTY,
         caps: LegacyCaps::VUE3,
     }
 }

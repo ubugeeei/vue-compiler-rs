@@ -69,6 +69,43 @@ pub use structural::{ForWrapper, WrapperAttr, WrapperClass, WrapperKey, WrapperK
 pub use text::{TextPart, TextParts, rebuild_source};
 pub(crate) use text::{legacy_slot_filler_needs_props_placeholder, legacy_slot_filler_text};
 
+/// Feature bits the lowering observed while building S2.
+///
+/// These are not another tree scan: they are derived from the lowering's
+/// own decision stream so the pass planner can skip artifact-irrelevant
+/// mandatory passes without hiding traversal work.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LoweringFeatures {
+    model_bindings: bool,
+}
+
+impl LoweringFeatures {
+    pub const EMPTY: Self = Self {
+        model_bindings: false,
+    };
+
+    #[must_use]
+    pub const fn has_model_bindings(self) -> bool {
+        self.model_bindings
+    }
+
+    pub(crate) const fn with_model_bindings(self) -> Self {
+        Self {
+            model_bindings: true,
+        }
+    }
+
+    fn from_provenance(records: &[ProvenanceRecord]) -> Self {
+        let mut features = Self::EMPTY;
+        for record in records {
+            if record.rule.as_str() == "lower.model" {
+                features = features.with_model_bindings();
+            }
+        }
+        features
+    }
+}
+
 /// The S2 artifact one lowering produces: the op tree plus the three
 /// fact channels, all live even when diagnostics are present (the
 /// Lean-InfoTree survival property — kept fragments, not rollback).
@@ -106,6 +143,8 @@ pub struct Lowered<'a> {
     /// Captured `<template v-for>` unwrap facts, keyed by the `ui.for`
     /// op's page-order id. Presence means the carrier was a template.
     pub for_wrappers: SideTable<ForWrapper>,
+    /// Lowering-observed feature bits used by the S2 pass planner.
+    pub features: LoweringFeatures,
     /// Vue dialect sugar the lowering (and the legalizing pass) consult.
     /// [`LegacyCaps::VUE3`] unless the caller used [`lower_with_caps`].
     pub caps: LegacyCaps,
@@ -235,6 +274,7 @@ fn lower_source_block_with_caps_and_comment_policy<'a>(
         ));
     }
     let ops = structural::lower_children(&mut cx, &tree.children, Namespace::Html);
+    let features = LoweringFeatures::from_provenance(&cx.provenance);
     Lowered {
         allocator,
         source: block.root_source(),
@@ -246,6 +286,7 @@ fn lower_source_block_with_caps_and_comment_policy<'a>(
         texts: cx.texts,
         wrappers: cx.wrappers,
         for_wrappers: cx.for_wrappers,
+        features,
         caps,
     }
 }
@@ -273,6 +314,7 @@ impl fmt::Debug for Lowered<'_> {
             .field("texts", &self.texts)
             .field("wrappers", &self.wrappers)
             .field("for_wrappers", &self.for_wrappers)
+            .field("features", &self.features)
             .field("caps", &self.caps)
             .finish_non_exhaustive()
     }

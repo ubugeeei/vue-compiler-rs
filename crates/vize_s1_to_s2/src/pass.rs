@@ -37,12 +37,13 @@
 //!
 //! # Driving a run
 //!
-//! [`run_transform`] executes [`TRANSFORM`] through the P2-2 pass
-//! manager (`vize_davinci::pass::run_pipeline`) with a caller-supplied
-//! observer, and wires the P2-6 [`VerifyObserver`] between passes in
-//! debug builds exactly as its module documents: `note` then `check` /
-//! `check_table` after every pass, so a broken invariant names the pass
-//! that broke it. Release builds make zero verifier calls (guardrail 5).
+//! [`run_transform`] executes the artifact-selected S2 plan through the
+//! P2-2 pass manager (`vize_davinci::pass::run_pipeline`) with a
+//! caller-supplied observer, and wires the P2-6 [`VerifyObserver`] between
+//! passes in debug builds exactly as its module documents: `note` then
+//! `check` / `check_table` after every pass, so a broken invariant names
+//! the pass that broke it. Release builds make zero verifier calls
+//! (guardrail 5).
 
 use vize_davinci::pass::{PassDesc, PassFailure, PassObserver, Pipeline, run_pipeline};
 use vize_davinci::side_table::SideTable;
@@ -51,6 +52,7 @@ use crate::lower::Lowered;
 
 pub mod hoist;
 pub mod legacy;
+mod plan;
 pub mod text;
 pub mod vfor;
 pub mod vif;
@@ -148,8 +150,8 @@ pub struct S2Facts {
     pub static_facts: SideTable<StaticFacts>,
 }
 
-/// Run the S2 transform pipeline over `lowered`, firing `observer`'s
-/// hooks around each pass.
+/// Run the artifact-selected S2 transform pipeline over `lowered`, firing
+/// `observer`'s hooks around each pass.
 ///
 /// Pass diagnostics and provenance append to `lowered`'s own channels —
 /// the unified-channel design; there is no second diagnostics stream.
@@ -167,7 +169,7 @@ pub fn run_transform<'a, O: PassObserver>(lowered: &mut Lowered<'a>, observer: &
     #[cfg(debug_assertions)]
     let mut verify = vize_s2::verify::VerifyObserver::new();
 
-    let pipeline = legacy::pipeline_for(lowered.caps);
+    let pipeline = plan::pipeline_for(lowered.caps, lowered.features);
     let outcome = run_pipeline(&pipeline, observer, |event| {
         let name = event.desc().name;
         if name == legacy::DESC.name {

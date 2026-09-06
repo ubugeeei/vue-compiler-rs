@@ -1,6 +1,6 @@
 //! Vue 2 sugar legalization (P2-9 installment 7): the pass rewrites
-//! dialect payloads into the Vue 3 surface. Vue 3 stays on the 6-pass
-//! table (`walks=6`).
+//! dialect payloads into the Vue 3 surface. Vue 3 model-free artifacts
+//! skip the `v-model` diagnostic pass (`walks=5`).
 
 mod support;
 
@@ -17,7 +17,7 @@ fn vue2() -> LegacyCaps {
 }
 
 #[test]
-fn vue3_keeps_six_walks_on_legacy_spellings() {
+fn vue3_model_free_legacy_spellings_skip_the_model_pass() {
     let source = r#"<Comp :title.sync="heading"/>"#;
     with_transformed(source, |lowered, folio, _, budget| {
         assert_eq!(
@@ -33,7 +33,7 @@ fn vue3_keeps_six_walks_on_legacy_spellings() {
         assert_eq!(lowered.caps, LegacyCaps::VUE3);
         assert_eq!(
             Folio::print_to_string(budget, FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=6\npasses=6\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=5\npasses=5\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
     });
     assert_transformed_sound(source, "vue3-sync-inert-pass");
@@ -56,7 +56,7 @@ fn vue2_expands_sync_into_bind_plus_update_listener() {
         );
         assert_eq!(
             Folio::print_to_string(budget, FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=7\npasses=7\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=6\npasses=6\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         assert_eq!(u64::from(lowered.op_count), folio.op_count());
     });

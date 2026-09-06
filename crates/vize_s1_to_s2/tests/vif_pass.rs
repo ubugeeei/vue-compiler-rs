@@ -193,10 +193,9 @@ fn an_unwrapped_single_child_keeps_its_own_key() {
 
 #[test]
 fn the_pipeline_reports_one_walk_per_barrier_pass() {
-    // Five mandatory barriers plus the series-6 fusable singleton
-    // (v-if, v-for, v-slot, text, v-model, hoist-static): six walks —
-    // the const-pinned fusion plan as measured cost (the fusable pass
-    // still walks alone; no fusable neighbour exists yet).
+    // Four mandatory barriers plus the series-6 fusable singleton
+    // (v-if, v-for, v-slot, text, hoist-static): five walks for an
+    // artifact with no ui.model bindings.
     with_transformed(r#"<div v-if="a">x</div>"#, |_, _, _, budget| {
         assert_eq!(
             vize_davinci::folio::Folio::print_to_string(
@@ -204,7 +203,7 @@ fn the_pipeline_reports_one_walk_per_barrier_pass() {
                 vize_davinci::folio::FolioMode::Full
             )
             .as_str(),
-            "[budget-observer]\nwalks=6\npasses=6\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=5\npasses=5\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
     });
 }

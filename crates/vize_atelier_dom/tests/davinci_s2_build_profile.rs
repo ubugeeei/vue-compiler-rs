@@ -17,8 +17,8 @@ struct TraversalBudget {
     visits: u64,
 }
 
-const CURRENT_S2_OBSERVER_WALKS: u64 = 7;
-const CURRENT_BUILD_WALKS: u64 = 8;
+const CURRENT_S2_OBSERVER_WALKS: u64 = 6;
+const CURRENT_BUILD_WALKS: u64 = 7;
 
 #[test]
 fn profile_build_walks_report_the_current_p2_12b_gap() {
