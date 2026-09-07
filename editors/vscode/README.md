@@ -89,6 +89,36 @@ semantic tokens, links, folding ranges, inlay hints, and file rename handling. I
 individual switches, make sure to include `vize.completion.enable`, `vize.hover.enable`, and
 `vize.definition.enable` together when testing the core editor flow.
 
+Use individual switches when you want to compare one Vize surface against an existing Vue editor
+setup without changing the whole profile:
+
+| Setting                        | Default | Use                                                                         |
+| ------------------------------ | ------- | --------------------------------------------------------------------------- |
+| `vize.lint.enable`             | `true`  | Vue-aware diagnostics.                                                      |
+| `vize.diagnostics.enable`      | `false` | Deprecated alias for `vize.lint.enable`.                                    |
+| `vize.typecheck.enable`        | `true`  | Type checking diagnostics and type-aware backend features.                  |
+| `vize.editor.enable`           | `true`  | Main editor assistance bundle.                                              |
+| `vize.ecosystem.enable`        | `true`  | Router, I18n, Nuxt, and Void Vue helpers.                                   |
+| `vize.optionsApi.enable`       | `false` | Vue 3 Options API template bindings.                                        |
+| `vize.legacyVue2.enable`       | `false` | Vue 2.7 and Nuxt 2 helpers.                                                 |
+| `vize.completion.enable`       | `true`  | Completion provider; may overlap with `vuejs/language-tools`.               |
+| `vize.signatureHelp.enable`    | `true`  | Signature help provider; may overlap with `vuejs/language-tools`.           |
+| `vize.hover.enable`            | `true`  | Hover provider; may overlap with `vuejs/language-tools`.                    |
+| `vize.definition.enable`       | `true`  | Go-to-definition provider; may overlap with `vuejs/language-tools`.         |
+| `vize.references.enable`       | `true`  | Find-references provider; may overlap with `vuejs/language-tools`.          |
+| `vize.documentSymbols.enable`  | `true`  | Document symbols provider.                                                  |
+| `vize.workspaceSymbols.enable` | `true`  | Workspace symbols provider.                                                 |
+| `vize.codeActions.enable`      | `true`  | Lint quick fixes and suppressions; requires lint diagnostics.               |
+| `vize.rename.enable`           | `true`  | Rename provider; may overlap with `vuejs/language-tools`.                   |
+| `vize.codeLens.enable`         | `true`  | Code lens provider.                                                         |
+| `vize.formatting.enable`       | `false` | Formatting provider; keep off when another Vue formatter owns formatting.   |
+| `vize.semanticTokens.enable`   | `true`  | Semantic token provider; may overlap with theme or Vue-token providers.     |
+| `vize.documentLinks.enable`    | `true`  | Document link provider.                                                     |
+| `vize.foldingRanges.enable`    | `true`  | Folding range provider.                                                     |
+| `vize.inlayHints.enable`       | `true`  | Inlay hints provider.                                                       |
+| `vize.fileRename.enable`       | `true`  | File rename edits for Vue imports.                                          |
+| `vize.autoInsert.enable`       | `false` | Experimental automatic insertion for refs, interpolation, tags, and quotes. |
+
 `vize.ecosystem.enable` adds Vue Router route-name and file-route param completions, route-param
 diagnostics for `useRoute()`, Vue I18n key completions, workspace key validation, inlay previews,
 Void Vue route completions, and ecosystem lint diagnostics.

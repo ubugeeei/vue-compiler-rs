@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { FEATURE_SETTING_KEYS } from "../../editors/vscode/src/extension-core.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(import.meta.url);
@@ -81,9 +82,11 @@ test("multiline Vue script grammar preserves each declared dialect", () => {
 });
 
 function readManifest(): Manifest {
-  return JSON.parse(
-    fs.readFileSync(path.join(root, "editors/vscode/package.json"), "utf-8"),
-  ) as Manifest;
+  return JSON.parse(readText("editors/vscode/package.json")) as Manifest;
+}
+
+function readText(relativePath: string): string {
+  return fs.readFileSync(path.join(root, relativePath), "utf-8");
 }
 
 function readExtensionHostFixtures(): ExtensionHostFixtures {
@@ -228,6 +231,22 @@ test("configuration properties are well-formed and typed", () => {
       assert.equal(typeof property.default, "boolean", `${key} should default to a boolean`);
     }
   }
+});
+
+test("vscode README documents every published feature switch", () => {
+  const manifest = readManifest();
+  const properties = manifest.contributes?.configuration?.properties ?? {};
+  const readme = readText("editors/vscode/README.md");
+
+  for (const key of FEATURE_SETTING_KEYS) {
+    const setting = `vize.${key}`;
+    assert.ok(properties[setting], `manifest should publish ${setting}`);
+    assert.match(readme, new RegExp(`\\\`${setting}\\\``), `README should document ${setting}`);
+  }
+
+  assert.match(readme, /Deprecated alias for `vize\.lint\.enable`/);
+  assert.match(readme, /may overlap with `vuejs\/language-tools`/);
+  assert.match(readme, /Experimental automatic insertion/);
 });
 
 test("trace and server-path configuration keep their published contract", () => {
