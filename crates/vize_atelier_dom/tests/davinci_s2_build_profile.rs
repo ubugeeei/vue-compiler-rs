@@ -22,25 +22,25 @@ struct TraversalBudget {
 /// Both columns are per fixture because the S2 pass planner declines a
 /// mandatory pass whose op family the lowering never built
 /// (`vize_s1_to_s2::lower::features`). The S2 column is the artifact's
-/// transform plan plus its one emit walk; the build column adds the one
-/// pre-S2 template walk the legacy transform still costs on this entry
-/// point. Closing *that* one is what the parse-to-S2 switch is for.
+/// transform plan plus its one emit walk; the build column now matches it
+/// because source-map-free DOM compiles no longer run the legacy pre-S2
+/// transform after S2 emission succeeds.
 ///
 /// | fixture       | families present                      | S2 | build |
 /// | ------------- | ------------------------------------- | -- | ----- |
-/// | small         | none                                  | 3  | 4     |
-/// | medium        | components                            | 4  | 5     |
-/// | large         | `v-if`, `v-for`, components, `<slot>` | 6  | 7     |
-/// | stress-deep   | `v-if`                                | 4  | 5     |
-/// | stress-wide   | none                                  | 3  | 4     |
-/// | stress-interp | none                                  | 3  | 4     |
+/// | small         | none                                  | 3  | 3     |
+/// | medium        | components                            | 4  | 4     |
+/// | large         | `v-if`, `v-for`, components, `<slot>` | 6  | 6     |
+/// | stress-deep   | `v-if`                                | 4  | 4     |
+/// | stress-wide   | none                                  | 3  | 3     |
+/// | stress-interp | none                                  | 3  | 3     |
 const CURRENT_WALKS: [(&str, u64, u64); 6] = [
-    ("small", 3, 4),
-    ("medium", 4, 5),
-    ("large", 6, 7),
-    ("stress-deep", 4, 5),
-    ("stress-wide", 3, 4),
-    ("stress-interp", 3, 4),
+    ("small", 3, 3),
+    ("medium", 4, 4),
+    ("large", 6, 6),
+    ("stress-deep", 4, 4),
+    ("stress-wide", 3, 3),
+    ("stress-interp", 3, 3),
 ];
 
 fn current_walks(fixture: &str) -> (u64, u64) {
@@ -81,8 +81,8 @@ fn profile_build_walks_report_the_current_p2_12b_gap() {
         let build_walks = counter(&counters, "davinci.s2_dom.build.walks");
 
         assert_eq!(
-            pre_s2_walks, 1,
-            "{} has one pre-S2 template walk",
+            pre_s2_walks, 0,
+            "{} no longer pays a pre-S2 template walk",
             fixture.name
         );
         assert!(
@@ -117,8 +117,8 @@ fn profile_build_walks_report_the_current_p2_12b_gap() {
             fixture.name
         );
         assert!(
-            build_walks > fused_walk_target,
-            "{} still needs the parse-to-S2/fusion switch before P2-12b can close",
+            build_walks >= fused_walk_target,
+            "{} build walk counter must stay above the emit floor",
             fixture.name
         );
     }

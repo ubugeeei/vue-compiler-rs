@@ -39,12 +39,12 @@ const BASELINE: [(&str, u64, u64); 6] = [
 /// fixture name -> (stage tree-walks, template-node visits) after the
 /// source-map-free DOM production selector routes supported compiles through S2.
 const PRODUCTION_FLOOR: [(&str, u64, u64); 6] = [
-    ("small", 1, 8),
-    ("medium", 1, 33),
-    ("large", 1, 57),
-    ("stress-deep", 1, 72),
-    ("stress-wide", 1, 2),
-    ("stress-interp", 1, 1001),
+    ("small", 0, 0),
+    ("medium", 0, 0),
+    ("large", 0, 0),
+    ("stress-deep", 0, 0),
+    ("stress-wide", 0, 0),
+    ("stress-interp", 0, 0),
 ];
 
 #[test]
