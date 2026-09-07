@@ -173,10 +173,14 @@ fn input_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> boo
         && model.contract.read.span() == model.contract.write.span()
         && matches!(model.contract.read, ExprRef::Js(_))
         && matches!(model.contract.write, ExprRef::Js(_))
-        && element
-            .attributes
-            .iter()
-            .all(|attribute| attribute.name != "type")
+        && input_type_is_text(element)
+}
+
+fn input_type_is_text(element: &ElementOp<'_>) -> bool {
+    element
+        .attributes
+        .iter()
+        .all(|attribute| attribute.name != "type" || attribute.value == Some("text"))
         && element
             .bindings
             .iter()

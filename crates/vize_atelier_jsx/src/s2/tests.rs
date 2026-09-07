@@ -229,6 +229,27 @@ fn plain_input_v_model_projects_to_s2_model() {
 }
 
 #[test]
+fn text_input_v_model_projects_to_s2_model() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <input type=\"text\" v-model={value} />";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("text input v-model projects to S2");
+    let Op::Element(element) = &s2.root.ops[0] else {
+        panic!("root is an element");
+    };
+    assert_eq!(element.attributes.len(), 1);
+    assert_eq!(element.attributes[0].name, "type");
+    assert_eq!(element.attributes[0].value, Some("text"));
+    let BindingOp::Model(model) = &element.bindings[0] else {
+        panic!("binding is ui.model");
+    };
+    assert_eq!(model.contract.read.source(), "value");
+    assert_eq!(model.attributes[0].value, Some("input"));
+}
+
+#[test]
 fn unsupported_input_v_model_shapes_stay_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let cases = [
@@ -236,6 +257,7 @@ fn unsupported_input_v_model_shapes_stay_on_directive_refusal_path() {
         "const App = () => <input v-model={[value, [\"trim\"]]} />",
         "const App = () => <input v-model_lazy={value} />",
         "const App = () => <input type=\"checkbox\" v-model={checked} />",
+        "const App = () => <input type=\"email\" v-model={value} />",
         "const App = () => <input type={kind} v-model={value} />",
         "const App = () => <input {...attrs} v-model={value} />",
     ];
