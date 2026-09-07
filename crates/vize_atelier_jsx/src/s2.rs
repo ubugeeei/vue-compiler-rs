@@ -19,6 +19,7 @@ use vize_s2::op::{
 };
 
 use self::directives::lower_vue_directive;
+use self::input_model::allows_plain_input_model;
 use self::model::lower_model;
 use self::slots::{has_slot_content, lower_slot_content, slot_template_span};
 
@@ -129,7 +130,14 @@ fn lower_element<'a>(
     op_count: &mut u32,
     features: &mut LoweringFeatures,
 ) -> Result<Op<'a>, S2Refusal> {
-    let props = lower_props(allocator, &element.props, element.tag_type, features)?;
+    let allow_native_input_model = allows_plain_input_model(element);
+    let props = lower_props(
+        allocator,
+        &element.props,
+        element.tag_type,
+        allow_native_input_model,
+        features,
+    )?;
     *op_count = op_count.saturating_add(props.binding_count);
     let children = Region {
         ops: lower_children(allocator, &element.children, op_count, features)?,
@@ -188,6 +196,7 @@ fn lower_props<'a>(
     allocator: &'a Allocator,
     props: &[PropNode<'a>],
     element_type: ElementType,
+    allow_native_input_model: bool,
     features: &mut LoweringFeatures,
 ) -> Result<LoweredProps<'a>, S2Refusal> {
     let mut attributes = Vec::new_in(&allocator);
@@ -200,7 +209,13 @@ fn lower_props<'a>(
                 span: attribute.loc.span,
             }),
             PropNode::Directive(directive) => {
-                bindings.push(lower_binding(allocator, directive, element_type, features)?);
+                bindings.push(lower_binding(
+                    allocator,
+                    directive,
+                    element_type,
+                    allow_native_input_model,
+                    features,
+                )?);
             }
         }
     }
@@ -216,11 +231,18 @@ fn lower_binding<'a>(
     allocator: &'a Allocator,
     directive: &vize_relief::DirectiveNode<'a>,
     element_type: ElementType,
+    allow_native_input_model: bool,
     features: &mut LoweringFeatures,
 ) -> Result<BindingOp<'a>, S2Refusal> {
     match directive.name {
         "bind" | "on" => lower_bind_or_on(allocator, directive),
-        "model" => lower_model(allocator, directive, element_type, features),
+        "model" => lower_model(
+            allocator,
+            directive,
+            element_type,
+            allow_native_input_model,
+            features,
+        ),
         "show" | "html" | "text" => lower_vue_directive(allocator, directive, element_type),
         "slot" => lower_slot_content(allocator, directive),
         _ => Err(S2Refusal::Directive),
@@ -319,5 +341,6 @@ const fn namespace(namespace: ReliefNamespace) -> Namespace {
 mod tests;
 
 mod directives;
+mod input_model;
 mod model;
 mod slots;

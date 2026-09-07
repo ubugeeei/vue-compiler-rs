@@ -204,6 +204,51 @@ fn component_v_model_static_arg_modifiers_project_to_s2_model() {
 }
 
 #[test]
+fn plain_input_v_model_projects_to_s2_model() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <input v-model={value} />";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("input v-model projects to S2");
+    assert_eq!(s2.op_count, 2);
+    let Op::Element(element) = &s2.root.ops[0] else {
+        panic!("root is an element");
+    };
+    assert_eq!(element.tag, "input");
+    assert_eq!(element.bindings.len(), 1);
+    let BindingOp::Model(model) = &element.bindings[0] else {
+        panic!("binding is ui.model");
+    };
+    assert_eq!(model.contract.read.source(), "value");
+    assert_eq!(model.contract.write.source(), "value");
+    assert!(model.argument.is_none());
+    assert_eq!(model.attributes.len(), 1);
+    assert_eq!(model.attributes[0].name, "element-kind");
+    assert_eq!(model.attributes[0].value, Some("input"));
+}
+
+#[test]
+fn unsupported_input_v_model_shapes_stay_on_directive_refusal_path() {
+    let allocator = Allocator::new();
+    let cases = [
+        "const App = () => <input v-model:checked={value} />",
+        "const App = () => <input v-model={[value, [\"trim\"]]} />",
+        "const App = () => <input v-model_lazy={value} />",
+        "const App = () => <input type=\"checkbox\" v-model={checked} />",
+        "const App = () => <input type={kind} v-model={value} />",
+        "const App = () => <input {...attrs} v-model={value} />",
+    ];
+
+    for source in cases {
+        let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+        let root = lowered.roots.first().expect("one JSX root");
+
+        assert!(matches!(root.s2, Err(S2Refusal::Directive)), "{source}");
+    }
+}
+
+#[test]
 fn v_show_without_value_stays_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let lowered = lower_source(
@@ -218,12 +263,12 @@ fn v_show_without_value_stays_on_directive_refusal_path() {
 }
 
 #[test]
-fn element_v_model_stays_on_directive_refusal_path() {
+fn non_input_element_v_model_stays_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let lowered = lower_source(
         &allocator,
         allocator.as_oxc(),
-        "const App = () => <input v-model={value} />",
+        "const App = () => <div v-model={value} />",
         JsxLang::Jsx,
     );
     let root = lowered.roots.first().expect("one JSX root");
