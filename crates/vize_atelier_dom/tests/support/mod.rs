@@ -9,6 +9,7 @@
 
 pub mod battery;
 pub mod bindings;
+pub mod profile;
 
 use vize_atelier_core::options::{CodegenOptions, TemplateSyntaxMode};
 use vize_atelier_dom::{
