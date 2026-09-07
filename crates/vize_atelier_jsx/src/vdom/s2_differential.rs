@@ -149,6 +149,11 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "element textarea v-model",
+            "const A = () => <textarea v-model={value} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "component v-show",
             "const A = () => <B v-show={visible} />;",
             JsxLang::Jsx,
