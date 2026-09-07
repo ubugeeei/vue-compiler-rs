@@ -68,8 +68,8 @@ fn the_s2_transform_lane_holds_over_the_corpus() {
                 outlets_dynamic: 1,
             },
             text: TextCounters {
-                units: 109,
-                parts_static: 95,
+                units: 107,
+                parts_static: 93,
                 parts_dynamic: 25,
                 compound_units: 8,
                 vpre_templates: 1,

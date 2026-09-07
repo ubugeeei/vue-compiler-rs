@@ -146,22 +146,26 @@ fn lone_nodes_never_compound() {
 }
 
 #[test]
-fn a_comment_is_a_run_boundary_never_merged_across() {
-    // `a<!--c-->b {{ x }}`: the comment splits the text family into two
-    // units — "a" alone, then the compound — exactly the legacy
-    // codegen's grouping over its comment-bearing tree.
+fn a_dropped_comment_is_not_a_run_boundary() {
+    // `a<!--c-->b {{ x }}` under the default (comments-dropped) lowering
+    // is **one** unit. Vue's parser builds no node for a comment it is
+    // not preserving, and its `onText` appends to the previous text
+    // child without a contiguity check, so the run arrives at condensing
+    // as `ab {{ x }}` — measured against `@vue/compiler-dom` 3.5.41 and
+    // 3.6.0-beta.10, which both emit `"ab " + _toDisplayString(x)`.
+    // `vize_atelier_dom/tests/dropped_comment_text_runs.rs` pins the
+    // compiled form; this pins the op the lowering mints.
     let source = "<p>a<!--c-->b {{ x }}</p>";
     with_transformed(source, |_, folio, facts, _| {
         let FolioOp::Element(p) = &folio.ops[0] else {
             panic!("no p element");
         };
-        assert_eq!(p.children.len(), 2, "two units: {:?}", p.children);
-        assert!(matches!(&p.children[0], FolioOp::Text(text) if text.content == "a"));
+        assert_eq!(p.children.len(), 1, "one unit: {:?}", p.children);
         assert!(matches!(
-            &p.children[1],
+            &p.children[0],
             FolioOp::Interpolation(node)
                 if matches!(&node.expression, FolioExpr::Opaque { source, .. }
-                    if source == "b {{ x }}")
+                    if source == "ab {{ x }}")
         ));
         assert_eq!(facts.text_facts.len(), 1);
     });
@@ -169,21 +173,19 @@ fn a_comment_is_a_run_boundary_never_merged_across() {
 }
 
 #[test]
-fn comment_neighbours_drive_the_remove_rule() {
-    // The comment-visibility case the lowering-absorption decision
-    // rests on: the newline run between two comments has no text-like
-    // neighbour, so it is removed — matching the legacy parse-time
-    // condense over its comment-bearing tree. A comment-blind pass
-    // would have seen text neighbours on both sides and condensed to
-    // one space instead.
+fn comment_free_neighbours_drive_the_remove_rule() {
+    // The dropped comments are not neighbours either: with them gone the
+    // newline run has text on both sides, so it condenses to one space
+    // rather than being removed. Vue agrees — `"a b"` — and so does this
+    // crate's legacy parse/transform lane under the shipped
+    // `comments: false`.
     let source = "<p>a<!--c-->\n<!--d-->b</p>";
     with_transformed(source, |_, folio, _, _| {
         let FolioOp::Element(p) = &folio.ops[0] else {
             panic!("no p element");
         };
-        assert_eq!(p.children.len(), 2, "the run is gone: {:?}", p.children);
-        assert!(matches!(&p.children[0], FolioOp::Text(text) if text.content == "a"));
-        assert!(matches!(&p.children[1], FolioOp::Text(text) if text.content == "b"));
+        assert_eq!(p.children.len(), 1, "one unit: {:?}", p.children);
+        assert!(matches!(&p.children[0], FolioOp::Text(text) if text.content == "a b"));
     });
     assert_transformed_sound(source, "comment-remove");
 }

@@ -13,14 +13,36 @@
 //! (`crates/vize_atelier_core/src/steps/text.rs`) is exported but never
 //! called by the shipped pipeline. The S2 port pulls both into the S1→S2 conversion,
 //! for one decisive reason: **comments**. Both computations read comment
-//! positions — a comment is a non-text-like neighbour for the
-//! remove-vs-condense rule and a hard boundary for run merging — and
-//! comments exist only in S1 unless the DOM comment-preserving route asks
-//! the lowering to keep them as `ui.comment` (the default lowering still
-//! drops them under `drop.comment`). A post-lowering pass would be
-//! comment-blind and wrong on real shapes (`a<!--c-->\n<!--d-->b` must
-//! lose its whitespace, `a<!--c-->b` must stay two text units); the
-//! lowering is the last stage that can compute the legacy answers.
+//! positions, and comments exist only in S1 unless the DOM
+//! comment-preserving route asks the lowering to keep them as
+//! `ui.comment` (the default lowering drops them under `drop.comment`).
+//! Only the lowering still holds the information either computation
+//! needs; a post-lowering pass would be comment-blind, and the shipped
+//! answers are not.
+//!
+//! # What a comment does, per configuration
+//!
+//! **Preserved:** the comment is a real child — a non-text-like
+//! neighbour for the remove-vs-condense rule and a hard boundary for run
+//! merging.
+//!
+//! **Dropped (the shipped DOM default):** it is not a child at all.
+//! Vue's parser builds no node for it, and its `onText` appends to the
+//! previous child whenever that child is a text node, *without* a
+//! contiguity check — so `a<!--c-->b` reaches whitespace condensing as
+//! the single node `ab`, and `a<!--c-->\n<!--d-->b` as `a\nb`, which
+//! condenses to `a b`. [`condense::plan_whitespace`](condense) therefore
+//! absorbs a dropped comment into the text group around it and
+//! [`run`](run) consumes it as a gap, so both halves see the child list
+//! the shipped lane sees.
+//!
+//! An earlier reading had this the other way round — that a dropped
+//! comment stays a run boundary, so `a<!--c-->b` "must stay two text
+//! units". Measured against `@vue/compiler-dom` 3.5.41 and 3.6.0-beta.10
+//! and against this workspace's own legacy lane, it does not: that
+//! reading emitted `"a" + "b"` for `a<!--c-->b` and, worse,
+//! `"a " + " b"` for `a <!--c--> b`, which renders one space too many.
+//! `vize_atelier_dom/tests/dropped_comment_text_runs.rs` is the pin.
 //! P2-5b's record
 //! independently requires it: the position-classified opaque reasons —
 //! [`OpaqueReason::Compound`] included — "are assignable only by the
