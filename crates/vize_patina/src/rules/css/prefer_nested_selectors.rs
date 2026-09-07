@@ -29,40 +29,11 @@ impl CssRule for PreferNestedSelectors {
         offset: usize,
         result: &mut CssLintResult,
     ) {
-        let bytes = source.as_bytes();
-        let mut i = 0;
-        while i < bytes.len() {
-            if let Some(next) = skip_at_rule(bytes, i) {
-                i = next;
-                continue;
-            }
-            let Some(selector_start) = find_selector_start(bytes, i) else {
-                break;
-            };
-            let Some(brace_pos) = find_next_brace(bytes, selector_start) else {
-                i += 1;
-                continue;
-            };
-            let trimmed = source[selector_start..brace_pos].trim();
-            if !is_already_nested(trimmed) && split_descendant_selector(trimmed).is_some() {
-                result.add_diagnostic(
-                    LintDiagnostic::warn(
-                        META.name,
-                        "Consider using CSS nesting for descendant selectors",
-                        (offset + selector_start) as u32,
-                        (offset + brace_pos) as u32,
-                    )
-                    .with_help(
-                        "Use CSS nesting syntax to nest child selectors inside parent selectors",
-                    ),
-                );
-            }
-            i = brace_pos + 1;
-        }
+        scan(source, offset, result);
     }
 }
 
-/// At-rules whose body does not contain ordinary style rules; the entire block is skipped.
+/// At-rules whose body holds no style rules, so the whole block is skipped.
 const NON_NESTED_BLOCK_AT_RULES: &[&str] = &[
     "keyframes",
     "-webkit-keyframes",
@@ -76,59 +47,139 @@ const NON_NESTED_BLOCK_AT_RULES: &[&str] = &[
     "viewport",
 ];
 
-/// At-rules that end with `;` rather than a block.
-const STATEMENT_AT_RULES: &[&str] = &["import", "charset", "namespace", "use", "forward"];
+/// What an open brace opened.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Frame {
+    /// A style rule. Everything inside it is *already nested*, so a
+    /// descendant selector there is not worth reporting — there is
+    /// nothing further to nest it into.
+    Style,
+    /// A conditional group at-rule (`@media`, `@supports`, `@container`,
+    /// `@layer`). Its body sits at the nesting level of the at-rule
+    /// itself, so a descendant selector inside one still reports.
+    Group,
+}
 
-fn skip_at_rule(bytes: &[u8], start: usize) -> Option<usize> {
-    let mut p = start;
-    while p < bytes.len() && matches!(bytes[p], b' ' | b'\t' | b'\n' | b'\r' | b'}') {
-        p += 1;
+/// Walk the stylesheet's braces, reporting a descendant selector only
+/// where nesting it would be an improvement.
+///
+/// The scan keeps a prelude running from the last boundary (`{`, `}` or
+/// `;`) to the next `{`. Treating a declaration as a boundary is what
+/// separates a selector from the text before it: without that,
+/// `.a { color: red; .b {} }` reads `color: red;\n\n  .b` as one
+/// selector, finds a space in it, and reports the nesting it is meant to
+/// be recommending. Tracking [`Frame::Style`] is the other half — inside
+/// a style rule the author has already nested.
+fn scan(source: &str, offset: usize, result: &mut CssLintResult) {
+    let bytes = source.as_bytes();
+    let mut frames: Vec<Frame> = Vec::new();
+    let mut prelude_start = 0usize;
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                i = skip_comment(bytes, i);
+                continue;
+            }
+            b'"' | b'\'' => {
+                i = skip_string(bytes, i);
+                continue;
+            }
+            b';' => {
+                i += 1;
+                prelude_start = i;
+            }
+            b'}' => {
+                frames.pop();
+                i += 1;
+                prelude_start = i;
+            }
+            b'{' => {
+                let prelude = source[prelude_start..i].trim();
+                if let Some(keyword) = at_keyword(prelude) {
+                    if is_opaque_at_rule(keyword) {
+                        i = skip_balanced_block(bytes, i);
+                        prelude_start = i;
+                        continue;
+                    }
+                    frames.push(Frame::Group);
+                } else {
+                    if !frames.contains(&Frame::Style)
+                        && !prelude.is_empty()
+                        && !is_already_nested(prelude)
+                        && split_descendant_selector(prelude).is_some()
+                    {
+                        // Point at the selector, not the whitespace
+                        // that separated it from the previous rule.
+                        let lead = source[prelude_start..i].len()
+                            - source[prelude_start..i].trim_start().len();
+                        report(
+                            prelude_start + lead,
+                            prelude_start + lead + prelude.len(),
+                            offset,
+                            result,
+                        );
+                    }
+                    frames.push(Frame::Style);
+                }
+                i += 1;
+                prelude_start = i;
+            }
+            _ => i += 1,
+        }
     }
-    if p >= bytes.len() || bytes[p] != b'@' {
-        return None;
-    }
-    let kw_start = p + 1;
-    let mut kw_end = kw_start;
-    while kw_end < bytes.len()
-        && (bytes[kw_end].is_ascii_alphanumeric() || matches!(bytes[kw_end], b'-' | b'_'))
-    {
-        kw_end += 1;
-    }
-    if kw_end == kw_start {
-        return None;
-    }
-    let kw = &bytes[kw_start..kw_end];
-    let eq_kw = |s: &str| -> bool {
-        kw.len() == s.len()
-            && kw
-                .iter()
-                .zip(s.bytes())
-                .all(|(a, b)| a.eq_ignore_ascii_case(&b))
-    };
+}
 
-    if STATEMENT_AT_RULES.iter().any(|&s| eq_kw(s)) {
-        let end = bytes[kw_end..]
-            .iter()
-            .position(|&b| b == b';')
-            .map_or(bytes.len(), |pos| kw_end + pos + 1);
-        return Some(end);
-    }
+fn report(start: usize, end: usize, offset: usize, result: &mut CssLintResult) {
+    result.add_diagnostic(
+        LintDiagnostic::warn(
+            META.name,
+            "Consider using CSS nesting for descendant selectors",
+            u32::try_from(offset + start).unwrap_or(u32::MAX),
+            u32::try_from(offset + end).unwrap_or(u32::MAX),
+        )
+        .with_help("Use CSS nesting syntax to nest child selectors inside parent selectors"),
+    );
+}
 
-    let mut q = kw_end;
-    while q < bytes.len() && bytes[q] != b'{' && bytes[q] != b';' {
-        q += 1;
+fn skip_comment(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 2;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+            return i + 2;
+        }
+        i += 1;
     }
-    if q >= bytes.len() {
-        return Some(bytes.len());
+    bytes.len()
+}
+
+fn skip_string(bytes: &[u8], start: usize) -> usize {
+    let quote = bytes[start];
+    let mut i = start + 1;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' => i += 2,
+            byte if byte == quote => return i + 1,
+            _ => i += 1,
+        }
     }
-    if bytes[q] == b';' {
-        return Some(q + 1);
-    }
-    // bytes[q] == b'{'
-    if NON_NESTED_BLOCK_AT_RULES.iter().any(|&s| eq_kw(s)) {
-        return Some(skip_balanced_block(bytes, q));
-    }
-    Some(q + 1)
+    bytes.len()
+}
+
+/// The at-rule keyword a prelude opens with, or `None` when it is a
+/// selector.
+fn at_keyword(prelude: &str) -> Option<&str> {
+    let rest = prelude.strip_prefix('@')?;
+    let end = rest
+        .find(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')
+        .unwrap_or(rest.len());
+    (end > 0).then(|| &rest[..end])
+}
+
+fn is_opaque_at_rule(keyword: &str) -> bool {
+    NON_NESTED_BLOCK_AT_RULES
+        .iter()
+        .any(|candidate| candidate.eq_ignore_ascii_case(keyword))
 }
 
 fn skip_balanced_block(bytes: &[u8], open_pos: usize) -> usize {
@@ -178,25 +229,6 @@ fn is_already_nested(selector: &str) -> bool {
     false
 }
 
-fn find_selector_start(bytes: &[u8], start: usize) -> Option<usize> {
-    bytes[start..]
-        .iter()
-        .position(|&b| matches!(b, b'.' | b'#' | b'[' | b':' | b'*' | b'a'..=b'z' | b'A'..=b'Z'))
-        .map(|pos| start + pos)
-}
-
-fn find_next_brace(bytes: &[u8], start: usize) -> Option<usize> {
-    for (offset, &byte) in bytes[start..].iter().enumerate() {
-        if byte == b'{' {
-            return Some(start + offset);
-        }
-        if byte == b'@' || byte == b'}' {
-            return None;
-        }
-    }
-    None
-}
-
 fn split_descendant_selector(selector: &str) -> Option<(&str, &str)> {
     let bytes = selector.as_bytes();
     let (mut bracket, mut paren) = (0usize, 0usize);
@@ -223,122 +255,4 @@ fn split_descendant_selector(selector: &str) -> Option<(&str, &str)> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::PreferNestedSelectors;
-    use crate::rules::css::CssLinter;
-
-    fn create_linter() -> CssLinter {
-        let mut linter = CssLinter::new();
-        linter.add_rule(Box::new(PreferNestedSelectors));
-        linter
-    }
-
-    #[test]
-    fn test_simple_selector() {
-        let linter = create_linter();
-        let result = linter.lint(".button { color: red; }", 0);
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_descendant_selector() {
-        let linter = create_linter();
-        let result = linter.lint(".parent .child { color: red; }", 0);
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_child_selector() {
-        let linter = create_linter();
-        let result = linter.lint(".parent > .child { color: red; }", 0);
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_element_descendant() {
-        let linter = create_linter();
-        let result = linter.lint("div span { color: red; }", 0);
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_attribute_selector() {
-        let linter = create_linter();
-        let result = linter.lint("[data-foo=\"bar baz\"] { color: red; }", 0);
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_nested_selector_list_does_not_warn() {
-        // CSS nesting syntax: the `&` parent selector means the rule is already nested.
-        // See https://github.com/ubugeeei-prod/vize/issues/2246.
-        let linter = create_linter();
-        let result = linter.lint(".rendered-content { & h1, & h2 { font-weight: 600; } }", 0);
-        assert_eq!(
-            result.warning_count, 0,
-            "& h1, & h2 should not warn; diagnostics: {:?}",
-            result.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_nested_selector_single_does_not_warn() {
-        let linter = create_linter();
-        let result = linter.lint(".parent { & .child { color: red; } }", 0);
-        assert_eq!(
-            result.warning_count, 0,
-            "& .child should not warn; diagnostics: {:?}",
-            result.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_keyframes_does_not_warn() {
-        let linter = create_linter();
-        let source = "@keyframes loading { 0% { opacity: 0; } 100% { opacity: 1; } }";
-        let result = linter.lint(source, 0);
-        assert_eq!(
-            result.warning_count, 0,
-            "@keyframes body should not warn; diagnostics: {:?}",
-            result.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_import_does_not_warn() {
-        let linter = create_linter();
-        let source = "@import \"x.css\";\n.foo { color: red; }";
-        let result = linter.lint(source, 0);
-        assert_eq!(
-            result.warning_count, 0,
-            "@import should not warn; diagnostics: {:?}",
-            result.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_font_face_does_not_warn() {
-        let linter = create_linter();
-        let result = linter.lint("@font-face { font-family: \"X\"; src: url(x.woff2); }", 0);
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_media_query_still_warns_on_descendants() {
-        // Conditional group rules should still descend into their bodies.
-        let linter = create_linter();
-        let result = linter.lint(
-            "@media (min-width: 600px) { .parent .child { color: red; } }",
-            0,
-        );
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_descendant_after_keyframes_still_warns() {
-        let linter = create_linter();
-        let source = "@keyframes loading { 0% { opacity: 0; } } .parent .child { color: red; }";
-        let result = linter.lint(source, 0);
-        assert_eq!(result.warning_count, 1);
-    }
-}
+mod tests;
