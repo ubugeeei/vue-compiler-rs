@@ -149,6 +149,16 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "element checkbox input v-model",
+            "const A = () => <input type=\"checkbox\" v-model={checked} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element radio input v-model",
+            "const A = () => <input type=\"radio\" v-model={picked} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "element textarea v-model",
             "const A = () => <textarea v-model={value} />;",
             JsxLang::Jsx,
