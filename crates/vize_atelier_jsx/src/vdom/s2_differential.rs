@@ -28,6 +28,10 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             "const A = () => <B {...attrs} foo={f} title=\"ok\" />;",
         ),
         (
+            "dynamic component",
+            "const A = () => <Widget.Panel foo={1} />;",
+        ),
+        (
             "element v-show",
             "const A = () => <div v-show={visible} />;",
         ),

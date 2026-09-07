@@ -125,12 +125,19 @@ fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
 }
 
 fn component_is_supported(component: &ComponentOp<'_>) -> bool {
+    let dynamic_component = component_is_dynamic(component);
     component.children.ops.is_empty()
-        && !component_name_needs_component_semantics(component.name)
+        && (dynamic_component || !component_name_needs_component_semantics(component.name))
         && component
             .bindings
             .iter()
-            .all(component_binding_is_supported)
+            .all(|binding| component_binding_is_supported(binding, dynamic_component))
+}
+
+fn component_is_dynamic(component: &ComponentOp<'_>) -> bool {
+    matches!(component.name, "component" | "Component")
+        && (component.attributes.iter().any(|attr| attr.name == "is")
+            || component.bindings.iter().any(binding_is_is))
 }
 
 fn component_name_needs_component_semantics(name: &str) -> bool {
@@ -153,10 +160,20 @@ fn component_name_needs_component_semantics(name: &str) -> bool {
     ) || name.contains('.')
 }
 
-fn component_binding_is_supported(binding: &BindingOp<'_>) -> bool {
+fn binding_is_is(binding: &BindingOp<'_>) -> bool {
+    matches!(
+        binding,
+        BindingOp::Bind(bind) if matches!(bind.name, Some(DynamicName::Static("is")))
+    )
+}
+
+fn component_binding_is_supported(binding: &BindingOp<'_>, dynamic_component: bool) -> bool {
     match binding {
         BindingOp::Bind(bind) if bind.name.is_none() => {
             bind.value.is_some() && bind.modifiers.is_empty()
+        }
+        BindingOp::Bind(bind) if binding_is_is(binding) => {
+            dynamic_component && bind.value.is_some() && bind.modifiers.is_empty()
         }
         BindingOp::Bind(bind) => {
             bind.value.is_some()
