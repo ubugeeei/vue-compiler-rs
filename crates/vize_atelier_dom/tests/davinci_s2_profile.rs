@@ -7,6 +7,8 @@
     clippy::disallowed_types
 )]
 
+mod support;
+
 use davinci_harness::fixtures::{LADDER, template_block};
 use vize_atelier_core::options::{CodegenOptions, TemplateSyntaxMode};
 use vize_atelier_dom::{
@@ -19,23 +21,6 @@ use vize_s0::String;
 use vize_s0::profiler::{CounterSummary, global_profiler};
 
 static PROFILER_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// fixture -> S2 DOM emit walks, emit op visits, transform walks.
-///
-/// The transform column is per fixture because the S2 pass planner
-/// declines a mandatory pass whose op family the lowering never built
-/// (`vize_s1_to_s2::lower::features`): static analysis is the default
-/// floor, compound text and each structural family add one walk only when
-/// present. `medium` pays two for its kebab-case components, which are slot
-/// carriers even though it spells no `v-slot`.
-const S2_DOM_EMIT_COUNTS: [(&str, u64, u64, u64); 6] = [
-    ("small", 1, 5, 2),
-    ("medium", 1, 33, 2),
-    ("large", 1, 54, 4),
-    ("stress-deep", 1, 72, 2),
-    ("stress-wide", 1, 2, 1),
-    ("stress-interp", 1, 201, 2),
-];
 
 #[test]
 fn profile_reports_real_s2_dom_walks() {
@@ -80,11 +65,12 @@ fn profile_reports_ladder_s2_dom_walk_budget() {
     let profiler = global_profiler();
     profiler.disable();
     profiler.clear();
+    support::profile::assert_s2_dom_emit_counts_cover_ladder();
 
     for fixture in &LADDER {
         let template =
             template_block(fixture.source).expect("every ladder fixture has a template block");
-        let expected = s2_dom_emit_count(fixture.name);
+        let expected = support::profile::s2_dom_emit_count(fixture.name);
         let compat_allocator = Allocator::new();
         let (_, compat_errors, compat) = compile_template(&compat_allocator, template);
         assert!(
@@ -116,17 +102,23 @@ fn profile_reports_ladder_s2_dom_walk_budget() {
         assert_eq!(counter(&counters, "davinci.s2_dom.files"), 1);
         assert_eq!(
             counter(&counters, "davinci.s2_dom.transform.walks"),
-            expected.2
+            expected.transform_walks
         );
         assert_eq!(
             counter(&counters, "davinci.s2_dom.transform.passes"),
-            expected.2
+            expected.transform_walks
         );
-        assert_eq!(counter(&counters, "davinci.s2_dom.emit.walks"), expected.0);
-        assert_eq!(counter(&counters, "davinci.s2_dom.emit.visits"), expected.1);
+        assert_eq!(
+            counter(&counters, "davinci.s2_dom.emit.walks"),
+            expected.emit_walks
+        );
+        assert_eq!(
+            counter(&counters, "davinci.s2_dom.emit.visits"),
+            expected.emit_visits
+        );
         assert_eq!(
             counter(&counters, "davinci.s2_dom.total.walks"),
-            expected.2 + expected.0
+            expected.transform_walks + expected.emit_walks
         );
     }
 }
@@ -326,14 +318,6 @@ impl Drop for ProfileScope {
         profiler.disable();
         profiler.clear();
     }
-}
-
-fn s2_dom_emit_count(fixture: &str) -> (u64, u64, u64) {
-    S2_DOM_EMIT_COUNTS
-        .iter()
-        .find(|(name, ..)| *name == fixture)
-        .map(|(_, walks, visits, transform_walks)| (*walks, *visits, *transform_walks))
-        .unwrap_or_else(|| panic!("{fixture} has no pinned S2 DOM emit count"))
 }
 
 fn lock_profiler() -> std::sync::MutexGuard<'static, ()> {
