@@ -160,20 +160,20 @@ fn element_binding_is_supported(element: &ElementOp<'_>, binding: &BindingOp<'_>
         | BindingOp::VueShow(_)
         | BindingOp::VueHtml(_)
         | BindingOp::VueText(_) => true,
-        BindingOp::Model(model) => input_model_is_supported(element, model),
+        BindingOp::Model(model) => native_text_model_is_supported(element, model),
         _ => false,
     }
 }
 
-fn input_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
-    element.tag == "input"
+fn native_text_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
+    matches!(element.tag, "input" | "textarea")
         && model.argument.is_none()
-        && model_is_bare_input(model)
+        && model_is_bare_native_text(element, model)
         && model.contract.read.source() == model.contract.write.source()
         && model.contract.read.span() == model.contract.write.span()
         && matches!(model.contract.read, ExprRef::Js(_))
         && matches!(model.contract.write, ExprRef::Js(_))
-        && input_type_is_text(element)
+        && (element.tag != "input" || input_type_is_text(element))
 }
 
 fn input_type_is_text(element: &ElementOp<'_>) -> bool {
@@ -187,15 +187,14 @@ fn input_type_is_text(element: &ElementOp<'_>) -> bool {
             .all(|binding| !bind_may_set_type(binding))
 }
 
-fn model_is_bare_input(model: &ModelOp<'_>) -> bool {
+fn model_is_bare_native_text(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
     model
         .attributes
         .iter()
-        .any(|attribute| attribute.name == "element-kind" && attribute.value == Some("input"))
-        && model
-            .attributes
-            .iter()
-            .all(|attribute| attribute.name == "element-kind" && attribute.value == Some("input"))
+        .any(|attribute| attribute.name == "element-kind" && attribute.value == Some(element.tag))
+        && model.attributes.iter().all(|attribute| {
+            attribute.name == "element-kind" && attribute.value == Some(element.tag)
+        })
 }
 
 fn bind_may_set_type(binding: &BindingOp<'_>) -> bool {
@@ -311,9 +310,9 @@ mod compat_tests;
 #[cfg(test)]
 mod events_tests;
 #[cfg(test)]
-mod input_model_tests;
-#[cfg(test)]
 mod model_tests;
+#[cfg(test)]
+mod native_model_tests;
 #[cfg(test)]
 mod options_tests;
 #[cfg(test)]
