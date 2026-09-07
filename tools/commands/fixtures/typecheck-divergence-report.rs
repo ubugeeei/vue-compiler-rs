@@ -240,9 +240,9 @@ fn write_project_artifact(root: &Path, args: &Args, project: &Value) -> Result<V
         vize_report: &vize_run.payload["parsed"],
         coverage: &coverage,
         configuration: &configuration,
+        baseline_config: &baseline_config,
         vize_bin: &args.vize_bin,
         vue_tsc_bin: &args.vue_tsc_bin,
-        baseline_args: &baseline_args,
         documented_differences: &documented_differences,
     })?;
     reject_stale_documented_differences(
@@ -733,9 +733,9 @@ struct MutationContext<'a> {
     vize_report: &'a Value,
     coverage: &'a Value,
     configuration: &'a Value,
+    baseline_config: &'a BaselineConfig,
     vize_bin: &'a Path,
     vue_tsc_bin: &'a Path,
-    baseline_args: &'a [String],
     documented_differences: &'a [DocumentedDifference],
 }
 
@@ -1505,7 +1505,7 @@ fn run_vize_typecheck(
     ctx: &MutationContext<'_>,
     candidate: &MutationCandidate,
 ) -> Result<ToolRun, String> {
-    let args = tool_args(ctx.project)?;
+    let args = mutation_tool_args(ctx.project, candidate);
     let mut run = run_capture_limited(
         ctx.vize_bin,
         &args,
@@ -1520,7 +1520,7 @@ fn run_vize_typecheck(
     .map_err(mutation_run_error)?;
     let parsed = serde_json::from_str::<Value>(&run.stdout)
         .map_err(|error| format!("Vize mutation run emitted invalid JSON: {error}"))?;
-    let expected_files = expected_typecheck_vue_files(ctx.fixture_root, ctx.project, &parsed)?;
+    let expected_files = vec![candidate.file.clone()];
     let authored_files = collect_typechecker_authored_paths(ctx.fixture_root)?;
     validate_typechecker_output(
         ctx.project,
@@ -1538,10 +1538,10 @@ fn run_vue_tsc_mutation(
     ctx: &MutationContext<'_>,
     candidate: &MutationCandidate,
 ) -> Result<ToolRun, String> {
-    let _ = candidate;
+    let args = mutation_baseline_args(ctx, candidate)?;
     run_capture_limited(
         ctx.vue_tsc_bin,
-        ctx.baseline_args,
+        &args,
         ctx.fixture_root,
         ctx.project
             .pointer("/typecheckPerformance/hangTimeoutMs")
@@ -1551,6 +1551,56 @@ fn run_vue_tsc_mutation(
         &[0, 1, 2],
     )
     .map_err(mutation_run_error)
+}
+
+fn mutation_tool_args(project: &Value, candidate: &MutationCandidate) -> Vec<String> {
+    // The full matrix run already proved corpus coverage. Mutation probes only
+    // need the selected source file, and large fixtures can otherwise spend the
+    // release budget on repeated whole-project checks.
+    let mut args = vec![
+        "check".to_string(),
+        candidate.file.clone(),
+        "--format".to_string(),
+        "json".to_string(),
+        "--no-config".to_string(),
+    ];
+    if let Some(tsconfig) = typecheck_tsconfig_path(project) {
+        args.extend(["--tsconfig".to_string(), tsconfig]);
+    }
+    args
+}
+
+fn mutation_baseline_args(
+    ctx: &MutationContext<'_>,
+    candidate: &MutationCandidate,
+) -> Result<Vec<String>, String> {
+    let config_dir = ctx
+        .baseline_config
+        .path
+        .parent()
+        .ok_or_else(|| "baseline config path has no parent".to_string())?;
+    let project_id = project_string(ctx.project, "id")?;
+    let config_path = config_dir.join(format!("{project_id}-mutation-vue-tsc.tsconfig.json"));
+    let mut config = serde_json::from_str::<Value>(&ctx.baseline_config.source)
+        .map_err(|error| format!("baseline config source is invalid JSON: {error}"))?;
+    config["files"] = json!([config_relative_path(
+        config_dir,
+        &ctx.fixture_root.join(&candidate.file),
+    )]);
+    common::write_text(
+        &config_path,
+        &format!(
+            "{}\n",
+            serde_json::to_string_pretty(&config).map_err(|error| error.to_string())?
+        ),
+    )?;
+    Ok(vec![
+        "--noEmit".to_string(),
+        "--pretty".to_string(),
+        "false".to_string(),
+        "-p".to_string(),
+        config_path.display().to_string(),
+    ])
 }
 
 fn summarize_mutation_observations(
@@ -2698,25 +2748,6 @@ fn unusable_mutation(seed: &str, reason: &str) -> Value {
         "diagnostic": Value::Null,
         "states": [],
     })
-}
-
-fn tool_args(project: &Value) -> Result<Vec<String>, String> {
-    let mut args = vec!["check".to_string()];
-    args.extend(typecheck_corpus_globs(project)?);
-    args.extend([
-        "--format".to_string(),
-        "json".to_string(),
-        "--no-config".to_string(),
-    ]);
-    if let Some(tsconfig) = typecheck_tsconfig_path(project) {
-        args.extend(["--tsconfig".to_string(), tsconfig]);
-    }
-    Ok(args)
-}
-
-fn typecheck_corpus_globs(project: &Value) -> Result<Vec<String>, String> {
-    optional_typecheck_corpus_globs(project)
-        .ok_or_else(|| "project has no typecheck corpus globs".to_string())
 }
 
 fn optional_typecheck_corpus_globs(project: &Value) -> Option<Vec<String>> {
