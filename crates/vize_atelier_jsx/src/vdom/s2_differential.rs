@@ -94,6 +94,26 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "element v-html",
+            "const A = () => <div v-html={raw} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element v-html with children",
+            "const A = () => <div v-html={raw}>fallback</div>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element v-text",
+            "const A = () => <div v-text={msg} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element v-text with children",
+            "const A = () => <div v-text={msg}>fallback</div>;",
+            JsxLang::Jsx,
+        ),
+        (
             "component v-show",
             "const A = () => <B v-show={visible} />;",
             JsxLang::Jsx,
