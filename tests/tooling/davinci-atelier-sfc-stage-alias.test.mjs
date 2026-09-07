@@ -21,7 +21,7 @@ const sfcPreferredS0Rows = [
   ["crates/vize_atelier_sfc/src/compile_template.rs", "test", 1],
   ["crates/vize_atelier_sfc/src/compile_template/extraction.rs", "source", 1],
   ["crates/vize_atelier_sfc/src/compile_template/string_tracking.rs", "source", 1],
-  ["crates/vize_atelier_sfc/src/compile_template/tests.rs", "test", 1],
+  ["crates/vize_atelier_sfc/src/compile_template/section_offsets_tests.rs", "test", 1],
   ["crates/vize_atelier_sfc/src/compile_template/vapor.rs", "source", 5],
   ["crates/vize_atelier_sfc/tests/allocation_budget.rs", "test", 1],
   ["crates/vize_atelier_sfc/tests/component_spread_props.rs", "test", 1],
