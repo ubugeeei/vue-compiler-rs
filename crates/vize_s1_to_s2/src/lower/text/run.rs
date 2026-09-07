@@ -173,7 +173,11 @@ pub(crate) fn lower_text_run<'a>(
             }
             child => super::super::leaf::lower_leaf(cx, child, out),
         }
-        return start + 1;
+        // `i` is past everything the scan consumed, not just the lone
+        // member: a dropped whitespace tail or a dropped comment was
+        // already recorded above, and returning `start + 1` would let
+        // the structural walker record it a second time.
+        return i;
     }
 
     let span = Span::new(parts[0].span.start, end);

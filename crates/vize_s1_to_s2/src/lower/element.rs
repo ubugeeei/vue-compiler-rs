@@ -132,12 +132,14 @@ impl Analyzed<'_> {
     /// Re-read every attribute as the plain one it was authored as, and
     /// forget the structural directives — the reading for an element
     /// *inside* a `v-pre` subtree.
+    ///
+    /// [`Analyzed::v_pre`] stays `None` here even when one of these is a
+    /// `v-pre` spelling: only the element that *opens* the subtree drops
+    /// its spelling. A nested `<span v-pre>` is already frozen, so its
+    /// `v-pre` is an ordinary attribute and Vue emits it as one.
     fn freeze_as_authored(&mut self) {
-        for (index, form) in self.forms.iter_mut().enumerate() {
-            if let AttrForm::Directive(directive) = form {
-                if directive.head == Head::Pre && self.v_pre.is_none() {
-                    self.v_pre = Some(index);
-                }
+        for form in self.forms.iter_mut() {
+            if matches!(form, AttrForm::Directive(_)) {
                 *form = AttrForm::Static;
             }
         }

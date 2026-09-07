@@ -86,6 +86,16 @@ const CASES: &[(&str, &str)] = &[
         "grandchild",
         r#"<div><div v-pre><span><b :x="1">{{ y }}</b></span></div></div>"#,
     ),
+    // A nested spelling is already frozen, so it is an ordinary
+    // attribute — only the element that opens the subtree drops its own.
+    (
+        "nested-v-pre",
+        r#"<div><div v-pre><span v-pre></span></div></div>"#,
+    ),
+    (
+        "nested-v-pre-with-bind",
+        r#"<div><div v-pre><span v-pre :x="1">c</span></div></div>"#,
+    ),
     (
         "sibling-outside",
         r#"<div><div v-pre :x="1"></div><span :y="2"></span></div>"#,

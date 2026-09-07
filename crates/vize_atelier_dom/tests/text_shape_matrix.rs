@@ -64,10 +64,16 @@ fn assert_lanes_agree(name: &str, source: &str, compared: &mut usize) {
     );
 
     let legacy_allocator = Allocator::new();
-    let (_, _, legacy) = compile_template_legacy_with_options(
+    let (_, legacy_errors, legacy) = compile_template_legacy_with_options(
         &legacy_allocator,
         source,
         DomCompilerOptions::default(),
+    );
+    // A lane can report an error and still emit recovery code that
+    // happens to match, which would let a real divergence through.
+    assert!(
+        legacy_errors.is_empty(),
+        "{name}: the legacy lane should compile {source:?} cleanly: {legacy_errors:?}",
     );
 
     assert_eq!(
@@ -100,15 +106,20 @@ fn every_text_family_adjacency_agrees_with_the_legacy_lane() {
     }
 
     // Triples through a comment — the shape a dropped comment makes into
-    // one text run, and the one a preserved comment splits.
+    // one text run, and the one a preserved comment splits. The two gaps
+    // vary **independently**: an equal pair never produces
+    // `<i/><!--c--> <b/>`, where the comment opens the whitespace group,
+    // and that asymmetry is exactly the shape the first cut got wrong.
     for (a_key, a) in ATOMS {
         for (b_key, b) in ATOMS {
-            for (gap_key, gap) in GAPS {
-                assert_lanes_agree(
-                    &format!("comment3 {a_key}{gap_key}{b_key}"),
-                    &format!("<div>{a}{gap}<!--sep-->{gap}{b}</div>"),
-                    &mut compared,
-                );
+            for (left_key, left) in GAPS {
+                for (right_key, right) in GAPS {
+                    assert_lanes_agree(
+                        &format!("comment3 {a_key}{left_key}|{right_key}{b_key}"),
+                        &format!("<div>{a}{left}<!--sep-->{right}{b}</div>"),
+                        &mut compared,
+                    );
+                }
             }
         }
     }
@@ -130,11 +141,11 @@ fn every_text_family_adjacency_agrees_with_the_legacy_lane() {
     assert_eq!(
         compared,
         ATOMS.len() * (ATOMS.len() - 1) * GAPS.len()
-            + ATOMS.len() * ATOMS.len() * GAPS.len()
+            + ATOMS.len() * ATOMS.len() * GAPS.len() * GAPS.len()
             + ATOMS.len() * GAPS.len(),
         "the matrix must cover every pair, triple and edge case",
     );
-    assert_eq!(compared, 640);
+    assert_eq!(compared, 1920);
 }
 
 /// The same matrix with comments **preserved**, where a comment is a real
@@ -149,7 +160,7 @@ fn the_adjacencies_agree_with_comments_preserved_too() {
     for (a_key, a) in ATOMS {
         for (b_key, b) in ATOMS {
             for (gap_key, gap) in GAPS {
-                let source = format!("<div>{a}{gap}<!--sep-->{gap}{b}</div>");
+                let source = format!("<div>{a}{gap}<!--sep--> {b}</div>");
                 let s2_allocator = Allocator::new();
                 let (_, errors, s2) = vize_atelier_dom::compile_template_with_options(
                     &s2_allocator,
@@ -158,8 +169,9 @@ fn the_adjacencies_agree_with_comments_preserved_too() {
                 );
                 assert!(errors.is_empty(), "{a_key}{gap_key}{b_key}: {source:?}");
                 let legacy_allocator = Allocator::new();
-                let (_, _, legacy) =
+                let (_, legacy_errors, legacy) =
                     compile_template_legacy_with_options(&legacy_allocator, &source, options());
+                assert!(legacy_errors.is_empty(), "legacy lane: {source:?}");
                 assert_eq!(
                     render_body(&s2.code),
                     render_body(&legacy.code),

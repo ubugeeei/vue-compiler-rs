@@ -286,9 +286,15 @@ pub(crate) fn plan_whitespace<'a>(
                     *slot = TextAction::Drop;
                 }
             } else {
-                plan[group.start] = TextAction::Content(" ");
-                for slot in &mut plan[group.start + 1..group.end] {
-                    *slot = TextAction::Drop;
+                // The condensed space belongs on the group's first
+                // **text** child: an absorbed dropped comment can open
+                // the group (`<i/><!--c--> <b/>`), and writing the
+                // content to its index would drop the space Vue keeps.
+                plan[group.first_text] = TextAction::Content(" ");
+                for (index, slot) in plan[group.start..group.end].iter_mut().enumerate() {
+                    if group.start + index != group.first_text {
+                        *slot = TextAction::Drop;
+                    }
                 }
             }
         } else {
