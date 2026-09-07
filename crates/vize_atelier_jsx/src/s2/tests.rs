@@ -160,12 +160,70 @@ fn v_text_directive_projects_to_s2_vue_text() {
 }
 
 #[test]
+fn component_v_model_projects_to_s2_model() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <Input v-model={value} />";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("component v-model projects to S2");
+    assert!(s2.features.has_model_bindings());
+    let Op::Component(component) = &s2.root.ops[0] else {
+        panic!("root is a component");
+    };
+    let BindingOp::Model(model) = &component.bindings[0] else {
+        panic!("binding is ui.model");
+    };
+    assert_eq!(model.contract.read.source(), "value");
+    assert_eq!(model.contract.write.source(), "value");
+    assert!(model.argument.is_none());
+    assert_eq!(model.attributes[0].name, "element-kind");
+    assert_eq!(model.attributes[0].value, Some("component"));
+}
+
+#[test]
+fn component_v_model_static_arg_modifiers_project_to_s2_model() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <Input v-model={[value, \"foo\", [\"trim\"]]} />";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("component v-model projects to S2");
+    assert!(s2.features.has_model_bindings());
+    let Op::Component(component) = &s2.root.ops[0] else {
+        panic!("root is a component");
+    };
+    let BindingOp::Model(model) = &component.bindings[0] else {
+        panic!("binding is ui.model");
+    };
+    assert_eq!(model.contract.read.source(), "value");
+    assert!(matches!(model.argument, Some(DynamicName::Static("foo"))));
+    assert_eq!(model.attributes[0].value, Some("component"));
+    assert_eq!(model.attributes[1].name, "trim");
+    assert!(model.attributes[1].value.is_none());
+}
+
+#[test]
 fn v_show_without_value_stays_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let lowered = lower_source(
         &allocator,
         allocator.as_oxc(),
         "const App = () => <div v-show />",
+        JsxLang::Jsx,
+    );
+    let root = lowered.roots.first().expect("one JSX root");
+
+    assert!(matches!(root.s2, Err(S2Refusal::Directive)));
+}
+
+#[test]
+fn element_v_model_stays_on_directive_refusal_path() {
+    let allocator = Allocator::new();
+    let lowered = lower_source(
+        &allocator,
+        allocator.as_oxc(),
+        "const App = () => <input v-model={value} />",
         JsxLang::Jsx,
     );
     let root = lowered.roots.first().expect("one JSX root");
