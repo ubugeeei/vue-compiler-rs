@@ -51,3 +51,9 @@ harness = false
 [[test]]
 name = "davinci_s2_filters"
 required-features = ["legacy"]
+
+# The text-family adjacency matrix needs the differential lane's legacy
+# entry as its oracle.
+[[test]]
+name = "text_shape_matrix"
+required-features = ["davinci-differential"]
