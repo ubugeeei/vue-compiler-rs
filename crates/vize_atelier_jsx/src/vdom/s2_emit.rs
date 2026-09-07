@@ -6,7 +6,7 @@ use vize_s1_to_s2::pass::S2Facts;
 use vize_s1_to_s2::{
     DomEmitMode, DomEmitOptions, LegacyCaps, Lowered as S2Lowered, emit_dom_with_options,
 };
-use vize_s2::op::{BindingOp, Op, Region};
+use vize_s2::op::{BindingOp, ComponentOp, DynamicName, Op, Region};
 
 use crate::s2::{JsxS2Root, S2Refusal};
 
@@ -110,7 +110,7 @@ fn op_is_supported(op: &Op<'_>) -> bool {
         Op::Element(element) => {
             bindings_are_supported(&element.bindings) && region_is_supported(&element.children)
         }
-        Op::Component(_) => false,
+        Op::Component(component) => component_is_supported(component),
         Op::Comment(_) | Op::If(_) | Op::For(_) | Op::Slot(_) => false,
     }
 }
@@ -119,6 +119,55 @@ fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
     bindings
         .iter()
         .all(|binding| matches!(binding, BindingOp::Bind(_) | BindingOp::On(_)))
+}
+
+fn component_is_supported(component: &ComponentOp<'_>) -> bool {
+    component.children.ops.is_empty()
+        && !component_name_needs_component_semantics(component.name)
+        && component
+            .bindings
+            .iter()
+            .all(component_binding_is_supported)
+}
+
+fn component_name_needs_component_semantics(name: &str) -> bool {
+    matches!(
+        name,
+        "component"
+            | "Component"
+            | "Teleport"
+            | "teleport"
+            | "Suspense"
+            | "suspense"
+            | "KeepAlive"
+            | "keep-alive"
+            | "BaseTransition"
+            | "base-transition"
+            | "Transition"
+            | "transition"
+            | "TransitionGroup"
+            | "transition-group"
+    ) || name.contains('.')
+}
+
+fn component_binding_is_supported(binding: &BindingOp<'_>) -> bool {
+    match binding {
+        BindingOp::Bind(bind) => {
+            bind.value.is_some()
+                && bind.modifiers.is_empty()
+                && matches!(
+                    bind.name,
+                    Some(DynamicName::Static(name))
+                        if !matches!(name, "is" | "key" | "ref")
+                )
+        }
+        BindingOp::On(on) => {
+            on.handler.is_some()
+                && on.modifiers.is_empty()
+                && matches!(on.name, Some(DynamicName::Static(_)))
+        }
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -168,6 +217,76 @@ mod tests {
         let root = lowered.roots.pop().expect("one JSX root");
         let s2 = root.s2.as_ref().expect("component child projects to S2");
 
-        assert!(!super::root_is_supported(s2));
+        assert_eq!(super::root_is_supported(s2), false);
+    }
+
+    #[test]
+    fn leaf_root_component_with_static_props_emits_from_s2() {
+        let allocator = Allocator::new();
+        let source = "const A = () => <B foo={f} title=\"ok\" />";
+        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+        let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
+        let mut root = lowered.roots.pop().expect("one JSX root");
+        let s2 = root.s2.as_ref().expect("leaf component projects to S2");
+
+        assert_eq!(super::root_is_supported(s2), true);
+
+        root.root.children.clear();
+        let mut diagnostics = Vec::new();
+        let component = compile_root_to_vdom(
+            &allocator,
+            root,
+            analysis,
+            false,
+            &VdomCompileOptions::default(),
+            VdomCompatOptions::default(),
+            &mut diagnostics,
+            source,
+        );
+
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+        assert_eq!(
+            component.preamble.as_str(),
+            "import { resolveComponent as _resolveComponent, openBlock as _openBlock, \
+             createBlock as _createBlock } from \"vue\"\n"
+        );
+        assert_eq!(
+            component.code.as_str(),
+            "export function render(_ctx, _cache) {\n  const _component_B = \
+             _resolveComponent(\"B\")\n  \n  return (_openBlock(), _createBlock(_component_B, \
+             {\n    foo: f,\n    title: \"ok\"\n  }, null, 8 /* PROPS */, [\"foo\"]))\n}"
+        );
+    }
+
+    #[test]
+    fn component_spread_props_stay_on_relief_until_component_admission_widens() {
+        let allocator = Allocator::new();
+        let source = "const A = () => <B {...attrs} />";
+        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+        let root = lowered.roots.pop().expect("one JSX root");
+        let s2 = root.s2.as_ref().expect("component spread projects to S2");
+
+        assert_eq!(super::root_is_supported(s2), false);
+    }
+
+    #[test]
+    fn dynamic_component_tags_stay_on_relief_until_component_admission_widens() {
+        let allocator = Allocator::new();
+        let source = "const A = () => <Widget.Panel active />";
+        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+        let root = lowered.roots.pop().expect("one JSX root");
+        let s2 = root.s2.as_ref().expect("dynamic component projects to S2");
+
+        assert_eq!(super::root_is_supported(s2), false);
+    }
+
+    #[test]
+    fn component_v_slots_still_refuses_s2_projection() {
+        let allocator = Allocator::new();
+        let source = "const A = () => <B v-slots={slots} />";
+        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+        let root = lowered.roots.pop().expect("one JSX root");
+
+        assert_eq!(root.s2.err(), Some(crate::s2::S2Refusal::Directive));
     }
 }
