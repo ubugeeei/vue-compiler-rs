@@ -49,26 +49,40 @@ function taskSection(id: string): string {
   return next == null ? tail : tail.slice(0, next + 1);
 }
 
-function currentEvidenceIds(): string[] {
+function currentEvidenceIds(source: string = text.records): string[] {
   const section = sectionBetween(
-    text.records,
+    source,
     /^## Current completion evidence /mu,
     /^## Historical task records/mu,
     "current completion evidence",
   );
-  return [...section.matchAll(/^\| (?<id>P2-[^ |]+)\s+\| \[#\d+\]/gmu)].map(
-    (match) => match.groups!.id,
+  return uniqueTaskIds(
+    [...section.matchAll(/^\| (?<id>P2-[^ |]+)\s+\| \[#\d+\]/gmu)].map((match) => match.groups!.id),
+    "current completion evidence",
   );
 }
 
-function historicalRecordIds(): string[] {
+function historicalRecordIds(source: string = text.records): string[] {
   const section = sectionBetween(
-    text.records,
+    source,
     /^## Historical task records/mu,
     /$a/mu,
     "historical task records",
   );
-  return [...section.matchAll(/^\| \[(?<id>P2-[^\]]+)\]/gmu)].map((match) => match.groups!.id);
+  return uniqueTaskIds(
+    [...section.matchAll(/^\| \[(?<id>P2-[^\]]+)\]/gmu)].map((match) => match.groups!.id),
+    "historical task records",
+  );
+}
+
+function uniqueTaskIds(ids: string[], label: string): string[] {
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+  assert.equal(
+    duplicates.length,
+    0,
+    `${label} has duplicate task id(s): ${[...new Set(duplicates)].join(", ")}`,
+  );
+  return ids;
 }
 
 function sectionBetween(source: string, start: RegExp, end: RegExp, label: string): string {
@@ -84,6 +98,12 @@ function recordFile(id: string): string {
   return fileURLToPath(
     new URL(`../../davinci-road/plan/phase-2-records/${id.toLowerCase()}.md`, import.meta.url),
   );
+}
+
+function duplicateLine(source: string, pattern: RegExp, label: string): string {
+  const match = pattern.exec(source);
+  assert.ok(match, `missing ${label}`);
+  return `${source.slice(0, match.index)}${match[0]}\n${source.slice(match.index)}`;
 }
 
 test("task contracts and record files reflect the current Phase 2 status", () => {
@@ -116,4 +136,26 @@ test("task contracts and record files reflect the current Phase 2 status", () =>
       assert.ok(!fs.existsSync(recordFile(id)), `${id} must not get a record file before landing`);
     }
   }
+});
+
+test("completion evidence tables reject duplicate task ids", () => {
+  const duplicatedCurrent = duplicateLine(
+    text.records,
+    /^\| P2-1\s+\| \[#4452\][^\n]+$/mu,
+    "P2-1 current evidence row",
+  );
+  const duplicatedHistorical = duplicateLine(
+    text.records,
+    /^\| \[P2-1\]\([^\n]+$/mu,
+    "P2-1 historical records row",
+  );
+
+  assert.throws(
+    () => currentEvidenceIds(duplicatedCurrent),
+    /current completion evidence has duplicate task id\(s\): P2-1/u,
+  );
+  assert.throws(
+    () => historicalRecordIds(duplicatedHistorical),
+    /historical task records has duplicate task id\(s\): P2-1/u,
+  );
 });
