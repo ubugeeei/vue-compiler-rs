@@ -59,6 +59,7 @@ const S2_DOM_EMIT_COUNTS: [(&str, u32, u32, u32); 6] = [
 #[test]
 fn observed_dom_emit_keeps_output_and_walk_budget() {
     let fused_walk_target = phase_2_dom_walk_target();
+    assert_s2_dom_emit_counts_cover_ladder();
     for fixture in &LADDER {
         let template =
             template_block(fixture.source).expect("every ladder fixture has a template block");
@@ -229,6 +230,15 @@ fn disabled_static_hoist_keeps_model_diagnostics_when_models_exist() {
     assert_eq!(observed.budget.transform.passes, 1);
     assert_eq!(observed.budget.emit_walks, 1);
     assert_eq!(observed.budget.total_walks(), 2);
+}
+
+fn assert_s2_dom_emit_counts_cover_ladder() {
+    let pinned: Vec<&str> = S2_DOM_EMIT_COUNTS.iter().map(|(name, ..)| *name).collect();
+    let ladder: Vec<&str> = LADDER.iter().map(|fixture| fixture.name).collect();
+    assert_eq!(
+        pinned, ladder,
+        "S2 DOM emit budget pins must match the ladder exactly, in order"
+    );
 }
 
 fn s2_dom_emit_count(fixture: &str) -> EmitCount {
