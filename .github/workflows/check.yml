@@ -381,7 +381,7 @@ jobs:
         run: npm install --global @pkl-community/pkl@0.27.2
       - name: Test
         env: { VIZE_TEST_REQUIRE_TSGO: "1" }
-        run: cargo test --workspace && cargo test -p vize_s1_to_s2 --features davinci-differential --test davinci_lowering_corpus -- --nocapture && cargo test -p vize_s1_to_s2 --features davinci-differential --test davinci_dom_corpus -- --nocapture && cargo test -p vize --features legacy --test check_nuxt_tsconfig_isolation_cli && cargo test -p vize_atelier_core --features legacy --test davinci_s2_transform_vue2 && cargo test -p vize_vitrine --no-default-features --features wasm
+        run: cargo test --workspace && cargo test -p vize_s1_to_s2 --features davinci-differential --test davinci_lowering_corpus -- --nocapture && cargo test -p vize_s1_to_s2 --features davinci-differential --test davinci_dom_corpus -- --nocapture && cargo test -p vize_atelier_jsx --features davinci-differential --lib vdom::s2_differential::s2_vdom_admitted_cases_match_relief_codegen -- --exact && cargo test -p vize --features legacy --test check_nuxt_tsconfig_isolation_cli && cargo test -p vize_atelier_core --features legacy --test davinci_s2_transform_vue2 && cargo test -p vize_vitrine --no-default-features --features wasm
   coverage:
     runs-on: blacksmith-32vcpu-ubuntu-2404
     timeout-minutes: 30

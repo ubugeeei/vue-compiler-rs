@@ -44,6 +44,8 @@ serde_json = { workspace = true }
 
 [features]
 default = []
+# Arm the JSX P2-16 migration parity lane without changing default builds.
+davinci-differential = []
 # Mirror the legacy parser/AST surface across the SFC and SSR dependencies.
 legacy = ["vize_atelier_sfc/legacy", "vize_atelier_ssr/legacy"]
 

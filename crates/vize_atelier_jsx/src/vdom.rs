@@ -11,6 +11,8 @@
 //! `_ctx.`. Static hoisting and handler caching default off for predictable,
 //! `@vue/babel-plugin-jsx`-shaped output; callers can opt in.
 
+#[cfg(all(test, feature = "davinci-differential"))]
+mod s2_differential;
 mod s2_emit;
 
 use vize_atelier_core::codegen::generate_with_vnode_factory_and_merge_props;
