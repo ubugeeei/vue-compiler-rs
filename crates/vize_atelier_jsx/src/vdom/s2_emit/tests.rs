@@ -36,6 +36,39 @@ fn native_vdom_admitted_roots_emit_from_s2() {
 }
 
 #[test]
+fn tsx_admitted_roots_emit_from_s2() {
+    let allocator = Allocator::new();
+    let source = "const A = () => <div>{count as number}</div>;";
+    let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Tsx);
+    let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
+    let mut root = lowered.roots.pop().expect("one JSX root");
+    let s2 = root.s2.as_ref().expect("TSX root projects to S2");
+
+    assert_eq!(super::root_is_supported(s2), true);
+
+    root.root.children.clear();
+    let mut diagnostics = Vec::new();
+    let component = compile_root_to_vdom(
+        &allocator,
+        root,
+        analysis,
+        true,
+        &VdomCompileOptions::default(),
+        VdomCompatOptions::default(),
+        &mut diagnostics,
+        source,
+    );
+
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    assert_eq!(component.mode, JsxOutputMode::Vdom);
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  return (_openBlock(), \
+         _createElementBlock(\"div\", null, _toDisplayString(count), 1 /* TEXT */))\n}"
+    );
+}
+
+#[test]
 fn component_plain_children_emit_from_s2_with_slot_facts() {
     let allocator = Allocator::new();
     let source = "const A = () => <Card><h1>Title</h1></Card>;";

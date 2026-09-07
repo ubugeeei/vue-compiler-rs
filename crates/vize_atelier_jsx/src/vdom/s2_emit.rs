@@ -30,7 +30,6 @@ pub(super) fn try_emit_s2_vdom<'a>(
         || options.source_map
         || options.hoist_static
         || options.cache_handlers
-        || is_ts
     {
         return None;
     }
@@ -74,7 +73,7 @@ pub(super) fn try_emit_s2_vdom<'a>(
             cache_handlers: false,
             hoisted_scope_id: None,
             scope_id,
-            is_ts: false,
+            is_ts,
             comments: false,
             experimental_in_tag_comments: false,
             custom_element_patterns: &[],

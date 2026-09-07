@@ -11,56 +11,92 @@ use super::{VdomCompatOptions, VdomCompileOptions, compile_root_to_vdom};
 #[test]
 fn s2_vdom_admitted_cases_match_relief_codegen() {
     let cases = [
-        ("element", "const A = () => <div class=\"card\" />;"),
-        ("text", "const A = () => <p>Hello</p>;"),
-        ("interpolation", "const A = () => <div>{count}</div>;"),
-        ("fragment root", "const A = () => <><i/><b/></>;"),
-        ("element bind", "const A = () => <button disabled={off} />;"),
+        (
+            "element",
+            "const A = () => <div class=\"card\" />;",
+            JsxLang::Jsx,
+        ),
+        ("text", "const A = () => <p>Hello</p>;", JsxLang::Jsx),
+        (
+            "interpolation",
+            "const A = () => <div>{count}</div>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "fragment root",
+            "const A = () => <><i/><b/></>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element bind",
+            "const A = () => <button disabled={off} />;",
+            JsxLang::Jsx,
+        ),
         (
             "element event",
             "const A = () => <button onClick={save} />;",
+            JsxLang::Jsx,
         ),
         (
             "leaf component",
             "const A = () => <B foo={f} title=\"ok\" />;",
+            JsxLang::Jsx,
         ),
         (
             "component spread",
             "const A = () => <B {...attrs} foo={f} title=\"ok\" />;",
+            JsxLang::Jsx,
         ),
         (
             "component implicit default",
             "const A = () => <Card><h1>Title</h1></Card>;",
+            JsxLang::Jsx,
         ),
         (
             "component text default",
             "const A = () => <Card>Title</Card>;",
+            JsxLang::Jsx,
         ),
         (
             "component interpolation default",
             "const A = () => <Card>{title}</Card>;",
+            JsxLang::Jsx,
         ),
         (
             "component nested component default",
             "const A = () => <Card><B foo={f}/></Card>;",
+            JsxLang::Jsx,
         ),
         (
             "dynamic component",
             "const A = () => <Widget.Panel foo={1} />;",
+            JsxLang::Jsx,
         ),
         (
             "element v-show",
             "const A = () => <div v-show={visible} />;",
+            JsxLang::Jsx,
         ),
         (
             "component v-show",
             "const A = () => <B v-show={visible} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "tsx interpolation cast",
+            "const A = () => <div>{count as number}</div>;",
+            JsxLang::Tsx,
+        ),
+        (
+            "tsx typed event",
+            "const A = () => <button onClick={(event: MouseEvent) => save(event)} />;",
+            JsxLang::Tsx,
         ),
     ];
 
-    for (name, source) in cases {
-        let s2 = compile_case(source, EmitRoute::ForceS2);
-        let relief = compile_case(source, EmitRoute::ForceRelief);
+    for (name, source, lang) in cases {
+        let s2 = compile_case(source, lang, EmitRoute::ForceS2);
+        let relief = compile_case(source, lang, EmitRoute::ForceRelief);
 
         assert_eq!(
             s2.preamble, relief.preamble,
@@ -84,9 +120,9 @@ struct Output {
     code: String,
 }
 
-fn compile_case(source: &str, route: EmitRoute) -> Output {
+fn compile_case(source: &str, lang: JsxLang, route: EmitRoute) -> Output {
     let allocator = Allocator::new();
-    let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, lang);
     assert!(!lowered.has_errors(), "{:?}", lowered.diagnostics);
 
     let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
@@ -103,7 +139,7 @@ fn compile_case(source: &str, route: EmitRoute) -> Output {
         &allocator,
         root,
         analysis,
-        false,
+        lang.is_typescript(),
         &VdomCompileOptions::default(),
         VdomCompatOptions::default(),
         &mut diagnostics,
