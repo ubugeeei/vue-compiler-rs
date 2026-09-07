@@ -1,5 +1,5 @@
 use vize_s0::Allocator;
-use vize_s2::op::{BindingOp, Op};
+use vize_s2::op::{BindingOp, DynamicName, Op};
 
 use crate::{JsxLang, lower_source};
 
@@ -54,6 +54,46 @@ fn lower_source_attaches_component_s2_root() {
     };
     assert_eq!(component.name, "Panel");
     assert_eq!(component.attributes[0].name, "title");
+}
+
+#[test]
+fn paramless_static_slots_project_to_s2_slot_content() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <Comp>{{ header: () => <h1>Hi</h1> }}</Comp>;";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("paramless slot projects to S2");
+    assert!(s2.features.has_slot_carriers());
+    let Op::Component(component) = &s2.root.ops[0] else {
+        panic!("root is a component");
+    };
+    let Op::Element(template) = &component.children.ops[0] else {
+        panic!("slot carrier is a template element");
+    };
+    assert_eq!(template.tag, "template");
+    let BindingOp::SlotContent(content) = &template.bindings[0] else {
+        panic!("binding is ui.slot-content");
+    };
+    assert!(content.params.is_none());
+    assert!(content.modifiers.is_empty());
+    assert!(matches!(content.name, Some(DynamicName::Static("header"))));
+    assert!(template.span.start <= content.span.start);
+    assert!(template.span.end >= content.span.end);
+}
+
+#[test]
+fn scoped_slots_stay_on_directive_refusal_path() {
+    let allocator = Allocator::new();
+    let lowered = lower_source(
+        &allocator,
+        allocator.as_oxc(),
+        "const App = () => <Comp>{{ item: (row) => <span>{row}</span> }}</Comp>;",
+        JsxLang::Jsx,
+    );
+    let root = lowered.roots.first().expect("one JSX root");
+
+    assert!(matches!(root.s2, Err(S2Refusal::Directive)));
 }
 
 #[test]

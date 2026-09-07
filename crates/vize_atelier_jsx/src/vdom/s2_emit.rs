@@ -6,7 +6,7 @@ use vize_s1_to_s2::pass::{TransformProfile, run_transform_with_profile};
 use vize_s1_to_s2::{
     DomEmitMode, DomEmitOptions, LegacyCaps, Lowered as S2Lowered, emit_dom_with_options,
 };
-use vize_s2::op::{BindingOp, ComponentOp, DynamicName, Op, Region};
+use vize_s2::op::{BindingOp, ComponentOp, DynamicName, ElementOp, Op, Region, SlotContentOp};
 
 use crate::s2::{JsxS2Root, S2Refusal};
 
@@ -112,11 +112,35 @@ fn op_is_supported(op: &Op<'_>) -> bool {
     match op {
         Op::Text(_) | Op::Interpolation(_) => true,
         Op::Element(element) => {
+            if element.tag == "template" && has_slot_content(&element.bindings) {
+                return slot_template_is_supported(element);
+            }
             bindings_are_supported(&element.bindings) && region_is_supported(&element.children)
         }
         Op::Component(component) => component_is_supported(component),
         Op::Comment(_) | Op::If(_) | Op::For(_) | Op::Slot(_) => false,
     }
+}
+
+fn slot_template_is_supported(element: &ElementOp<'_>) -> bool {
+    element.attributes.is_empty()
+        && matches!(
+            element.bindings.as_slice(),
+            [BindingOp::SlotContent(content)] if slot_content_is_supported(content)
+        )
+        && region_is_supported(&element.children)
+}
+
+fn has_slot_content(bindings: &[BindingOp<'_>]) -> bool {
+    bindings
+        .iter()
+        .any(|binding| matches!(binding, BindingOp::SlotContent(_)))
+}
+
+fn slot_content_is_supported(content: &SlotContentOp<'_>) -> bool {
+    content.params.is_none()
+        && content.modifiers.is_empty()
+        && matches!(content.name, None | Some(DynamicName::Static(_)))
 }
 
 fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
