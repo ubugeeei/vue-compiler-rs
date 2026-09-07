@@ -232,6 +232,8 @@ test("verify-only mode reports failed matrix shard jobs for red release evidence
 test("bootstrap mode stops waiting when an in-progress gate has failed required jobs", () => {
   const tempDir = fs.mkdtempSync(path.join(tmpdir(), "vize-release-red-pending-matrix-"));
   try {
+    const jobsRequestLog = path.join(tempDir, "jobs-request.log");
+    const runsRequestLog = path.join(tempDir, "runs-request.log");
     const fixture = createReleasePreflightVerifyOnlyFixture(tempDir, {
       requireJobTimeoutArgs: true,
       mutateRuns(runs) {
@@ -243,8 +245,16 @@ test("bootstrap mode stops waiting when an in-progress gate has failed required 
       mutateJobs(jobs) {
         const matrixJobs = jobs[106];
         assert.ok(matrixJobs);
-        matrixJobs[0] = { ...matrixJobs[0], conclusion: "failure" };
-        matrixJobs[12] = { ...matrixJobs[12], status: "in_progress", conclusion: null };
+        const failedJobIndex = matrixJobs.findIndex((job) => job.name === "real projects (0/22)");
+        const pendingJobIndex = matrixJobs.findIndex((job) => job.name === "real projects (12/22)");
+        assert.notEqual(failedJobIndex, -1);
+        assert.notEqual(pendingJobIndex, -1);
+        matrixJobs[failedJobIndex] = { ...matrixJobs[failedJobIndex], conclusion: "failure" };
+        matrixJobs[pendingJobIndex] = {
+          ...matrixJobs[pendingJobIndex],
+          status: "in_progress",
+          conclusion: null,
+        };
       },
     });
     const result = spawnSync("rust-script", ["tools/commands/ci/github/release-preflight.rs"], {
@@ -254,12 +264,29 @@ test("bootstrap mode stops waiting when an in-progress gate has failed required 
         ...process.env,
         PATH: `${fixture.binDir}${path.delimiter}${process.env.PATH ?? ""}`,
         ...fixture.env,
+        TEST_JOBS_REQUEST_LOG: jobsRequestLog,
+        TEST_REJECT_RUNS_AFTER_JOB_REQUEST: "1",
+        TEST_RUNS_REQUEST_LOG: runsRequestLog,
       },
       timeout: 10_000,
     });
 
     assert.ifError(result.error);
     assert.equal(result.status, 1, `${result.stderr}\n${result.stdout}`.trim());
+    assert.doesNotMatch(
+      result.stderr,
+      /release preflight polled workflow runs after job failure evidence/,
+    );
+    const runsRequests = fs.readFileSync(runsRequestLog, "utf8").trim().split("\n");
+    assert.equal(runsRequests.length, 2);
+    for (const runRequest of runsRequests.map((url) => new URL(url))) {
+      assert.equal(runRequest.pathname, "/repos/owner/repository/actions/runs");
+      assert.equal(runRequest.searchParams.get("head_sha"), sha);
+    }
+    assert.deepEqual(fs.readFileSync(jobsRequestLog, "utf8").trim().split("\n").filter(Boolean), [
+      "106",
+      "106",
+    ]);
     assert.match(result.stderr, /Real Project Matrix: in_progress\/no conclusion/);
     assert.match(result.stderr, /real projects \(0\/22\)=completed\/failure/);
     assert.match(result.stderr, /real projects \(12\/22\)=in_progress\/no conclusion/);
