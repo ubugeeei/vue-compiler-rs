@@ -59,6 +59,24 @@ fn textarea_v_model_emits_from_s2() {
     );
 }
 
+#[test]
+fn select_v_model_emits_from_s2() {
+    let source = "const A = () => <select v-model={value}></select>;";
+    let component = compile_native_model_from_s2(source);
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { vModelSelect as _vModelSelect, withDirectives as _withDirectives, \
+         openBlock as _openBlock, createElementBlock as _createElementBlock } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  return _withDirectives((_openBlock(), \
+         _createElementBlock(\"select\", {\n    \"onUpdate:modelValue\": $event => ((value) = \
+         $event)\n  }, null, 8 /* PROPS */, [\"onUpdate:modelValue\"])), [\n    \
+         [_vModelSelect, value]\n  ])\n}"
+    );
+}
+
 fn compile_native_model_from_s2(source: &str) -> VdomComponent {
     let allocator = Allocator::new();
     let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);

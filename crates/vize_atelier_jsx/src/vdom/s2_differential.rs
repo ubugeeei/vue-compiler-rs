@@ -154,6 +154,11 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "element select v-model",
+            "const A = () => <select v-model={value}></select>;",
+            JsxLang::Jsx,
+        ),
+        (
             "component v-show",
             "const A = () => <B v-show={visible} />;",
             JsxLang::Jsx,

@@ -160,15 +160,15 @@ fn element_binding_is_supported(element: &ElementOp<'_>, binding: &BindingOp<'_>
         | BindingOp::VueShow(_)
         | BindingOp::VueHtml(_)
         | BindingOp::VueText(_) => true,
-        BindingOp::Model(model) => native_text_model_is_supported(element, model),
+        BindingOp::Model(model) => native_model_is_supported(element, model),
         _ => false,
     }
 }
 
-fn native_text_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
-    matches!(element.tag, "input" | "textarea")
+fn native_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
+    matches!(element.tag, "input" | "select" | "textarea")
         && model.argument.is_none()
-        && model_is_bare_native_text(element, model)
+        && model_is_bare_native_element(element, model)
         && model.contract.read.source() == model.contract.write.source()
         && model.contract.read.span() == model.contract.write.span()
         && matches!(model.contract.read, ExprRef::Js(_))
@@ -187,7 +187,7 @@ fn input_type_is_text(element: &ElementOp<'_>) -> bool {
             .all(|binding| !bind_may_set_type(binding))
 }
 
-fn model_is_bare_native_text(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
+fn model_is_bare_native_element(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
     model
         .attributes
         .iter()

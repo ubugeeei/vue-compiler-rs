@@ -74,7 +74,29 @@ fn textarea_v_model_projects_to_s2_model() {
 }
 
 #[test]
-fn unsupported_native_text_model_shapes_stay_on_directive_refusal_path() {
+fn select_v_model_projects_to_s2_model() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <select v-model={value}></select>";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("select v-model projects to S2");
+    let Op::Element(element) = &s2.root.ops[0] else {
+        panic!("root is an element");
+    };
+    assert_eq!(element.tag, "select");
+    let BindingOp::Model(model) = &element.bindings[0] else {
+        panic!("binding is ui.model");
+    };
+    assert_eq!(model.contract.read.source(), "value");
+    assert!(model.argument.is_none());
+    assert_eq!(model.attributes.len(), 1);
+    assert_eq!(model.attributes[0].name, "element-kind");
+    assert_eq!(model.attributes[0].value, Some("select"));
+}
+
+#[test]
+fn unsupported_native_model_shapes_stay_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let cases = [
         "const App = () => <input v-model:checked={value} />",
@@ -87,7 +109,9 @@ fn unsupported_native_text_model_shapes_stay_on_directive_refusal_path() {
         "const App = () => <textarea v-model:foo={value} />",
         "const App = () => <textarea v-model={[value, [\"trim\"]]} />",
         "const App = () => <textarea v-model_lazy={value} />",
-        "const App = () => <select v-model={value} />",
+        "const App = () => <select v-model:foo={value}></select>",
+        "const App = () => <select v-model={[value, [\"number\"]]}></select>",
+        "const App = () => <select v-model_number={value}></select>",
     ];
 
     for source in cases {
