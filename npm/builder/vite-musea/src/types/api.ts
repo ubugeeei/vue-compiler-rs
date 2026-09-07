@@ -80,6 +80,15 @@ export interface A11yResult {
   violations: A11yViolation[];
   passes: number;
   incomplete: number;
+  /**
+   * Why the audit could not run, when it could not run.
+   *
+   * A variant that failed to audit measured *nothing* about accessibility,
+   * so it reports no violations. Recording the failure here instead of as a
+   * synthetic `critical` violation keeps the counts honest: a broken run
+   * reads as broken rather than as a component with critical defects.
+   */
+  error?: string;
 }
 
 /**

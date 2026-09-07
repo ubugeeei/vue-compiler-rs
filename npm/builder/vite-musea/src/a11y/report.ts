@@ -19,6 +19,7 @@ export function computeA11ySummary(results: A11yResult[]): A11ySummary {
   return {
     totalComponents: components.size,
     totalVariants: results.length,
+    erroredVariants: results.filter((r) => r.error !== undefined).length,
     totalViolations: allViolations.length,
     criticalCount: allViolations.filter((v) => v.impact === "critical").length,
     seriousCount: allViolations.filter((v) => v.impact === "serious").length,
@@ -53,6 +54,22 @@ export function generateA11yHtmlReport(results: A11yResult[], summary: A11ySumma
         return "#7b8494";
     }
   };
+
+  const errorItems = results
+    .filter((r) => r.error !== undefined)
+    .map(
+      (r) => `
+        <div class="result">
+          <div class="result-header">
+            <div class="result-info">
+              <span class="result-name">${escapeHtml(path.basename(r.artPath, ".art.vue"))} / ${escapeHtml(r.variantName)}</span>
+              <span class="result-count">audit did not run</span>
+            </div>
+          </div>
+          <p style="padding:0.75rem 1rem;color:#f87171"><code>${escapeHtml(r.error ?? "")}</code></p>
+        </div>`,
+    )
+    .join("");
 
   const resultItems = results
     .filter((r) => r.violations.length > 0)
@@ -156,11 +173,12 @@ export function generateA11yHtmlReport(results: A11yResult[], summary: A11ySumma
       <div class="stat serious"><div class="stat-value">${summary.seriousCount}</div><div class="stat-label">Serious</div></div>
       <div class="stat moderate"><div class="stat-value">${summary.moderateCount}</div><div class="stat-label">Moderate</div></div>
       <div class="stat minor"><div class="stat-value">${summary.minorCount}</div><div class="stat-label">Minor</div></div>
+      <div class="stat critical"><div class="stat-value">${summary.erroredVariants}</div><div class="stat-label">Not audited</div></div>
     </div>
     ${
-      summary.totalViolations === 0
+      summary.totalViolations === 0 && summary.erroredVariants === 0
         ? `<div class="all-clear"><div class="all-clear-text">No accessibility violations found across ${summary.totalVariants} variant(s)</div></div>`
-        : `<div class="results">${resultItems}</div>`
+        : `<div class="results">${errorItems}${resultItems}</div>`
     }
   </main>
 </body>
@@ -182,6 +200,7 @@ export function generateA11yJsonReport(results: A11yResult[]): string {
         violations: r.violations,
         passes: r.passes,
         incomplete: r.incomplete,
+        ...(r.error === undefined ? {} : { error: r.error }),
       })),
     },
     null,
