@@ -24,11 +24,12 @@ use vize_davinci::diagnostic::{Diagnostic, Severity, Stage};
 use vize_davinci::id::NodeId;
 use vize_davinci::side_table::SideTable;
 use vize_s0::{Allocator, SourceBlock, Span, String};
-use vize_s1::{CloseTag, Element, ElementClose, SurfaceChild, Token};
+use vize_s1::{Element, ElementClose, Token};
 use vize_s2::provenance::ProvenanceRecord;
 use vize_s2::scope::{ScopeFacts, ScopeTag};
 
 mod custom_element;
+mod span;
 
 pub(crate) struct Cx<'a> {
     pub allocator: &'a Allocator,
@@ -53,6 +54,9 @@ pub(crate) struct Cx<'a> {
     pub wrappers: SideTable<super::structural::WrapperKeys>,
     pub for_wrappers: SideTable<super::structural::ForWrapper>,
     pub caps: super::caps::LegacyCaps,
+    /// Op families this lowering built, set where the op is minted —
+    /// see `lower::features`.
+    pub features: super::features::LoweringFeatures,
     custom_element_patterns: Vec<String>,
     custom_element_predicate: Option<fn(&str) -> bool>,
 }
@@ -83,9 +87,19 @@ impl<'a> Cx<'a> {
             wrappers: SideTable::new(),
             for_wrappers: SideTable::new(),
             caps,
+            features: super::features::LoweringFeatures::EMPTY,
             custom_element_patterns: custom_element_patterns.to_vec(),
             custom_element_predicate,
         }
+    }
+
+    /// Record that this lowering built an op of `family`.
+    ///
+    /// Called where the op is minted, never from a rule name: a decision
+    /// that *failed* still leaves an op behind (a malformed `v-for` keeps
+    /// its `ui.for` under the escape), and the planner must see it.
+    pub(crate) fn observe(&mut self, family: super::features::OpFamily) {
+        self.features = self.features.observing(family);
     }
 
     /// Whether the walk is inside a condense-suppressing subtree.
@@ -286,64 +300,4 @@ impl<'a> Cx<'a> {
     }
 }
 
-/// End offset of an element's extent: the last byte its subtree rendered.
-/// S1 is a contiguous partition of the source, so this is the end of the
-/// element's last present-or-hole token — a `Missing` close contributes
-/// its children's extent (the typed hole is zero-width by policy).
-pub(crate) fn element_end(cx: &Cx<'_>, element: &Element<'_>) -> u32 {
-    match &element.close {
-        ElementClose::Present(CloseTag { gt, .. }) => cx.token_span(gt).end,
-        ElementClose::NotExpected => cx.token_span(&element.open.gt).end,
-        ElementClose::Implicit | ElementClose::Missing => element
-            .children
-            .last()
-            .map(|child| child_end(cx, child))
-            .unwrap_or_else(|| cx.token_span(&element.open.gt).end),
-    }
-}
-
-/// End offset of any child's extent.
-pub(crate) fn child_end(cx: &Cx<'_>, child: &SurfaceChild<'_>) -> u32 {
-    match child {
-        SurfaceChild::Element(element) => element_end(cx, element),
-        SurfaceChild::Interpolation(node) => cx.token_span(&node.close).end,
-        SurfaceChild::Text(token)
-        | SurfaceChild::Comment(token)
-        | SurfaceChild::Cdata(token)
-        | SurfaceChild::ProcessingInstruction(token)
-        | SurfaceChild::Unexpected(token) => cx.token_span(token).end,
-    }
-}
-
-/// The span of an element's whole extent (open tag through close).
-pub(crate) fn element_span(cx: &Cx<'_>, element: &Element<'_>) -> Span {
-    Span::new(
-        cx.offset(element.open.lt_name.text),
-        element_end(cx, element),
-    )
-}
-
-/// The span of one authored attribute: name through the end of its value
-/// (closing quote included when present).
-pub(crate) fn attr_span(cx: &Cx<'_>, attr: &vize_s1::Attribute<'_>) -> Span {
-    let start = cx.offset(attr.name.text);
-    let end = match &attr.value {
-        Some(value) => match &value.close_quote {
-            Some(close) => cx.token_span(close).end,
-            None => cx.token_span(&value.content).end,
-        },
-        None => match &attr.eq {
-            Some(eq) => cx.token_span(eq).end,
-            None => cx.token_span(&attr.name).end,
-        },
-    };
-    Span::new(start, end)
-}
-
-/// The authored slice an attribute covers (for provenance `before`).
-pub(crate) fn attr_slice<'a>(cx: &Cx<'a>, attr: &vize_s1::Attribute<'a>) -> &'a str {
-    let span = attr_span(cx, attr);
-    cx.source
-        .get(span.start as usize..span.end as usize)
-        .unwrap_or(attr.name.text)
-}
+pub(crate) use span::{attr_slice, attr_span, element_span};

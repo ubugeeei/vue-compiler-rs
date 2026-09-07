@@ -9,6 +9,7 @@
 //! their **children** to HTML. This approximates the HTML tree-construction
 //! namespace algorithm the way the shipped compiler-dom logic does.
 
+use super::features::OpFamily;
 use alloc::vec::Vec as StdVec;
 
 use vize_s0::{Box, Vec, cstr, is_math_ml_tag, is_native_tag, is_svg_tag};
@@ -151,6 +152,7 @@ pub(crate) fn element_core<'a>(
         .get(cx.offset(element.open.lt_name.text) as usize..open_end as usize)
         .unwrap_or(tag);
     if component {
+        cx.observe(OpFamily::SlotCarrier);
         cx.record(
             "lower.component",
             node,

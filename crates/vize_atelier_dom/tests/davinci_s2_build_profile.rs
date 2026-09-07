@@ -17,8 +17,39 @@ struct TraversalBudget {
     visits: u64,
 }
 
-const CURRENT_S2_OBSERVER_WALKS: u64 = 6;
-const CURRENT_BUILD_WALKS: u64 = 7;
+/// fixture -> current S2 observer walks and profiled build walks.
+///
+/// Both columns are per fixture because the S2 pass planner declines a
+/// mandatory pass whose op family the lowering never built
+/// (`vize_s1_to_s2::lower::features`). The S2 column is the artifact's
+/// transform plan plus its one emit walk; the build column adds the one
+/// pre-S2 template walk the legacy transform still costs on this entry
+/// point. Closing *that* one is what the parse-to-S2 switch is for.
+///
+/// | fixture       | families present                      | S2 | build |
+/// | ------------- | ------------------------------------- | -- | ----- |
+/// | small         | none                                  | 3  | 4     |
+/// | medium        | components                            | 4  | 5     |
+/// | large         | `v-if`, `v-for`, components, `<slot>` | 6  | 7     |
+/// | stress-deep   | `v-if`                                | 4  | 5     |
+/// | stress-wide   | none                                  | 3  | 4     |
+/// | stress-interp | none                                  | 3  | 4     |
+const CURRENT_WALKS: [(&str, u64, u64); 6] = [
+    ("small", 3, 4),
+    ("medium", 4, 5),
+    ("large", 6, 7),
+    ("stress-deep", 4, 5),
+    ("stress-wide", 3, 4),
+    ("stress-interp", 3, 4),
+];
+
+fn current_walks(fixture: &str) -> (u64, u64) {
+    CURRENT_WALKS
+        .iter()
+        .find(|(name, ..)| *name == fixture)
+        .map(|(_, s2, build)| (*s2, *build))
+        .unwrap_or_else(|| panic!("{fixture} has no pinned walk counts"))
+}
 
 #[test]
 fn profile_build_walks_report_the_current_p2_12b_gap() {
@@ -33,6 +64,7 @@ fn profile_build_walks_report_the_current_p2_12b_gap() {
         let template =
             template_block(fixture.source).expect("every ladder fixture has a template block");
         let baseline = traversal_budget(fixture.name);
+        let (current_s2_walks, current_build_walks) = current_walks(fixture.name);
         let profile = ProfileScope::enable();
         let allocator = Allocator::new();
         let (_, errors, result) = compile_template(&allocator, template);
@@ -69,7 +101,7 @@ fn profile_build_walks_report_the_current_p2_12b_gap() {
             fixture.name
         );
         assert_eq!(
-            s2_walks, CURRENT_S2_OBSERVER_WALKS,
+            s2_walks, current_s2_walks,
             "{} current S2 observer walk count",
             fixture.name
         );
@@ -80,7 +112,7 @@ fn profile_build_walks_report_the_current_p2_12b_gap() {
             fixture.name
         );
         assert_eq!(
-            build_walks, CURRENT_BUILD_WALKS,
+            build_walks, current_build_walks,
             "{} current profiled DOM build walk gap",
             fixture.name
         );

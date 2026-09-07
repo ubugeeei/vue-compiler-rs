@@ -37,11 +37,13 @@ fn the_bindings_fixture_snapshots_the_post_pass_folio() {
         // contracts stand unexpanded.
         assert_folio_snapshot!(*folio);
 
-        // Supplements: five barrier passes plus the fusable analysis
-        // singleton, six walks.
+        // Supplements: the model pass and the slot carriers' pass are
+        // both bought by this fixture; `v-if` and `v-for` are not, so the
+        // plan is four walks — three barriers plus the fusable analysis
+        // singleton.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=6\npasses=6\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=4\npasses=4\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         // Both models are valid: the fault table is empty, and the only
         // diagnostics are none at all.

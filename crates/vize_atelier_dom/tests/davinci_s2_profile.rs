@@ -20,13 +20,21 @@ use vize_s0::profiler::{CounterSummary, global_profiler};
 
 static PROFILER_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-const S2_DOM_EMIT_COUNTS: [(&str, u64, u64); 6] = [
-    ("small", 1, 5),
-    ("medium", 1, 33),
-    ("large", 1, 54),
-    ("stress-deep", 1, 72),
-    ("stress-wide", 1, 2),
-    ("stress-interp", 1, 201),
+/// fixture -> S2 DOM emit walks, emit op visits, transform walks.
+///
+/// The transform column is per fixture because the S2 pass planner
+/// declines a mandatory pass whose op family the lowering never built
+/// (`vize_s1_to_s2::lower::features`): two walks — the text pass and the
+/// static analysis — is the floor, and each family present adds one.
+/// `medium` pays three for its kebab-case components, which are slot
+/// carriers even though it spells no `v-slot`.
+const S2_DOM_EMIT_COUNTS: [(&str, u64, u64, u64); 6] = [
+    ("small", 1, 5, 2),
+    ("medium", 1, 33, 3),
+    ("large", 1, 54, 5),
+    ("stress-deep", 1, 72, 3),
+    ("stress-wide", 1, 2, 2),
+    ("stress-interp", 1, 201, 2),
 ];
 
 #[test]
@@ -57,11 +65,14 @@ fn profile_reports_real_s2_dom_walks() {
     assert_eq!(result.code, unobserved.code);
     assert_eq!(result.preamble, unobserved.preamble);
     assert_eq!(counter(&counters, "davinci.s2_dom.files"), 1);
-    assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 5);
-    assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 5);
+    // `<div>{{ msg }}</div>` builds no `ui.if`, no `ui.for`, no slot
+    // carrier and no `ui.model`, so the plan is the text pass plus the
+    // static analysis.
+    assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 2);
+    assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 2);
     assert_eq!(counter(&counters, "davinci.s2_dom.emit.walks"), 1);
     assert!(counter(&counters, "davinci.s2_dom.emit.visits") > 0);
-    assert_eq!(counter(&counters, "davinci.s2_dom.total.walks"), 6);
+    assert_eq!(counter(&counters, "davinci.s2_dom.total.walks"), 3);
 }
 
 #[test]
@@ -104,13 +115,19 @@ fn profile_reports_ladder_s2_dom_walk_budget() {
             fixture.name
         );
         assert_eq!(counter(&counters, "davinci.s2_dom.files"), 1);
-        assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 5);
-        assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 5);
+        assert_eq!(
+            counter(&counters, "davinci.s2_dom.transform.walks"),
+            expected.2
+        );
+        assert_eq!(
+            counter(&counters, "davinci.s2_dom.transform.passes"),
+            expected.2
+        );
         assert_eq!(counter(&counters, "davinci.s2_dom.emit.walks"), expected.0);
         assert_eq!(counter(&counters, "davinci.s2_dom.emit.visits"), expected.1);
         assert_eq!(
             counter(&counters, "davinci.s2_dom.total.walks"),
-            5 + expected.0
+            expected.2 + expected.0
         );
     }
 }
@@ -312,11 +329,11 @@ impl Drop for ProfileScope {
     }
 }
 
-fn s2_dom_emit_count(fixture: &str) -> (u64, u64) {
+fn s2_dom_emit_count(fixture: &str) -> (u64, u64, u64) {
     S2_DOM_EMIT_COUNTS
         .iter()
-        .find(|(name, _, _)| *name == fixture)
-        .map(|(_, walks, visits)| (*walks, *visits))
+        .find(|(name, ..)| *name == fixture)
+        .map(|(_, walks, visits, transform_walks)| (*walks, *visits, *transform_walks))
         .unwrap_or_else(|| panic!("{fixture} has no pinned S2 DOM emit count"))
 }
 

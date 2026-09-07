@@ -2,6 +2,7 @@
 //! position, the whole value escape-classified when it cannot split, and
 //! the hygiene scope minted for every iteration region.
 
+use super::features::OpFamily;
 use alloc::vec::Vec as StdVec;
 
 use vize_s0::{Box, String, Vec, cstr};
@@ -153,6 +154,7 @@ pub(crate) fn lower_for<'a>(
             ops
         },
     };
+    cx.observe(OpFamily::For);
     Op::For(Box::new_in(
         ForOp {
             binding,

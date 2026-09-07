@@ -18,6 +18,7 @@
 //! ops; only ill-formed spellings still defer. The remaining set is still
 //! DOM realization (P2-11).
 
+use super::features::OpFamily;
 use alloc::vec::Vec as StdVec;
 
 use vize_s0::{Box, Span, String, Vec, cstr};
@@ -181,6 +182,7 @@ fn lower_model<'a>(
             span,
         });
     }
+    cx.observe(OpFamily::Model);
     cx.record(
         "lower.model",
         node,
@@ -305,6 +307,7 @@ pub(crate) fn lower_slot_content<'a>(
         after,
         span,
     );
+    cx.observe(OpFamily::SlotCarrier);
     BindingOp::SlotContent(Box::new_in(
         SlotContentOp {
             name,

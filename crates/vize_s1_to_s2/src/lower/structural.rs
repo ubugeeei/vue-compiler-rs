@@ -13,6 +13,7 @@
 //! conditional evaluates outside the iteration, so the branch region
 //! holds the `ui.for` which holds the element.
 
+use super::features::OpFamily;
 use alloc::vec::Vec as StdVec;
 
 use vize_s0::{Box, Span, String, Vec, cstr, ensure_sufficient_stack};
@@ -264,6 +265,7 @@ fn lower_if_group<'a>(
             },
         );
     }
+    cx.observe(OpFamily::If);
     out.push(Op::If(Box::new_in(
         IfOp {
             branches: lowered,
