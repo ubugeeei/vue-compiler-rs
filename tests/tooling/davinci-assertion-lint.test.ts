@@ -113,6 +113,23 @@ test("explicit allowlist suppresses fixture findings only before expiry", () => 
   }
 });
 
+test("explicit allowlist rejects non-normalized paths", () => {
+  for (const entry of ["/bad_example.rs", "./bad_example.rs", "nested/../bad_example.rs"]) {
+    const allowlist = temporaryAllowlist("2999-12-31", [entry]);
+    try {
+      const result = runLint(["--root", fixtureDir, "--allowlist", allowlist]);
+      assert.equal(result.status, 2, result.stdout);
+      assert.equal(result.stdout, "");
+      assert.match(
+        result.stderr,
+        /paths must be normalized repo-root-relative forward-slash strings/,
+      );
+    } finally {
+      removeTemporaryAllowlist(allowlist);
+    }
+  }
+});
+
 test("assertion lint exits 0 on the real tree under the committed allowlist", () => {
   const entryCount = allowlistPaths().length;
   assert.ok(entryCount > 0, "committed allowlist must not be empty while the debt exists");
