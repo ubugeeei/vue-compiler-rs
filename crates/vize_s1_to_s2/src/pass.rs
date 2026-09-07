@@ -61,6 +61,7 @@ pub mod vslot;
 pub(crate) mod walk;
 
 pub use hoist::{StaticFacts, StaticLevel};
+pub use plan::TransformProfile;
 pub use text::TextFacts;
 pub use vfor::{ForFacts, ForName};
 pub use vif::{BranchKey, BranchKeyKind, IfFacts};
@@ -165,11 +166,20 @@ pub struct S2Facts {
 ///
 /// [`VerifyObserver`]: vize_s2::verify::VerifyObserver
 pub fn run_transform<'a, O: PassObserver>(lowered: &mut Lowered<'a>, observer: &mut O) -> S2Facts {
+    run_transform_with_profile(lowered, observer, TransformProfile::DEFAULT)
+}
+
+/// [`run_transform`] under a product-selected optional-pass profile.
+pub fn run_transform_with_profile<'a, O: PassObserver>(
+    lowered: &mut Lowered<'a>,
+    observer: &mut O,
+    profile: TransformProfile,
+) -> S2Facts {
     let mut facts = S2Facts::default();
     #[cfg(debug_assertions)]
     let mut verify = vize_s2::verify::VerifyObserver::new();
 
-    let pipeline = plan::pipeline_for(lowered.caps, lowered.features);
+    let pipeline = plan::pipeline_for_profile(lowered.caps, lowered.features, profile);
     let outcome = run_pipeline(&pipeline, observer, |event| {
         let name = event.desc().name;
         if name == legacy::DESC.name {

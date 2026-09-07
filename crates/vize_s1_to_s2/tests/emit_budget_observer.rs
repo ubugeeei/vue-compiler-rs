@@ -7,7 +7,10 @@ use std::path::Path;
 
 use davinci_harness::fixtures::{LADDER, template_block};
 use vize_s0::Allocator;
-use vize_s1_to_s2::{emit_dom_source, emit_dom_source_observed};
+use vize_s1_to_s2::{
+    DomEmitOptions, emit_dom_source, emit_dom_source_observed,
+    emit_dom_source_observed_with_options, emit_dom_source_with_options,
+};
 
 #[derive(Debug, Clone, Copy)]
 struct TraversalBudget {
@@ -135,6 +138,64 @@ fn model_bindings_keep_the_model_diagnostic_pass_in_the_emit_budget() {
     assert_eq!(observed.budget.transform.passes, 6);
     assert_eq!(observed.budget.emit_walks, 1);
     assert_eq!(observed.budget.total_walks(), 7);
+}
+
+#[test]
+fn disabled_static_hoist_skips_the_optional_analysis_walk() {
+    let source = r#"<section><span class="label">Static</span></section>"#;
+    let options = DomEmitOptions {
+        hoist_static: false,
+        ..DomEmitOptions::DEFAULT
+    };
+    let observed_allocator = Allocator::new();
+    let plain_allocator = Allocator::new();
+    let observed = emit_dom_source_observed_with_options(
+        &observed_allocator,
+        source,
+        vize_s1_to_s2::LegacyCaps::VUE3,
+        &options,
+    )
+    .expect("observed emit succeeds without static hoist");
+    let plain = emit_dom_source_with_options(
+        &plain_allocator,
+        source,
+        vize_s1_to_s2::LegacyCaps::VUE3,
+        &options,
+    )
+    .expect("plain emit succeeds without static hoist");
+
+    assert_eq!(observed.emit.assembled(), plain.assembled());
+    assert_eq!(
+        observed.emit.sections.imports_len,
+        observed.emit.preamble.len(),
+        "static-hoist-disabled preamble must not append hoist declarations"
+    );
+    assert_eq!(observed.budget.transform.walks, 4);
+    assert_eq!(observed.budget.transform.passes, 4);
+    assert_eq!(observed.budget.emit_walks, 1);
+    assert_eq!(observed.budget.total_walks(), 5);
+}
+
+#[test]
+fn disabled_static_hoist_keeps_model_diagnostics_when_models_exist() {
+    let source = r#"<input v-model="msg">"#;
+    let options = DomEmitOptions {
+        hoist_static: false,
+        ..DomEmitOptions::DEFAULT
+    };
+    let observed_allocator = Allocator::new();
+    let observed = emit_dom_source_observed_with_options(
+        &observed_allocator,
+        source,
+        vize_s1_to_s2::LegacyCaps::VUE3,
+        &options,
+    )
+    .expect("observed model emit succeeds without static hoist");
+
+    assert_eq!(observed.budget.transform.walks, 5);
+    assert_eq!(observed.budget.transform.passes, 5);
+    assert_eq!(observed.budget.emit_walks, 1);
+    assert_eq!(observed.budget.total_walks(), 6);
 }
 
 fn s2_dom_emit_count(fixture: &str) -> TraversalBudget {

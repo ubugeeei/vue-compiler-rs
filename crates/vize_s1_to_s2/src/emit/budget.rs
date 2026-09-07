@@ -3,7 +3,7 @@ use vize_s0::{Allocator, ensure_sufficient_stack};
 use vize_s1::{SurfaceParseOptions, parse_with_options};
 
 use crate::lower::{LegacyCaps, lower_with_caps_and_comment_policy};
-use crate::pass::run_transform;
+use crate::pass::{TransformProfile, run_transform_with_profile};
 
 use super::{DomEmit, DomEmitOptions, EmitError, emit_dom_with_emit_budget};
 
@@ -96,7 +96,11 @@ pub(super) fn emit_dom_source_with_options_and_observer<'a, O: PassObserver>(
             options.custom_element_patterns,
             options.custom_element_predicate,
         );
-        let facts = run_transform(&mut lowered, observer);
+        let mut profile = TransformProfile::DEFAULT;
+        if !options.hoist_static {
+            profile = profile.without_static_analysis();
+        }
+        let facts = run_transform_with_profile(&mut lowered, observer, profile);
         let (emit, emit_visits) = emit_dom_with_emit_budget(&lowered, &facts, options)?;
         Ok((emit, emit_visits))
     })
