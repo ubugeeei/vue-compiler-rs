@@ -14,7 +14,7 @@ use vize_s0::{Allocator, Box, Vec};
 use vize_s2::expr::ExprRef;
 use vize_s2::op::{
     Attribute, BindOp, BindingOp, ComponentOp, DynamicName, ElementOp, InterpolationOp, Namespace,
-    OnOp, Op, Region, TextOp,
+    OnOp, Op, Region, TextOp, VueShowOp,
 };
 
 /// A JSX render root represented as S2 operations.
@@ -182,10 +182,17 @@ fn lower_binding<'a>(
     allocator: &'a Allocator,
     directive: &vize_relief::DirectiveNode<'a>,
 ) -> Result<BindingOp<'a>, S2Refusal> {
-    if !matches!(directive.name, "bind" | "on") {
-        return Err(S2Refusal::Directive);
+    match directive.name {
+        "bind" | "on" => lower_bind_or_on(allocator, directive),
+        "show" => lower_show(allocator, directive),
+        _ => Err(S2Refusal::Directive),
     }
+}
 
+fn lower_bind_or_on<'a>(
+    allocator: &'a Allocator,
+    directive: &vize_relief::DirectiveNode<'a>,
+) -> Result<BindingOp<'a>, S2Refusal> {
     let name = lower_dynamic_name(allocator, directive.arg.as_ref())?;
     let modifiers = lower_modifiers(allocator, directive);
     let expression = directive
@@ -215,6 +222,27 @@ fn lower_binding<'a>(
         ))),
         _ => unreachable!("directive name was admitted above"),
     }
+}
+
+fn lower_show<'a>(
+    allocator: &'a Allocator,
+    directive: &vize_relief::DirectiveNode<'a>,
+) -> Result<BindingOp<'a>, S2Refusal> {
+    if directive.arg.is_some() || !directive.modifiers.is_empty() {
+        return Err(S2Refusal::Directive);
+    }
+    let Some(expression) = directive.exp.as_ref() else {
+        return Err(S2Refusal::Directive);
+    };
+    let value = lower_expression(allocator, expression)?;
+
+    Ok(BindingOp::VueShow(Box::new_in(
+        VueShowOp {
+            value,
+            span: directive.loc.span,
+        },
+        &allocator,
+    )))
 }
 
 fn lower_modifiers<'a>(
@@ -271,66 +299,4 @@ const fn namespace(namespace: ReliefNamespace) -> Namespace {
 }
 
 #[cfg(test)]
-mod tests {
-    use vize_s0::Allocator;
-    use vize_s2::op::Op;
-
-    use crate::{JsxLang, lower_source};
-
-    use super::S2Refusal;
-
-    #[test]
-    fn lower_source_attaches_static_intrinsic_s2_root() {
-        let allocator = Allocator::new();
-        let source = "const App = () => <div id=\"x\">hello {name}<span hidden /></div>";
-        let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let root = lowered.roots.first().expect("one JSX root");
-
-        let s2 = root.s2.as_ref().expect("static intrinsic S2 root");
-        assert_eq!(s2.source, source);
-        assert_eq!(s2.op_count, 4);
-        let Op::Element(element) = &s2.root.ops[0] else {
-            panic!("root is an element");
-        };
-        assert_eq!(element.tag, "div");
-        assert_eq!(element.attributes[0].name, "id");
-        assert_eq!(element.attributes[0].value, Some("x"));
-        let Op::Interpolation(interpolation) = &element.children.ops[1] else {
-            panic!("second child is interpolation");
-        };
-        assert_eq!(interpolation.expression.source(), "name");
-        assert_eq!(
-            interpolation.expression.span().start,
-            source.find("name").unwrap() as u32
-        );
-    }
-
-    #[test]
-    fn lower_source_attaches_component_s2_root() {
-        let allocator = Allocator::new();
-        let source = "const App = () => <Panel title=\"x\" />";
-        let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let root = lowered.roots.first().expect("one JSX root");
-
-        let s2 = root.s2.as_ref().expect("component S2 root");
-        let Op::Component(component) = &s2.root.ops[0] else {
-            panic!("root is a component");
-        };
-        assert_eq!(component.name, "Panel");
-        assert_eq!(component.attributes[0].name, "title");
-    }
-
-    #[test]
-    fn non_bind_directive_needs_its_own_s2_binding_lowering() {
-        let allocator = Allocator::new();
-        let lowered = lower_source(
-            &allocator,
-            allocator.as_oxc(),
-            "const App = () => <div v-show={visible} />",
-            JsxLang::Jsx,
-        );
-        let root = lowered.roots.first().expect("one JSX root");
-
-        assert!(matches!(root.s2, Err(S2Refusal::Directive)));
-    }
-}
+mod tests;

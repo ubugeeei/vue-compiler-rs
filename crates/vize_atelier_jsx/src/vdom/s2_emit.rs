@@ -116,9 +116,12 @@ fn op_is_supported(op: &Op<'_>) -> bool {
 }
 
 fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
-    bindings
-        .iter()
-        .all(|binding| matches!(binding, BindingOp::Bind(_) | BindingOp::On(_)))
+    bindings.iter().all(|binding| {
+        matches!(
+            binding,
+            BindingOp::Bind(_) | BindingOp::On(_) | BindingOp::VueShow(_)
+        )
+    })
 }
 
 fn component_is_supported(component: &ComponentOp<'_>) -> bool {
@@ -169,155 +172,10 @@ fn component_binding_is_supported(binding: &BindingOp<'_>) -> bool {
                 && on.modifiers.is_empty()
                 && matches!(on.name, Some(DynamicName::Static(_)))
         }
+        BindingOp::VueShow(_) => true,
         _ => false,
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use vize_croquis::Croquis;
-    use vize_s0::Allocator;
-
-    use crate::{JsxLang, JsxOutputMode, lower_source};
-
-    use super::super::{VdomCompatOptions, VdomCompileOptions, compile_root_to_vdom};
-
-    #[test]
-    fn native_vdom_admitted_roots_emit_from_s2() {
-        let allocator = Allocator::new();
-        let source = "const A = () => <div>{count}</div>;";
-        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
-        let mut root = lowered.roots.pop().expect("one JSX root");
-        root.root.children.clear();
-
-        let mut diagnostics = Vec::new();
-        let component = compile_root_to_vdom(
-            &allocator,
-            root,
-            analysis,
-            false,
-            &VdomCompileOptions::default(),
-            VdomCompatOptions::default(),
-            &mut diagnostics,
-            source,
-        );
-
-        assert!(diagnostics.is_empty(), "{diagnostics:?}");
-        assert_eq!(component.mode, JsxOutputMode::Vdom);
-        assert_eq!(
-            component.code.as_str(),
-            "export function render(_ctx, _cache) {\n  return (_openBlock(), \
-             _createElementBlock(\"div\", null, _toDisplayString(count), 1 /* TEXT */))\n}"
-        );
-    }
-
-    #[test]
-    fn component_slot_children_stay_on_relief_until_slot_facts_are_authoritative() {
-        let allocator = Allocator::new();
-        let source = "const A = () => <Card><h1>Title</h1></Card>;";
-        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let root = lowered.roots.pop().expect("one JSX root");
-        let s2 = root.s2.as_ref().expect("component child projects to S2");
-
-        assert_eq!(super::root_is_supported(s2), false);
-    }
-
-    #[test]
-    fn leaf_root_component_with_static_props_emits_from_s2() {
-        let allocator = Allocator::new();
-        let source = "const A = () => <B foo={f} title=\"ok\" />";
-        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
-        let mut root = lowered.roots.pop().expect("one JSX root");
-        let s2 = root.s2.as_ref().expect("leaf component projects to S2");
-
-        assert_eq!(super::root_is_supported(s2), true);
-
-        root.root.children.clear();
-        let mut diagnostics = Vec::new();
-        let component = compile_root_to_vdom(
-            &allocator,
-            root,
-            analysis,
-            false,
-            &VdomCompileOptions::default(),
-            VdomCompatOptions::default(),
-            &mut diagnostics,
-            source,
-        );
-
-        assert!(diagnostics.is_empty(), "{diagnostics:?}");
-        assert_eq!(
-            component.preamble.as_str(),
-            "import { resolveComponent as _resolveComponent, openBlock as _openBlock, \
-             createBlock as _createBlock } from \"vue\"\n"
-        );
-        assert_eq!(
-            component.code.as_str(),
-            "export function render(_ctx, _cache) {\n  const _component_B = \
-             _resolveComponent(\"B\")\n  \n  return (_openBlock(), _createBlock(_component_B, \
-             {\n    foo: f,\n    title: \"ok\"\n  }, null, 8 /* PROPS */, [\"foo\"]))\n}"
-        );
-    }
-
-    #[test]
-    fn component_spread_props_emit_from_s2() {
-        let allocator = Allocator::new();
-        let source = "const A = () => <B {...attrs} foo={f} title=\"ok\" />";
-        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
-        let mut root = lowered.roots.pop().expect("one JSX root");
-        let s2 = root.s2.as_ref().expect("component spread projects to S2");
-
-        assert_eq!(super::root_is_supported(s2), true);
-
-        root.root.children.clear();
-        let mut diagnostics = Vec::new();
-        let component = compile_root_to_vdom(
-            &allocator,
-            root,
-            analysis,
-            false,
-            &VdomCompileOptions::default(),
-            VdomCompatOptions::default(),
-            &mut diagnostics,
-            source,
-        );
-
-        assert!(diagnostics.is_empty(), "{diagnostics:?}");
-        assert_eq!(
-            component.preamble.as_str(),
-            "import { resolveComponent as _resolveComponent, mergeProps as _mergeProps, \
-             openBlock as _openBlock, createBlock as _createBlock } from \"vue\"\n"
-        );
-        assert_eq!(
-            component.code.as_str(),
-            "export function render(_ctx, _cache) {\n  const _component_B = \
-             _resolveComponent(\"B\")\n  \n  return (_openBlock(), _createBlock(_component_B, \
-             _mergeProps(attrs, {\n    foo: f,\n    title: \"ok\"\n  }), null, 16 /* FULL_PROPS */, \
-             [\"foo\"]))\n}"
-        );
-    }
-
-    #[test]
-    fn dynamic_component_tags_stay_on_relief_until_component_admission_widens() {
-        let allocator = Allocator::new();
-        let source = "const A = () => <Widget.Panel active />";
-        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let root = lowered.roots.pop().expect("one JSX root");
-        let s2 = root.s2.as_ref().expect("dynamic component projects to S2");
-
-        assert_eq!(super::root_is_supported(s2), false);
-    }
-
-    #[test]
-    fn component_v_slots_still_refuses_s2_projection() {
-        let allocator = Allocator::new();
-        let source = "const A = () => <B v-slots={slots} />";
-        let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-        let root = lowered.roots.pop().expect("one JSX root");
-
-        assert_eq!(root.s2.err(), Some(crate::s2::S2Refusal::Directive));
-    }
-}
+mod tests;
