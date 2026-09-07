@@ -301,7 +301,25 @@ test("release script explains cleanup after manifest verification fails", () => 
     assert.equal(fixture.result.status, 1);
     assert.match(fixture.result.stderr, /package manifest alignment tests failed/);
     assert.match(fixture.result.stderr, /git reset --hard origin\/main/);
+    assert.match(fixture.gitLog, /^commit --no-verify -m chore: release v0\.290\.1$/m);
     assert.doesNotMatch(fixture.gitLog, /^(?:tag|push)\b/m);
+  } finally {
+    fs.rmSync(fixture.tempDir, { recursive: true, force: true });
+  }
+});
+
+test("release script checks manifest alignment before repository mutation", () => {
+  const fixture = runRepositoryGuardFixture({ branch: "main", manifestPrecheckFails: true });
+
+  try {
+    assert.equal(fixture.result.status, 1);
+    assert.match(
+      fixture.result.stderr,
+      /package manifest alignment tests failed before repository mutation/,
+    );
+    assert.match(fixture.nodeLog, /^--test tests\/tooling\/package-manifests\.test\.ts$/m);
+    assert.doesNotMatch(fixture.gitLog, /^(?:add|commit|tag|push)\b/m);
+    assert.equal(fs.readFileSync(fixture.cargoTomlPath, "utf8"), fixture.cargoToml);
   } finally {
     fs.rmSync(fixture.tempDir, { recursive: true, force: true });
   }
