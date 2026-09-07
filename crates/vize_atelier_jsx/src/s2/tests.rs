@@ -124,12 +124,76 @@ fn v_show_directive_projects_to_s2_vue_show() {
 }
 
 #[test]
+fn v_html_directive_projects_to_s2_vue_html() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <div v-html={raw} />";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("v-html projects to S2");
+    let Op::Element(element) = &s2.root.ops[0] else {
+        panic!("root is an element");
+    };
+    let BindingOp::VueHtml(html) = &element.bindings[0] else {
+        panic!("binding is vue.html");
+    };
+    assert_eq!(html.value.as_ref().map(|value| value.source()), Some("raw"));
+    assert_eq!(html.span.start, source.find("v-html={raw}").unwrap() as u32);
+}
+
+#[test]
+fn v_text_directive_projects_to_s2_vue_text() {
+    let allocator = Allocator::new();
+    let source = "const App = () => <div v-text={msg} />";
+    let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.first().expect("one JSX root");
+
+    let s2 = root.s2.as_ref().expect("v-text projects to S2");
+    let Op::Element(element) = &s2.root.ops[0] else {
+        panic!("root is an element");
+    };
+    let BindingOp::VueText(text) = &element.bindings[0] else {
+        panic!("binding is vue.text");
+    };
+    assert_eq!(text.value.as_ref().map(|value| value.source()), Some("msg"));
+    assert_eq!(text.span.start, source.find("v-text={msg}").unwrap() as u32);
+}
+
+#[test]
 fn v_show_without_value_stays_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let lowered = lower_source(
         &allocator,
         allocator.as_oxc(),
         "const App = () => <div v-show />",
+        JsxLang::Jsx,
+    );
+    let root = lowered.roots.first().expect("one JSX root");
+
+    assert!(matches!(root.s2, Err(S2Refusal::Directive)));
+}
+
+#[test]
+fn v_html_without_value_stays_on_directive_refusal_path() {
+    let allocator = Allocator::new();
+    let lowered = lower_source(
+        &allocator,
+        allocator.as_oxc(),
+        "const App = () => <div v-html />",
+        JsxLang::Jsx,
+    );
+    let root = lowered.roots.first().expect("one JSX root");
+
+    assert!(matches!(root.s2, Err(S2Refusal::Directive)));
+}
+
+#[test]
+fn component_v_html_stays_on_directive_refusal_path() {
+    let allocator = Allocator::new();
+    let lowered = lower_source(
+        &allocator,
+        allocator.as_oxc(),
+        "const App = () => <Panel v-html={raw} />",
         JsxLang::Jsx,
     );
     let root = lowered.roots.first().expect("one JSX root");

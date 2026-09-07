@@ -147,7 +147,11 @@ fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
     bindings.iter().all(|binding| {
         matches!(
             binding,
-            BindingOp::Bind(_) | BindingOp::On(_) | BindingOp::VueShow(_)
+            BindingOp::Bind(_)
+                | BindingOp::On(_)
+                | BindingOp::VueShow(_)
+                | BindingOp::VueHtml(_)
+                | BindingOp::VueText(_)
         )
     })
 }
@@ -232,3 +236,5 @@ fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
 mod events_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod vue_directives_tests;

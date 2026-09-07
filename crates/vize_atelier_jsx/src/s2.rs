@@ -15,9 +15,10 @@ use vize_s1_to_s2::lower::{LoweringFeatures, OpFamily};
 use vize_s2::expr::ExprRef;
 use vize_s2::op::{
     Attribute, BindOp, BindingOp, ComponentOp, DynamicName, ElementOp, InterpolationOp, Namespace,
-    OnOp, Op, Region, TextOp, VueShowOp,
+    OnOp, Op, Region, TextOp,
 };
 
+use self::directives::lower_vue_directive;
 use self::slots::{has_slot_content, lower_slot_content, slot_template_span};
 
 /// A JSX render root represented as S2 operations.
@@ -127,7 +128,7 @@ fn lower_element<'a>(
     op_count: &mut u32,
     features: &mut LoweringFeatures,
 ) -> Result<Op<'a>, S2Refusal> {
-    let props = lower_props(allocator, &element.props)?;
+    let props = lower_props(allocator, &element.props, element.tag_type)?;
     *op_count = op_count.saturating_add(props.binding_count);
     let children = Region {
         ops: lower_children(allocator, &element.children, op_count, features)?,
@@ -185,6 +186,7 @@ struct LoweredProps<'a> {
 fn lower_props<'a>(
     allocator: &'a Allocator,
     props: &[PropNode<'a>],
+    element_type: ElementType,
 ) -> Result<LoweredProps<'a>, S2Refusal> {
     let mut attributes = Vec::new_in(&allocator);
     let mut bindings = Vec::new_in(&allocator);
@@ -196,7 +198,7 @@ fn lower_props<'a>(
                 span: attribute.loc.span,
             }),
             PropNode::Directive(directive) => {
-                bindings.push(lower_binding(allocator, directive)?);
+                bindings.push(lower_binding(allocator, directive, element_type)?);
             }
         }
     }
@@ -211,10 +213,11 @@ fn lower_props<'a>(
 fn lower_binding<'a>(
     allocator: &'a Allocator,
     directive: &vize_relief::DirectiveNode<'a>,
+    element_type: ElementType,
 ) -> Result<BindingOp<'a>, S2Refusal> {
     match directive.name {
         "bind" | "on" => lower_bind_or_on(allocator, directive),
-        "show" => lower_show(allocator, directive),
+        "show" | "html" | "text" => lower_vue_directive(allocator, directive, element_type),
         "slot" => lower_slot_content(allocator, directive),
         _ => Err(S2Refusal::Directive),
     }
@@ -255,27 +258,6 @@ fn lower_bind_or_on<'a>(
     }
 }
 
-fn lower_show<'a>(
-    allocator: &'a Allocator,
-    directive: &vize_relief::DirectiveNode<'a>,
-) -> Result<BindingOp<'a>, S2Refusal> {
-    if directive.arg.is_some() || !directive.modifiers.is_empty() {
-        return Err(S2Refusal::Directive);
-    }
-    let Some(expression) = directive.exp.as_ref() else {
-        return Err(S2Refusal::Directive);
-    };
-    let value = lower_expression(allocator, expression)?;
-
-    Ok(BindingOp::VueShow(Box::new_in(
-        VueShowOp {
-            value,
-            span: directive.loc.span,
-        },
-        &allocator,
-    )))
-}
-
 fn lower_modifiers<'a>(
     allocator: &'a Allocator,
     directive: &vize_relief::DirectiveNode<'a>,
@@ -307,7 +289,7 @@ fn lower_dynamic_name<'a>(
     }
 }
 
-fn lower_expression<'a>(
+pub(super) fn lower_expression<'a>(
     allocator: &'a Allocator,
     expression: &ExpressionNode<'a>,
 ) -> Result<ExprRef<'a>, S2Refusal> {
@@ -332,4 +314,5 @@ const fn namespace(namespace: ReliefNamespace) -> Namespace {
 #[cfg(test)]
 mod tests;
 
+mod directives;
 mod slots;
