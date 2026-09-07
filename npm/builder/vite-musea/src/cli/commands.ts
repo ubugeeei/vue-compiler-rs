@@ -81,7 +81,8 @@ export async function runVrt(options: CliOptions, artFiles: ArtFileInfo[]): Prom
         console.log(`    Variants:   ${a11ySummary.totalVariants}`);
         console.log(`    Violations: ${a11ySummary.totalViolations}`);
         console.log(`    Critical:   ${a11ySummary.criticalCount}`);
-        console.log(`    Serious:    ${a11ySummary.seriousCount}\n`);
+        console.log(`    Serious:    ${a11ySummary.seriousCount}`);
+        console.log(`    Not audited: ${a11ySummary.erroredVariants}\n`);
 
         // Generate a11y report
         const reportDir = options.output;
@@ -99,7 +100,16 @@ export async function runVrt(options: CliOptions, artFiles: ArtFileInfo[]): Prom
           console.log(`  A11y HTML report: ${a11yPath}\n`);
         }
 
-        // CI mode - exit with error on critical/serious violations
+        // CI mode - exit with error on critical/serious violations. A variant
+        // whose audit never ran fails too, but under its own message: it is
+        // not an accessibility finding, and reporting it as one sends people
+        // looking for a component defect that does not exist.
+        if (options.ci && a11ySummary.erroredVariants > 0) {
+          console.log(
+            `  CI mode: ${a11ySummary.erroredVariants} variant(s) could not be audited\n`,
+          );
+          process.exit(1);
+        }
         if (options.ci && (a11ySummary.criticalCount > 0 || a11ySummary.seriousCount > 0)) {
           console.log("  CI mode: Accessibility violations found\n");
           process.exit(1);

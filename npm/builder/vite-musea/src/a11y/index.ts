@@ -24,6 +24,8 @@ export { computeA11ySummary, generateA11yHtmlReport, generateA11yJsonReport } fr
 export interface A11ySummary {
   totalComponents: number;
   totalVariants: number;
+  /** Variants whose audit could not run at all; see `A11yResult.error`. */
+  erroredVariants: number;
   totalViolations: number;
   criticalCount: number;
   seriousCount: number;
@@ -139,17 +141,10 @@ export class MuseaA11yRunner {
           results.push({
             artPath: art.path,
             variantName: variant.name,
-            violations: [
-              {
-                id: "audit-error",
-                impact: "critical",
-                description: `Audit failed: ${error instanceof Error ? error.message : String(error)}`,
-                helpUrl: "",
-                nodes: 0,
-              },
-            ],
+            violations: [],
             passes: 0,
             incomplete: 0,
+            error: error instanceof Error ? error.message : String(error),
           });
         } finally {
           if (context) {
