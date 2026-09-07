@@ -55,6 +55,7 @@ fn current_walks(fixture: &str) -> (u64, u64) {
 fn profile_build_walks_report_the_current_p2_12b_gap() {
     let _guard = lock_profiler();
     let fused_walk_target = phase_2_dom_walk_target();
+    assert_current_walks_cover_ladder();
     assert_eq!(
         fused_walk_target, 1,
         "P2-12a pins the phase-2 DOM fused-walk target"
@@ -122,6 +123,15 @@ fn profile_build_walks_report_the_current_p2_12b_gap() {
             fixture.name
         );
     }
+}
+
+fn assert_current_walks_cover_ladder() {
+    let pinned: Vec<&str> = CURRENT_WALKS.iter().map(|(name, ..)| *name).collect();
+    let ladder: Vec<&str> = LADDER.iter().map(|fixture| fixture.name).collect();
+    assert_eq!(
+        pinned, ladder,
+        "current P2-12b DOM build walk pins must match the ladder exactly, in order"
+    );
 }
 
 fn traversal_budget(fixture: &str) -> TraversalBudget {
