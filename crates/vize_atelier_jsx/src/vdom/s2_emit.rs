@@ -118,7 +118,7 @@ fn op_is_supported(op: &Op<'_>) -> bool {
             if element.tag == "template" && has_slot_content(&element.bindings) {
                 return slot_template_is_supported(element);
             }
-            bindings_are_supported(&element.bindings) && region_is_supported(&element.children)
+            element_bindings_are_supported(element) && region_is_supported(&element.children)
         }
         Op::Component(component) => component_is_supported(component),
         Op::Comment(_) | Op::If(_) | Op::For(_) | Op::Slot(_) => false,
@@ -146,17 +146,63 @@ fn slot_content_is_supported(content: &SlotContentOp<'_>) -> bool {
         && matches!(content.name, None | Some(DynamicName::Static(_)))
 }
 
-fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
-    bindings.iter().all(|binding| {
-        matches!(
-            binding,
-            BindingOp::Bind(_)
-                | BindingOp::On(_)
-                | BindingOp::VueShow(_)
-                | BindingOp::VueHtml(_)
-                | BindingOp::VueText(_)
-        )
-    })
+fn element_bindings_are_supported(element: &ElementOp<'_>) -> bool {
+    element
+        .bindings
+        .iter()
+        .all(|binding| element_binding_is_supported(element, binding))
+}
+
+fn element_binding_is_supported(element: &ElementOp<'_>, binding: &BindingOp<'_>) -> bool {
+    match binding {
+        BindingOp::Bind(_)
+        | BindingOp::On(_)
+        | BindingOp::VueShow(_)
+        | BindingOp::VueHtml(_)
+        | BindingOp::VueText(_) => true,
+        BindingOp::Model(model) => input_model_is_supported(element, model),
+        _ => false,
+    }
+}
+
+fn input_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {
+    element.tag == "input"
+        && model.argument.is_none()
+        && model_is_bare_input(model)
+        && model.contract.read.source() == model.contract.write.source()
+        && model.contract.read.span() == model.contract.write.span()
+        && matches!(model.contract.read, ExprRef::Js(_))
+        && matches!(model.contract.write, ExprRef::Js(_))
+        && element
+            .attributes
+            .iter()
+            .all(|attribute| attribute.name != "type")
+        && element
+            .bindings
+            .iter()
+            .all(|binding| !bind_may_set_type(binding))
+}
+
+fn model_is_bare_input(model: &ModelOp<'_>) -> bool {
+    model
+        .attributes
+        .iter()
+        .any(|attribute| attribute.name == "element-kind" && attribute.value == Some("input"))
+        && model
+            .attributes
+            .iter()
+            .all(|attribute| attribute.name == "element-kind" && attribute.value == Some("input"))
+}
+
+fn bind_may_set_type(binding: &BindingOp<'_>) -> bool {
+    match binding {
+        BindingOp::Bind(bind) => match bind.name {
+            None | Some(DynamicName::Dynamic(_)) => true,
+            Some(DynamicName::Static("type")) => true,
+            Some(DynamicName::Static(_)) => false,
+        },
+        _ => false,
+    }
 }
 
 fn component_is_supported(component: &ComponentOp<'_>) -> bool {
@@ -260,6 +306,8 @@ fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
 mod compat_tests;
 #[cfg(test)]
 mod events_tests;
+#[cfg(test)]
+mod input_model_tests;
 #[cfg(test)]
 mod model_tests;
 #[cfg(test)]
