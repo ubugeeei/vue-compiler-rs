@@ -124,14 +124,40 @@ fn component_spread_props_emit_from_s2() {
 }
 
 #[test]
-fn dynamic_component_tags_stay_on_relief_until_component_admission_widens() {
+fn dynamic_component_tags_emit_from_s2() {
     let allocator = Allocator::new();
-    let source = "const A = () => <Widget.Panel active />";
+    let source = "const A = () => <Widget.Panel foo={1} />";
     let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-    let root = lowered.roots.pop().expect("one JSX root");
+    let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
+    let mut root = lowered.roots.pop().expect("one JSX root");
     let s2 = root.s2.as_ref().expect("dynamic component projects to S2");
 
-    assert_eq!(super::root_is_supported(s2), false);
+    assert_eq!(super::root_is_supported(s2), true);
+
+    root.root.children.clear();
+    let mut diagnostics = Vec::new();
+    let component = compile_root_to_vdom(
+        &allocator,
+        root,
+        analysis,
+        false,
+        &VdomCompileOptions::default(),
+        VdomCompatOptions::default(),
+        &mut diagnostics,
+        source,
+    );
+
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { resolveDynamicComponent as _resolveDynamicComponent, openBlock as _openBlock, \
+         createBlock as _createBlock } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  return (_openBlock(), \
+         _createBlock(_resolveDynamicComponent(Widget.Panel), { foo: 1 }))\n}"
+    );
 }
 
 #[test]
