@@ -14,6 +14,7 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
         ("element", "const A = () => <div class=\"card\" />;"),
         ("text", "const A = () => <p>Hello</p>;"),
         ("interpolation", "const A = () => <div>{count}</div>;"),
+        ("fragment root", "const A = () => <><i/><b/></>;"),
         ("element bind", "const A = () => <button disabled={off} />;"),
         (
             "element event",
