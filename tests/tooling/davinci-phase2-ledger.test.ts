@@ -288,10 +288,13 @@ test("P2-11 records current installments without presenting stale remainders", (
 });
 test("suite registry debt and the TS-52 transport decision stay resolved", () => {
   const maximum = suiteMaximum(text.suites);
+  const p2Suites = requiredLine(text.suites, /^\| P2\s+\|[^\n]+$/mu, "P2 suite map row");
   assert.equal(maximum, 52);
   assertSuiteRange(text.readme, maximum);
   assert.match(text.suites, /^\| TS-25 \|[^\n]*P2-9[^\n]*P2-11[^\n]*P2-16/mu);
   assert.match(text.suites, /^\| TS-52 \|[^\n]*Spolvero feed payload/mu);
+  assert.match(p2Suites, /TS-11 empty for DOM and JSX/);
+  assert.match(taskSection(text.tasksLater, "P2-16"), /JSX corpus projects' rows in TS-11 empty/);
   assert.match(text.phase, /\*\*Registry maintenance this phase owes\*\*/);
   assert.match(text.phase, /P2-18 must add the entry in its own PR/);
   assert.match(text.phase, /Current resolution \(2026-08-25\): registry maintenance is resolved/);
