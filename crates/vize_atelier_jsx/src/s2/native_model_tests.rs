@@ -52,6 +52,54 @@ fn text_input_v_model_projects_to_s2_model() {
 }
 
 #[test]
+fn native_model_modifiers_project_to_s2_attributes() {
+    let cases: &[(&str, &str, &[&str])] = &[
+        (
+            "const App = () => <input v-model={[value, [\"trim\"]]} />",
+            "input",
+            &["trim"],
+        ),
+        (
+            "const App = () => <input v-model_number_lazy={value} />",
+            "input",
+            &["number", "lazy"],
+        ),
+        (
+            "const App = () => <textarea v-model_lazy={value} />",
+            "textarea",
+            &["lazy"],
+        ),
+        (
+            "const App = () => <select v-model_number={value}></select>",
+            "select",
+            &["number"],
+        ),
+    ];
+
+    for (source, element_kind, modifiers) in cases {
+        let allocator = Allocator::new();
+        let lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+        let root = lowered.roots.first().expect("one JSX root");
+
+        let s2 = root.s2.as_ref().expect("native v-model projects to S2");
+        let Op::Element(element) = &s2.root.ops[0] else {
+            panic!("root is an element");
+        };
+        let BindingOp::Model(model) = &element.bindings[0] else {
+            panic!("binding is ui.model");
+        };
+        let attributes: Vec<_> = model
+            .attributes
+            .iter()
+            .map(|attribute| (attribute.name, attribute.value))
+            .collect();
+        let mut expected = vec![("element-kind", Some(*element_kind))];
+        expected.extend(modifiers.iter().map(|modifier| (*modifier, None)));
+        assert_eq!(attributes, expected, "{source}");
+    }
+}
+
+#[test]
 fn choice_input_v_model_projects_to_s2_model() {
     for (input_type, value) in [("checkbox", "checked"), ("radio", "picked")] {
         let allocator = Allocator::new();
@@ -129,18 +177,16 @@ fn unsupported_native_model_shapes_stay_on_directive_refusal_path() {
     let allocator = Allocator::new();
     let cases = [
         "const App = () => <input v-model:checked={value} />",
-        "const App = () => <input v-model={[value, [\"trim\"]]} />",
-        "const App = () => <input v-model_lazy={value} />",
+        "const App = () => <input v-model_custom={value} />",
+        "const App = () => <input v-model={[value, [\"custom\"]]} />",
         "const App = () => <input type=\"checkbox\" type=\"radio\" v-model={picked} />",
         "const App = () => <input type=\"email\" v-model={value} />",
         "const App = () => <input type={kind} v-model={value} />",
         "const App = () => <input {...attrs} v-model={value} />",
         "const App = () => <textarea v-model:foo={value} />",
-        "const App = () => <textarea v-model={[value, [\"trim\"]]} />",
-        "const App = () => <textarea v-model_lazy={value} />",
+        "const App = () => <textarea v-model_custom={value} />",
         "const App = () => <select v-model:foo={value}></select>",
-        "const App = () => <select v-model={[value, [\"number\"]]}></select>",
-        "const App = () => <select v-model_number={value}></select>",
+        "const App = () => <select v-model={[value, [\"custom\"]]}></select>",
     ];
 
     for source in cases {

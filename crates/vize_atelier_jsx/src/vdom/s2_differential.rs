@@ -149,6 +149,16 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "element input v-model modifier array",
+            "const A = () => <input v-model={[value, [\"trim\"]]} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element input v-model underscore modifiers",
+            "const A = () => <input v-model_number_lazy={value} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "element checkbox input v-model",
             "const A = () => <input type=\"checkbox\" v-model={checked} />;",
             JsxLang::Jsx,
@@ -164,8 +174,18 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "element textarea v-model modifier",
+            "const A = () => <textarea v-model_lazy={value} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "element select v-model",
             "const A = () => <select v-model={value}></select>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "element select v-model modifier",
+            "const A = () => <select v-model_number={value}></select>;",
             JsxLang::Jsx,
         ),
         (

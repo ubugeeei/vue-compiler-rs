@@ -62,7 +62,12 @@ fn lower_native_model<'a>(
     element_kind: &'a str,
     features: &mut LoweringFeatures,
 ) -> Result<BindingOp<'a>, S2Refusal> {
-    if directive.arg.is_some() || !directive.modifiers.is_empty() {
+    if directive.arg.is_some()
+        || !directive
+            .modifiers
+            .iter()
+            .all(|modifier| native_modifier_is_supported(modifier.content))
+    {
         return Err(S2Refusal::Directive);
     }
     let Some(expression) = directive.exp.as_ref() else {
@@ -79,9 +84,20 @@ fn lower_native_model<'a>(
         value: Some(element_kind),
         span: directive.loc.span,
     });
+    for modifier in &directive.modifiers {
+        attributes.push(Attribute {
+            name: modifier.content,
+            value: None,
+            span: modifier.loc.span,
+        });
+    }
 
     *features = features.observing(OpFamily::Model);
     Ok(model_op(allocator, directive, value, None, attributes))
+}
+
+fn native_modifier_is_supported(modifier: &str) -> bool {
+    matches!(modifier, "lazy" | "number" | "trim")
 }
 
 fn is_jsx_model_tuple(expression: &ExpressionNode<'_>) -> bool {
