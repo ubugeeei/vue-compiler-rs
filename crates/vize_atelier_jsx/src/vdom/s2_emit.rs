@@ -257,6 +257,8 @@ fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
 }
 
 #[cfg(test)]
+mod compat_tests;
+#[cfg(test)]
 mod events_tests;
 #[cfg(test)]
 mod model_tests;
