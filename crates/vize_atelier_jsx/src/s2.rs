@@ -19,7 +19,7 @@ use vize_s2::op::{
 };
 
 use self::directives::lower_vue_directive;
-use self::input_model::allows_plain_input_model;
+use self::input_model::allows_text_input_model;
 use self::model::lower_model;
 use self::slots::{has_slot_content, lower_slot_content, slot_template_span};
 
@@ -130,7 +130,7 @@ fn lower_element<'a>(
     op_count: &mut u32,
     features: &mut LoweringFeatures,
 ) -> Result<Op<'a>, S2Refusal> {
-    let allow_native_input_model = allows_plain_input_model(element);
+    let allow_native_input_model = allows_text_input_model(element);
     let props = lower_props(
         allocator,
         &element.props,
