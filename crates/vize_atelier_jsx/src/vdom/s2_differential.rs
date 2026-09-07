@@ -68,6 +68,11 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "component capture event",
+            "const A = () => <B onClickCapture={h} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "component paramless named slots",
             "const A = () => <Comp>{{ header: () => <h1>Hi</h1>, footer: () => <p>Bye</p> \
              }}</Comp>;",

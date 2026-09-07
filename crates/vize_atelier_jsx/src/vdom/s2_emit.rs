@@ -214,7 +214,7 @@ fn component_binding_is_supported(binding: &BindingOp<'_>, dynamic_component: bo
         }
         BindingOp::On(on) => {
             on.handler.is_some()
-                && on.modifiers.is_empty()
+                && event_option_modifiers_are_supported(&on.modifiers)
                 && matches!(on.name, Some(DynamicName::Static(_)))
         }
         BindingOp::VueShow(_) => true,
@@ -222,5 +222,13 @@ fn component_binding_is_supported(binding: &BindingOp<'_>, dynamic_component: bo
     }
 }
 
+fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
+    modifiers
+        .iter()
+        .all(|modifier| matches!(*modifier, "capture" | "once" | "passive"))
+}
+
+#[cfg(test)]
+mod events_tests;
 #[cfg(test)]
 mod tests;
