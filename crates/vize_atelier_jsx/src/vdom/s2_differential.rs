@@ -27,6 +27,14 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             "component spread",
             "const A = () => <B {...attrs} foo={f} title=\"ok\" />;",
         ),
+        (
+            "element v-show",
+            "const A = () => <div v-show={visible} />;",
+        ),
+        (
+            "component v-show",
+            "const A = () => <B v-show={visible} />;",
+        ),
     ];
 
     for (name, source) in cases {
