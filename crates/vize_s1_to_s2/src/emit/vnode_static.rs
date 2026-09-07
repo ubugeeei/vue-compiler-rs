@@ -60,14 +60,7 @@ pub(super) fn can_whole_hoist_static_element(element: &ElementOp<'_>, is_ts: boo
 }
 
 fn can_whole_hoist_static_element_guarded(element: &ElementOp<'_>, is_ts: bool) -> bool {
-    if element.namespace != Namespace::Html
-        && element.tag == "svg"
-        && !element.bindings.is_empty()
-        && element
-            .children
-            .ops
-            .iter()
-            .any(|op| matches!(op, Op::Element(_)))
+    if element.namespace != Namespace::Html && element.tag == "svg" && !element.bindings.is_empty()
     {
         return false;
     }
