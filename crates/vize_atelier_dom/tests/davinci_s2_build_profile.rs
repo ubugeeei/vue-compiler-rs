@@ -5,6 +5,8 @@
 use std::path::Path;
 
 use davinci_harness::fixtures::{LADDER, template_block};
+use vize_atelier_core::codegen::CodegenResultWithSections;
+use vize_atelier_core::options::{CodegenOptions, CustomElementMatcher, TemplateSyntaxMode};
 use vize_atelier_dom::compile_template;
 use vize_s0::Allocator;
 use vize_s0::profiler::{CounterSummary, global_profiler};
@@ -197,6 +199,97 @@ impl Drop for ProfileScope {
         profiler.disable();
         profiler.clear();
     }
+}
+
+/// fixture -> S2 walks on the **SFC** entry, the one a build actually
+/// calls (`vize_atelier_sfc::compile_template_block`).
+///
+/// One walk fewer than the `compile_template` row in [`CURRENT_WALKS`],
+/// every time: `compile/sfc.rs` takes the S2 fast path when the source
+/// clears `selector::s2_sfc_fast_path_supported_source` and no source
+/// map is asked for, and that path never parses or transforms through
+/// the legacy lane at all. So the pre-S2 template walk the build-path
+/// witness above still reports is **not** on the production path — it
+/// belongs to the public `compile_template` entry, which owes its caller
+/// the transformed AST.
+const CURRENT_SFC_WALKS: [(&str, u64); 6] = [
+    ("small", 3),
+    ("medium", 4),
+    ("large", 6),
+    ("stress-deep", 4),
+    ("stress-wide", 3),
+    ("stress-interp", 3),
+];
+
+#[test]
+fn the_sfc_entry_pays_no_pre_s2_walk() {
+    let _guard = lock_profiler();
+    for fixture in &LADDER {
+        let template =
+            template_block(fixture.source).expect("every ladder fixture has a template block");
+        let (_, expected_build_walks) = current_walks(fixture.name);
+        let expected = CURRENT_SFC_WALKS
+            .iter()
+            .find(|(name, _)| *name == fixture.name)
+            .map(|(_, walks)| *walks)
+            .unwrap_or_else(|| panic!("{} has no pinned SFC walk count", fixture.name));
+
+        let profile = ProfileScope::enable();
+        let allocator = Allocator::new();
+        let (errors, result) = compile_sfc(&allocator, template);
+        let counters = profile.finish();
+
+        assert!(errors.is_empty(), "{} should compile cleanly", fixture.name);
+        assert!(
+            !result.result.code.is_empty(),
+            "{} should emit code",
+            fixture.name
+        );
+        assert_eq!(
+            counter_total(&counters, "davinci.s2_dom.pre_s2.walks"),
+            None,
+            "{}: the SFC fast path must not run the legacy transform",
+            fixture.name
+        );
+        assert_eq!(
+            counter(&counters, "davinci.s2_dom.total.walks"),
+            expected,
+            "{} SFC S2 walks",
+            fixture.name
+        );
+        assert_eq!(
+            expected + 1,
+            expected_build_walks,
+            "{}: the build-path witness above is exactly this plus the pre-S2 walk",
+            fixture.name
+        );
+    }
+}
+
+fn compile_sfc<'a>(
+    allocator: &'a Allocator,
+    template: &'a str,
+) -> (
+    Vec<vize_atelier_core::CompilerError>,
+    CodegenResultWithSections,
+) {
+    vize_atelier_dom::compile_sfc_template_with_custom_elements_and_template_syntax_and_hoisted_scope_id_with_sections_and_codegen_options(
+        allocator,
+        template,
+        vize_atelier_dom::DomCompilerOptions::default(),
+        TemplateSyntaxMode::Standard,
+        None,
+        CustomElementMatcher::default(),
+        CodegenOptions::default(),
+    )
+}
+
+fn counter_total(counters: &CounterSummary, name: &str) -> Option<u64> {
+    counters
+        .entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| entry.total)
 }
 
 fn lock_profiler() -> std::sync::MutexGuard<'static, ()> {
