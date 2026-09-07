@@ -47,6 +47,39 @@ interface AxeResult {
 }
 
 /**
+ * Read axe-core's injectable browser bundle.
+ *
+ * axe-core ships CommonJS (`"main": "axe.js"`, no `exports` map), so under
+ * ESM its exports arrive on the namespace's `default` and `source` is not
+ * interop-detected as a named export: `(await import("axe-core")).source`
+ * is `undefined`. Injecting that injects nothing, leaves `window.axe`
+ * undefined, and the audit dies later as `Cannot read properties of
+ * undefined (reading 'run')` — a failure that points at the wrong line. So
+ * read both shapes and fail here, where the cause is still legible.
+ */
+export async function resolveAxeSource(): Promise<string> {
+  let namespace: { source?: unknown; default?: { source?: unknown } };
+  try {
+    namespace = await import("axe-core");
+  } catch (cause) {
+    throw new Error(
+      "axe-core is not installed. Install it as a peer dependency: npm install axe-core",
+      { cause },
+    );
+  }
+
+  const source = namespace.source ?? namespace.default?.source;
+  if (typeof source !== "string" || source.length === 0) {
+    throw new Error(
+      "axe-core is installed but exposes no `source` bundle to inject. " +
+        "Expected a non-empty string on either the module namespace or its " +
+        "default export; check that the installed axe-core version is >= 4.",
+    );
+  }
+  return source;
+}
+
+/**
  * A11y runner using axe-core via Playwright.
  */
 export class MuseaA11yRunner {
@@ -134,7 +167,7 @@ export class MuseaA11yRunner {
    */
   async auditPage(page: Page, artPath: string, variantName: string): Promise<A11yResult> {
     // Inject axe-core into the page
-    const axeSource = await this.getAxeSource();
+    const axeSource = await resolveAxeSource();
     await page.evaluate(axeSource);
 
     // Build axe-core run options
@@ -184,20 +217,6 @@ export class MuseaA11yRunner {
    */
   generateJsonReport(results: A11yResult[]): string {
     return generateA11yJsonReport(results);
-  }
-
-  /**
-   * Get axe-core source code for injection.
-   */
-  private async getAxeSource(): Promise<string> {
-    try {
-      const axeCore = await import("axe-core");
-      return axeCore.source;
-    } catch {
-      throw new Error(
-        "axe-core is not installed. Install it as a peer dependency: npm install axe-core",
-      );
-    }
   }
 
   /**
