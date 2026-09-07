@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/vite-plugin-musea",
-  "version": "0.403.0",
+  "version": "0.404.0",
   "description": "Vite plugin for Musea - Component gallery for Vue components",
   "keywords": [
     "component-gallery",
