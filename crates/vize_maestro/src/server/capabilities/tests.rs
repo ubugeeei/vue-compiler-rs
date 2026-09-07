@@ -129,7 +129,6 @@ fn auto_insertion_advertises_positional_vscode_configuration_sections() {
                     ["vize.autoInsert.bracketSpacing"],
                     ["vize.autoInsert.autoCreateQuotes"],
                     ["vize.autoInsert.autoClosingTags"],
-                    ["vize.autoInsert.autoClosingTags"],
                     ["vize.autoInsert.dotValue"]
                 ]
             }
