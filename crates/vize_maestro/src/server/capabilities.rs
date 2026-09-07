@@ -240,7 +240,6 @@ pub fn server_capabilities(features: LspFeatureConfig) -> ServerCapabilities {
                         ["vize.autoInsert.bracketSpacing"],
                         ["vize.autoInsert.autoCreateQuotes"],
                         ["vize.autoInsert.autoClosingTags"],
-                        ["vize.autoInsert.autoClosingTags"],
                         ["vize.autoInsert.dotValue"]
                     ]
                 }

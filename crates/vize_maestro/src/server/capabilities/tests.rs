@@ -204,6 +204,43 @@ fn all_features_skip_unimplemented_providers_and_keep_implemented_ones() {
 }
 
 #[test]
+fn auto_insert_experimental_sections_are_unique_and_complete() {
+    let experimental = server_capabilities(all_features())
+        .experimental
+        .expect("auto insert should advertise experimental capabilities");
+    let sections = experimental
+        .pointer("/autoInsertionProvider/configurationSections")
+        .and_then(serde_json::Value::as_array)
+        .expect("auto insert should advertise configuration sections");
+
+    let section_names: Vec<&str> = sections
+        .iter()
+        .map(|section| {
+            section
+                .as_array()
+                .and_then(|section| section.first())
+                .and_then(serde_json::Value::as_str)
+                .expect("configuration section should contain one setting key")
+        })
+        .collect();
+
+    assert_eq!(
+        section_names,
+        [
+            "vize.autoInsert.bracketSpacing",
+            "vize.autoInsert.autoCreateQuotes",
+            "vize.autoInsert.autoClosingTags",
+            "vize.autoInsert.dotValue",
+        ]
+    );
+
+    let mut unique_names = section_names.clone();
+    unique_names.sort_unstable();
+    unique_names.dedup();
+    assert_eq!(unique_names.len(), section_names.len());
+}
+
+#[test]
 fn file_rename_registration_mentions_declaration_files() {
     let options = file_rename_registration_options();
     let file_glob = &options.filters[0].pattern.glob;

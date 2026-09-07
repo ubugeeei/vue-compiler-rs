@@ -204,7 +204,6 @@ test("vize lsp advertises the exact measured auto-insertion extension only when 
           ["vize.autoInsert.bracketSpacing"],
           ["vize.autoInsert.autoCreateQuotes"],
           ["vize.autoInsert.autoClosingTags"],
-          ["vize.autoInsert.autoClosingTags"],
           ["vize.autoInsert.dotValue"],
         ],
       },
