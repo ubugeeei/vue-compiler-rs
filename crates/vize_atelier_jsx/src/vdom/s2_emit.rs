@@ -173,18 +173,32 @@ fn native_model_is_supported(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bo
         && model.contract.read.span() == model.contract.write.span()
         && matches!(model.contract.read, ExprRef::Js(_))
         && matches!(model.contract.write, ExprRef::Js(_))
-        && (element.tag != "input" || input_type_is_text(element))
+        && (element.tag != "input" || input_type_is_supported(element))
 }
 
-fn input_type_is_text(element: &ElementOp<'_>) -> bool {
+fn input_type_is_supported(element: &ElementOp<'_>) -> bool {
+    let mut static_type = None;
+    for attribute in &element.attributes {
+        if attribute.name != "type" {
+            continue;
+        }
+        let Some(value) = attribute.value else {
+            return false;
+        };
+        if !input_type_value_is_supported(value) || static_type.is_some_and(|seen| seen != value) {
+            return false;
+        }
+        static_type = Some(value);
+    }
+
     element
-        .attributes
+        .bindings
         .iter()
-        .all(|attribute| attribute.name != "type" || attribute.value == Some("text"))
-        && element
-            .bindings
-            .iter()
-            .all(|binding| !bind_may_set_type(binding))
+        .all(|binding| !bind_may_set_type(binding))
+}
+
+fn input_type_value_is_supported(value: &str) -> bool {
+    matches!(value, "checkbox" | "radio" | "text")
 }
 
 fn model_is_bare_native_element(element: &ElementOp<'_>, model: &ModelOp<'_>) -> bool {

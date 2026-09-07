@@ -52,6 +52,35 @@ fn text_input_v_model_projects_to_s2_model() {
 }
 
 #[test]
+fn choice_input_v_model_projects_to_s2_model() {
+    for (input_type, value) in [("checkbox", "checked"), ("radio", "picked")] {
+        let allocator = Allocator::new();
+        let source =
+            format!("const App = () => <input type=\"{input_type}\" v-model={{{value}}} />");
+        let lowered = lower_source(&allocator, allocator.as_oxc(), &source, JsxLang::Jsx);
+        let root = lowered.roots.first().expect("one JSX root");
+
+        let s2 = root
+            .s2
+            .as_ref()
+            .expect("choice input v-model projects to S2");
+        let Op::Element(element) = &s2.root.ops[0] else {
+            panic!("root is an element");
+        };
+        assert_eq!(element.tag, "input");
+        assert_eq!(element.attributes.len(), 1);
+        assert_eq!(element.attributes[0].name, "type");
+        assert_eq!(element.attributes[0].value, Some(input_type));
+        let BindingOp::Model(model) = &element.bindings[0] else {
+            panic!("binding is ui.model");
+        };
+        assert_eq!(model.contract.read.source(), value);
+        assert!(model.argument.is_none());
+        assert_eq!(model.attributes[0].value, Some("input"));
+    }
+}
+
+#[test]
 fn textarea_v_model_projects_to_s2_model() {
     let allocator = Allocator::new();
     let source = "const App = () => <textarea v-model={value} />";
@@ -102,7 +131,7 @@ fn unsupported_native_model_shapes_stay_on_directive_refusal_path() {
         "const App = () => <input v-model:checked={value} />",
         "const App = () => <input v-model={[value, [\"trim\"]]} />",
         "const App = () => <input v-model_lazy={value} />",
-        "const App = () => <input type=\"checkbox\" v-model={checked} />",
+        "const App = () => <input type=\"checkbox\" type=\"radio\" v-model={picked} />",
         "const App = () => <input type=\"email\" v-model={value} />",
         "const App = () => <input type={kind} v-model={value} />",
         "const App = () => <input {...attrs} v-model={value} />",

@@ -42,6 +42,42 @@ fn text_input_v_model_emits_from_s2() {
 }
 
 #[test]
+fn checkbox_input_v_model_emits_from_s2() {
+    let source = "const A = () => <input type=\"checkbox\" v-model={checked} />;";
+    let component = compile_native_model_from_s2(source);
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { vModelCheckbox as _vModelCheckbox, withDirectives as _withDirectives, \
+         openBlock as _openBlock, createElementBlock as _createElementBlock } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  return _withDirectives((_openBlock(), \
+         _createElementBlock(\"input\", {\n    type: \"checkbox\",\n    \
+         \"onUpdate:modelValue\": $event => ((checked) = $event)\n  }, null, 8 /* PROPS */, \
+         [\"onUpdate:modelValue\"])), [\n    [_vModelCheckbox, checked]\n  ])\n}"
+    );
+}
+
+#[test]
+fn radio_input_v_model_emits_from_s2() {
+    let source = "const A = () => <input type=\"radio\" v-model={picked} />;";
+    let component = compile_native_model_from_s2(source);
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { vModelRadio as _vModelRadio, withDirectives as _withDirectives, \
+         openBlock as _openBlock, createElementBlock as _createElementBlock } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  return _withDirectives((_openBlock(), \
+         _createElementBlock(\"input\", {\n    type: \"radio\",\n    \"onUpdate:modelValue\": \
+         $event => ((picked) = $event)\n  }, null, 8 /* PROPS */, \
+         [\"onUpdate:modelValue\"])), [\n    [_vModelRadio, picked]\n  ])\n}"
+    );
+}
+
+#[test]
 fn textarea_v_model_emits_from_s2() {
     let source = "const A = () => <textarea v-model={value} />;";
     let component = compile_native_model_from_s2(source);
