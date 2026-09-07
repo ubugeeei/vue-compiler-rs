@@ -8,12 +8,19 @@ use super::super::{VdomCompatOptions, VdomCompileOptions, compile_root_to_vdom};
 
 #[test]
 fn component_option_event_modifiers_emit_from_s2() {
-    let source = "const A = () => <B onClickCapture={h} />;";
-    let s2 = compile_case(source, EmitRoute::ForceS2);
-    let relief = compile_case(source, EmitRoute::ForceRelief);
+    let cases = [
+        "const A = () => <B onClickCapture={h} />;",
+        "const A = () => <B onClickOnce={h} />;",
+        "const A = () => <B onInputPassiveCapture={h} />;",
+    ];
 
-    assert_eq!(s2.preamble, relief.preamble);
-    assert_eq!(s2.code, relief.code);
+    for source in cases {
+        let s2 = compile_case(source, EmitRoute::ForceS2);
+        let relief = compile_case(source, EmitRoute::ForceRelief);
+
+        assert_eq!(s2.preamble, relief.preamble, "{source}");
+        assert_eq!(s2.code, relief.code, "{source}");
+    }
 }
 
 #[derive(Clone, Copy)]

@@ -73,6 +73,16 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "component once event",
+            "const A = () => <B onClickOnce={h} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "component passive capture event",
+            "const A = () => <B onInputPassiveCapture={h} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "component v-model",
             "const A = () => <Input v-model={value} />;",
             JsxLang::Jsx,
