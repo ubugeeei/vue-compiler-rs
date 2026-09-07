@@ -12,16 +12,16 @@ pub(super) fn lower_model<'a>(
     allocator: &'a Allocator,
     directive: &DirectiveNode<'a>,
     element_type: ElementType,
-    native_text_model_kind: Option<&'a str>,
+    native_model_kind: Option<&'a str>,
     features: &mut LoweringFeatures,
 ) -> Result<BindingOp<'a>, S2Refusal> {
     match element_type {
         ElementType::Component => lower_component_model(allocator, directive, features),
         ElementType::Element => {
-            let Some(element_kind) = native_text_model_kind else {
+            let Some(element_kind) = native_model_kind else {
                 return Err(S2Refusal::Directive);
             };
-            lower_native_text_model(allocator, directive, element_kind, features)
+            lower_native_model(allocator, directive, element_kind, features)
         }
         _ => Err(S2Refusal::Directive),
     }
@@ -56,7 +56,7 @@ fn lower_component_model<'a>(
     Ok(model_op(allocator, directive, value, argument, attributes))
 }
 
-fn lower_native_text_model<'a>(
+fn lower_native_model<'a>(
     allocator: &'a Allocator,
     directive: &DirectiveNode<'a>,
     element_kind: &'a str,

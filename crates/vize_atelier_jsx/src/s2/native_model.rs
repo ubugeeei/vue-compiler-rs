@@ -1,12 +1,12 @@
 use vize_relief::{ElementNode, ElementType, ExpressionNode, PropNode};
 
-pub(super) fn native_text_model_kind<'a>(element: &ElementNode<'a>) -> Option<&'a str> {
+pub(super) fn native_model_kind<'a>(element: &ElementNode<'a>) -> Option<&'a str> {
     if !matches!(element.tag_type, ElementType::Element) {
         return None;
     }
     match element.tag {
         "input" if element.props.iter().all(preserves_text_input_model) => Some("input"),
-        "textarea" => Some("textarea"),
+        "select" | "textarea" => Some(element.tag),
         _ => None,
     }
 }

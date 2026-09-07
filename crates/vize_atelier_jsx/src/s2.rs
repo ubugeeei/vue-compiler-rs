@@ -20,7 +20,7 @@ use vize_s2::op::{
 
 use self::directives::lower_vue_directive;
 use self::model::lower_model;
-use self::native_text_model::native_text_model_kind;
+use self::native_model::native_model_kind;
 use self::slots::{has_slot_content, lower_slot_content, slot_template_span};
 
 /// A JSX render root represented as S2 operations.
@@ -130,12 +130,12 @@ fn lower_element<'a>(
     op_count: &mut u32,
     features: &mut LoweringFeatures,
 ) -> Result<Op<'a>, S2Refusal> {
-    let native_model_kind = native_text_model_kind(element);
+    let native_element_model_kind = native_model_kind(element);
     let props = lower_props(
         allocator,
         &element.props,
         element.tag_type,
-        native_model_kind,
+        native_element_model_kind,
         features,
     )?;
     *op_count = op_count.saturating_add(props.binding_count);
@@ -196,7 +196,7 @@ fn lower_props<'a>(
     allocator: &'a Allocator,
     props: &[PropNode<'a>],
     element_type: ElementType,
-    native_text_model_kind: Option<&'a str>,
+    native_model_kind: Option<&'a str>,
     features: &mut LoweringFeatures,
 ) -> Result<LoweredProps<'a>, S2Refusal> {
     let mut attributes = Vec::new_in(&allocator);
@@ -213,7 +213,7 @@ fn lower_props<'a>(
                     allocator,
                     directive,
                     element_type,
-                    native_text_model_kind,
+                    native_model_kind,
                     features,
                 )?);
             }
@@ -231,7 +231,7 @@ fn lower_binding<'a>(
     allocator: &'a Allocator,
     directive: &vize_relief::DirectiveNode<'a>,
     element_type: ElementType,
-    native_text_model_kind: Option<&'a str>,
+    native_model_kind: Option<&'a str>,
     features: &mut LoweringFeatures,
 ) -> Result<BindingOp<'a>, S2Refusal> {
     match directive.name {
@@ -240,7 +240,7 @@ fn lower_binding<'a>(
             allocator,
             directive,
             element_type,
-            native_text_model_kind,
+            native_model_kind,
             features,
         ),
         "show" | "html" | "text" => lower_vue_directive(allocator, directive, element_type),
@@ -344,5 +344,5 @@ mod tests;
 
 mod directives;
 mod model;
-mod native_text_model;
+mod native_model;
 mod slots;
