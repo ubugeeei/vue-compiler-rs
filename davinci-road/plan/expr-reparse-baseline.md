@@ -43,7 +43,7 @@
   independently, which is fault line 1 of
   [motivation.md](../motivation.md) in number form.
 
-## Post-P1-7 floors (updated 2026-09-06, DOM selector on S2)
+## Post-P1-7 floors (updated 2026-09-07, DOM selector on S2)
 
 Same sweep, same probe, after P1-7 migrated the whole-expression consumers
 onto the parse-once retained ASTs (`SimpleExpressionNode::js_ast`, P1-5).
@@ -54,16 +54,17 @@ equality by `tests/davinci_expr_reparse_floor.rs` in each backend crate.
 | ------------- | --: | ----: | --: |
 | small         |   0 |     0 |   0 |
 | medium        |   0 |     0 |   0 |
-| large         |   8 |     8 |  27 |
+| large         |   0 |     8 |  27 |
 | stress-deep   |   0 |     0 |   0 |
 | stress-wide   |   0 |     0 |   0 |
 | stress-interp |   0 |     0 |   0 |
 
 Every migrated site is at zero on every fixture; the surviving counts are
 the kept-with-reason fallback classes on `large.vue` only (per-site record
-in `phase-1.md` P1-7): dom 8 = 8 slot-pattern parses
-(`extract_slot_prop_names`, synthesized `let <pattern> = __slotProps`);
-the source-map-free S2 selector no longer pays the 8 slot-default arrows
+in `phase-1.md` P1-7). The source-map-free DOM S2 selector skips the legacy
+pre-S2 transform when S2 emission succeeds, so it no longer pays the 8
+slot-pattern parses (`extract_slot_prop_names`, synthesized
+`let <pattern> = __slotProps`) or the 8 slot-default arrows
 (`prefix_slot_defaults`, synthesized `(props) => null`). ssr 27 = 8
 slot-pattern + 8 param-arrow validations (`parse_as_params`) + 10 SSR
 rendered-handler shape checks (transformed text, not node content) + 1

@@ -4,7 +4,7 @@
 //! expression re-parses via the P0-3 probe — the same sweep that produced
 //! `davinci-road/plan/expr-reparse-baseline.md`, pinned exactly at the
 //! post-P1-7 floor (the pre-P1-7 counts are the baseline doc's table). Any
-//! change means a retained-consumption gate or a legacy site moved:
+//! change means a retained-consumption gate, S2 selector, or legacy site moved:
 //! re-derive the floor deliberately and update the baseline doc's post-P1-7
 //! section with it.
 //!
@@ -23,7 +23,7 @@ use vize_s0::Allocator;
 const FLOOR: [(&str, u64); 6] = [
     ("small", 0),
     ("medium", 0),
-    ("large", 8),
+    ("large", 0),
     ("stress-deep", 0),
     ("stress-wide", 0),
     ("stress-interp", 0),

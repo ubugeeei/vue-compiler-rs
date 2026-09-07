@@ -9,8 +9,8 @@ use vize_atelier_core::options::{
     TemplateSyntaxMode, TransformOptions,
 };
 use vize_atelier_core::walk_probe::WalkCounts;
-use vize_s0::Allocator;
 use vize_s0::profiler::global_profiler;
+use vize_s0::{Allocator, profile};
 use vize_s1_to_s2::{
     BindingKind, BindingTable, DomEmitMode, DomEmitOptions, DomEmitSections, EmitError, LegacyCaps,
 };
@@ -149,6 +149,36 @@ pub(super) fn s2_binding_table(metadata: Option<&BindingMetadata>) -> Option<Bin
     })
 }
 
+pub(super) fn try_emit_s2(
+    allocator: &Allocator,
+    source: &str,
+    options: &DomCompilerOptions,
+    codegen: &CodegenOptions,
+    custom_elements: &CustomElementMatcher,
+    hoisted_scope_id: Option<&str>,
+    pre_s2_walks: Option<WalkCounts>,
+) -> Option<CodegenResultWithSections> {
+    let binding_table = s2_binding_table(options.binding_metadata.as_ref());
+    let emit_options = s2_emit_options(
+        options,
+        codegen,
+        custom_elements,
+        binding_table.as_ref(),
+        hoisted_scope_id,
+    )?;
+    profile!(
+        "atelier.dom.template.s2_codegen",
+        emit_s2(
+            allocator,
+            source,
+            options.dialect,
+            &emit_options,
+            pre_s2_walks
+        )
+    )
+    .ok()
+}
+
 /// Emit one ordinary DOM module through S2.
 pub(super) fn emit_s2(
     allocator: &Allocator,
@@ -182,15 +212,15 @@ pub(super) fn emit_s2(
             "davinci.s2_dom.total.walks",
             u64::from(budget.total_walks()),
         );
-        if let Some(pre_s2) = pre_s2_walks {
-            let pre_s2_walks = pre_s2.total_walks();
-            profiler.record_counter_enabled("davinci.s2_dom.pre_s2.walks", pre_s2_walks);
-            profiler.record_counter_enabled("davinci.s2_dom.pre_s2.visits", pre_s2.total_visits());
-            profiler.record_counter_enabled(
-                "davinci.s2_dom.build.walks",
-                pre_s2_walks + u64::from(budget.total_walks()),
-            );
-        }
+        let (pre_s2_walks, pre_s2_visits) = pre_s2_walks.map_or((0, 0), |counts| {
+            (counts.total_walks(), counts.total_visits())
+        });
+        profiler.record_counter_enabled("davinci.s2_dom.pre_s2.walks", pre_s2_walks);
+        profiler.record_counter_enabled("davinci.s2_dom.pre_s2.visits", pre_s2_visits);
+        profiler.record_counter_enabled(
+            "davinci.s2_dom.build.walks",
+            pre_s2_walks + u64::from(budget.total_walks()),
+        );
         observed.emit
     } else {
         vize_s1_to_s2::emit_dom_source_with_options(allocator, source, caps, options)?
