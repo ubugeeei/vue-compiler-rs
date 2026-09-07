@@ -64,7 +64,10 @@ pub use jsx::{
     JsxSemanticTokensService,
 };
 #[cfg(feature = "native")]
-pub use jsx::{JsxReferencesService, JsxRenameService, JsxService, JsxTypeDefinitionService};
+pub use jsx::{
+    JsxImplementationService, JsxReferencesService, JsxRenameService, JsxService,
+    JsxTypeDefinitionService,
+};
 pub use references::ReferencesService;
 pub use rename::RenameService;
 pub use selection_range::SelectionRangeService;

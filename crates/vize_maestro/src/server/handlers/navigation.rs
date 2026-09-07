@@ -10,8 +10,8 @@ use tower_lsp::{
 use super::super::MaestroServer;
 #[cfg(feature = "native")]
 use crate::ide::{
-    DeclarationService, ImplementationService, JsxService, JsxTypeDefinitionService,
-    TypeDefinitionService,
+    DeclarationService, ImplementationService, JsxImplementationService, JsxService,
+    JsxTypeDefinitionService, TypeDefinitionService,
 };
 use crate::ide::{DefinitionService, IdeContext, position_to_offset};
 
@@ -178,6 +178,10 @@ pub(super) async fn goto_implementation(
         let ctx = IdeContext::with_content(&server.state, uri, offset, content);
 
         if crate::utils::is_jsx_path(uri.path()) {
+            if server.state.jsx_typecheck_enabled() {
+                let corsa_bridge = server.state.get_corsa_bridge().await;
+                return Ok(JsxImplementationService::implementation(&ctx, corsa_bridge).await);
+            }
             return Ok(None);
         }
 
