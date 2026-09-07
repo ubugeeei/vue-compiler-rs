@@ -36,14 +36,43 @@ fn native_vdom_admitted_roots_emit_from_s2() {
 }
 
 #[test]
-fn component_slot_children_stay_on_relief_until_slot_facts_are_authoritative() {
+fn component_plain_children_emit_from_s2_with_slot_facts() {
     let allocator = Allocator::new();
     let source = "const A = () => <Card><h1>Title</h1></Card>;";
     let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-    let root = lowered.roots.pop().expect("one JSX root");
+    let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
+    let mut root = lowered.roots.pop().expect("one JSX root");
     let s2 = root.s2.as_ref().expect("component child projects to S2");
 
-    assert_eq!(super::root_is_supported(s2), false);
+    assert_eq!(super::root_is_supported(s2), true);
+
+    root.root.children.clear();
+    let mut diagnostics = Vec::new();
+    let component = compile_root_to_vdom(
+        &allocator,
+        root,
+        analysis,
+        false,
+        &VdomCompileOptions::default(),
+        VdomCompatOptions::default(),
+        &mut diagnostics,
+        source,
+    );
+
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { resolveComponent as _resolveComponent, createElementVNode as \
+         _createElementVNode, openBlock as _openBlock, createBlock as _createBlock, withCtx as \
+         _withCtx } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  const _component_Card = \
+         _resolveComponent(\"Card\")\n  \n  return (_openBlock(), _createBlock(_component_Card, \
+         null, {\n    default: _withCtx(() => [\n      _createElementVNode(\"h1\", null, \
+         \"Title\")\n    ]),\n    _: 1 /* STABLE */\n  }))\n}"
+    );
 }
 
 #[test]

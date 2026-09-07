@@ -1,8 +1,9 @@
 //! JSX VDOM bridge for the P2-16 S2 re-targeting slice.
 
+use vize_davinci::pass::NoObserver;
 use vize_s0::{Allocator, String};
-use vize_s1_to_s2::lower::LoweringFeatures;
-use vize_s1_to_s2::pass::S2Facts;
+use vize_s1_to_s2::lower::{LoweringFeatures, OpFamily};
+use vize_s1_to_s2::pass::{TransformProfile, run_transform_with_profile};
 use vize_s1_to_s2::{
     DomEmitMode, DomEmitOptions, LegacyCaps, Lowered as S2Lowered, emit_dom_with_options,
 };
@@ -40,7 +41,8 @@ pub(super) fn try_emit_s2_vdom<'a>(
         return None;
     }
 
-    let lowered = S2Lowered {
+    let features = features_for_region(&s2.root);
+    let mut lowered = S2Lowered {
         allocator,
         source: s2.source,
         root: s2.root,
@@ -51,10 +53,15 @@ pub(super) fn try_emit_s2_vdom<'a>(
         texts: Default::default(),
         wrappers: Default::default(),
         for_wrappers: Default::default(),
-        features: LoweringFeatures::EMPTY,
+        features,
         caps: LegacyCaps::VUE3,
     };
-    let facts = S2Facts::default();
+    let mut observer = NoObserver;
+    let facts = run_transform_with_profile(
+        &mut lowered,
+        &mut observer,
+        TransformProfile::DEFAULT.without_static_analysis(),
+    );
     let emit = emit_dom_with_options(
         &lowered,
         &facts,
@@ -126,7 +133,7 @@ fn bindings_are_supported(bindings: &[BindingOp<'_>]) -> bool {
 
 fn component_is_supported(component: &ComponentOp<'_>) -> bool {
     let dynamic_component = component_is_dynamic(component);
-    component.children.ops.is_empty()
+    region_is_supported(&component.children)
         && (dynamic_component || !component_name_needs_component_semantics(component.name))
         && component
             .bindings
@@ -191,6 +198,65 @@ fn component_binding_is_supported(binding: &BindingOp<'_>, dynamic_component: bo
         }
         BindingOp::VueShow(_) => true,
         _ => false,
+    }
+}
+
+fn features_for_region(region: &Region<'_>) -> LoweringFeatures {
+    let mut features = LoweringFeatures::EMPTY;
+    observe_region(region, &mut features);
+    features
+}
+
+fn observe_region(region: &Region<'_>, features: &mut LoweringFeatures) {
+    for op in &region.ops {
+        match op {
+            Op::Element(element) => {
+                observe_bindings(&element.bindings, features);
+                observe_region(&element.children, features);
+            }
+            Op::Component(component) => {
+                *features = features.observing(OpFamily::SlotCarrier);
+                observe_bindings(&component.bindings, features);
+                observe_region(&component.children, features);
+            }
+            Op::If(if_op) => {
+                *features = features.observing(OpFamily::If);
+                for branch in &if_op.branches {
+                    observe_region(&branch.region, features);
+                }
+            }
+            Op::For(for_op) => {
+                *features = features.observing(OpFamily::For);
+                observe_region(&for_op.region, features);
+            }
+            Op::Slot(slot) => {
+                *features = features.observing(OpFamily::SlotCarrier);
+                observe_bindings(&slot.bindings, features);
+                observe_region(&slot.fallback, features);
+            }
+            Op::Text(_) | Op::Interpolation(_) | Op::Comment(_) => {}
+        }
+    }
+}
+
+fn observe_bindings(bindings: &[BindingOp<'_>], features: &mut LoweringFeatures) {
+    for binding in bindings {
+        match binding {
+            BindingOp::Model(_) => *features = features.observing(OpFamily::Model),
+            BindingOp::SlotContent(_) => *features = features.observing(OpFamily::SlotCarrier),
+            BindingOp::Bind(_)
+            | BindingOp::On(_)
+            | BindingOp::VueDirective(_)
+            | BindingOp::VueCssBind(_)
+            | BindingOp::VueSync(_)
+            | BindingOp::VueSlotScope(_)
+            | BindingOp::VueOnce(_)
+            | BindingOp::VueMemo(_)
+            | BindingOp::VueShow(_)
+            | BindingOp::VueHtml(_)
+            | BindingOp::VueText(_)
+            | BindingOp::VueCloak(_) => {}
+        }
     }
 }
 

@@ -28,6 +28,22 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             "const A = () => <B {...attrs} foo={f} title=\"ok\" />;",
         ),
         (
+            "component implicit default",
+            "const A = () => <Card><h1>Title</h1></Card>;",
+        ),
+        (
+            "component text default",
+            "const A = () => <Card>Title</Card>;",
+        ),
+        (
+            "component interpolation default",
+            "const A = () => <Card>{title}</Card>;",
+        ),
+        (
+            "component nested component default",
+            "const A = () => <Card><B foo={f}/></Card>;",
+        ),
+        (
             "dynamic component",
             "const A = () => <Widget.Panel foo={1} />;",
         ),
