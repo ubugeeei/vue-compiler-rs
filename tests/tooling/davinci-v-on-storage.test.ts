@@ -180,7 +180,7 @@ test("the natural committed v-on corpus fits the two-entry inline buckets", () =
     "the Mealie-shaped dynamic slot fixture keeps its natural modified v-on spelling",
   );
   assert.deepEqual(classify("@click.prevent"), { options: 0, event: 1, keys: 0 });
-  assert.equal(spellings.length, 225, "update the measured corpus evidence intentionally");
+  assert.equal(spellings.length, 226, "update the measured corpus evidence intentionally");
   assert.deepEqual(maxima, { options: 2, event: 2, keys: 2 });
 });
 

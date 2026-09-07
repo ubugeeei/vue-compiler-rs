@@ -12,16 +12,19 @@
 use super::features::OpFamily;
 use alloc::vec::Vec as StdVec;
 
-use vize_s0::{Box, Vec, cstr, is_math_ml_tag, is_native_tag, is_svg_tag};
+use vize_s0::{Box, String, Vec, cstr, is_math_ml_tag, is_native_tag, is_svg_tag};
 use vize_s1::Element;
 
 use vize_s2::op::{Attribute, BindingOp, ComponentOp, ElementOp, Namespace, Op, Region};
 
+mod v_pre;
+
 use super::binding::{Owner, lower_attr};
-use super::cx::{Cx, attr_span, element_span};
+use super::cx::{Cx, attr_slice, attr_span, element_span};
 use super::directive::{AttrForm, Head, classify};
 use super::slot::lower_slot;
 use super::structural::lower_children;
+use v_pre::frozen_name;
 
 /// Which branch of a `v-if` chain an element opens or continues.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,11 +43,27 @@ pub(crate) struct Analyzed<'a> {
     pub branch: Option<(usize, BranchKind)>,
     /// The first `v-for` (attr index), when present.
     pub vfor: Option<usize>,
+    /// The `v-pre` spelling's attr index, when the element carries one.
+    /// Vue drops the attribute itself from the output while keeping every
+    /// other directive on the element as a literal attribute.
+    pub v_pre: Option<usize>,
+    /// Whether this element is the one that *opens* a `v-pre` subtree, as
+    /// opposed to sitting inside one. The two freeze their attribute
+    /// names differently — see [`frozen_name`].
+    pub opens_v_pre: bool,
 }
 
 /// Analyze an element's attributes: classify every name, note the
 /// structural directives.
-pub(crate) fn analyze<'a>(element: &Element<'a>) -> Analyzed<'a> {
+///
+/// `in_v_pre` says an **ancestor** carries `v-pre`. Inside such a subtree
+/// — and on the element that opens one — nothing is a directive: Vue's
+/// parser sets `inVPre` when it reaches the spelling and rewrites every
+/// prop on that element back to a plain attribute under its raw authored
+/// name, for the element itself and its whole subtree. So `:x="1"` stays
+/// the attribute `":x"` with the string value `"1"`, `v-if` never builds
+/// a branch, and `v-for` never builds a region.
+pub(crate) fn analyze<'a>(element: &Element<'a>, in_v_pre: bool) -> Analyzed<'a> {
     let mut forms = StdVec::with_capacity(element.open.attrs.len());
     let mut branch = None;
     let mut vfor = None;
@@ -68,11 +87,29 @@ pub(crate) fn analyze<'a>(element: &Element<'a>) -> Analyzed<'a> {
         }
         forms.push(form);
     }
-    Analyzed {
+    let mut analyzed = Analyzed {
         forms,
         branch,
         vfor,
+        v_pre: None,
+        opens_v_pre: false,
+    };
+    if in_v_pre {
+        // Inside the subtree the tokenizer never split the name, so every
+        // attribute is already the plain one it was authored as.
+        analyzed.freeze_as_authored();
+    } else if analyzed.has_v_pre() {
+        // On the opening element the tokenizer had not yet entered
+        // `v-pre` when it read these attributes, so they arrive split and
+        // the element lowering rebuilds each name from the parts.
+        analyzed.opens_v_pre = true;
+        analyzed.v_pre = analyzed.forms.iter().position(
+            |form| matches!(form, AttrForm::Directive(directive) if directive.head == Head::Pre),
+        );
+        analyzed.branch = None;
+        analyzed.vfor = None;
     }
+    analyzed
 }
 
 impl Analyzed<'_> {
@@ -90,6 +127,22 @@ impl Analyzed<'_> {
         self.forms.iter().any(
             |form| matches!(form, AttrForm::Directive(directive) if directive.head == Head::Pre),
         )
+    }
+
+    /// Re-read every attribute as the plain one it was authored as, and
+    /// forget the structural directives — the reading for an element
+    /// *inside* a `v-pre` subtree.
+    fn freeze_as_authored(&mut self) {
+        for (index, form) in self.forms.iter_mut().enumerate() {
+            if let AttrForm::Directive(directive) = form {
+                if directive.head == Head::Pre && self.v_pre.is_none() {
+                    self.v_pre = Some(index);
+                }
+                *form = AttrForm::Static;
+            }
+        }
+        self.branch = None;
+        self.vfor = None;
     }
 }
 
@@ -186,6 +239,19 @@ pub(crate) fn element_core<'a>(
         if Some(index) == companion_slot {
             continue;
         }
+        if Some(index) == analyzed.v_pre {
+            // The spelling itself leaves the output — Vue emits the
+            // frozen attributes without it — but the bytes are still
+            // accounted for, like any other dropped node.
+            cx.record(
+                "drop.v-pre",
+                None,
+                attr_slice(cx, attr),
+                String::default(),
+                attr_span(cx, attr),
+            );
+            continue;
+        }
         match &analyzed.forms[index] {
             AttrForm::Static if Some(index) == scope_index => {
                 bindings.push(super::sugar::lower_slot_scope(
@@ -200,6 +266,13 @@ pub(crate) fn element_core<'a>(
                 value: attr.value.as_ref().map(|value| value.content.text),
                 span: attr_span(cx, attr),
             }),
+            AttrForm::Directive(directive) if analyzed.opens_v_pre => {
+                attributes.push(Attribute {
+                    name: frozen_name(cx, attr.name.text, directive),
+                    value: attr.value.as_ref().map(|value| value.content.text),
+                    span: attr_span(cx, attr),
+                });
+            }
             AttrForm::Directive(directive) => {
                 let owner = Owner { tag, component };
                 lower_attr(cx, element, index, directive, &owner, &mut bindings);
@@ -210,7 +283,9 @@ pub(crate) fn element_core<'a>(
     // `<pre>` keeps its bytes: condensing is suppressed for the whole
     // subtree (`lower::text`, the shipped `is_pre_tag` configuration).
     let suppress = super::text::suppresses_condense(tag);
-    let suppress_v_pre = analyzed.has_v_pre();
+    // `analyze` has already rewritten the forms, so ask the recorded
+    // spelling rather than the (now empty) directive list.
+    let suppress_v_pre = analyzed.v_pre.is_some();
     if suppress {
         cx.push_condense_suppression();
     }

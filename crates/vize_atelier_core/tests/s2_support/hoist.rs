@@ -81,7 +81,9 @@ pub struct HoistCounters {
     pub models_templates: u64,
     /// The two S1 trees nest differently (module docs).
     pub tree_templates: u64,
-    /// `v-pre` templates (the S2 lowering defers the whole subtree).
+    /// **Retired**, kept at zero: the `v-pre` deferral it counted is
+    /// gone (see [`super::text`]'s note), so these owners are replayed
+    /// like any other.
     pub vpre_templates: u64,
     /// The legacy in-table tree-construction class.
     pub table_templates: u64,

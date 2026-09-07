@@ -107,7 +107,7 @@ s1_to_s2	-	crates/vize_s1_to_s2/src/lower/cloak.rs	0	0	1	1	0	0	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/lower/css.rs	0	0	0	0	1	3	0	0
 s1_to_s2	lower	crates/vize_s1_to_s2/src/lower/cx.rs	1	5	1	9	0	0	0	0
 s1_to_s2	lower	crates/vize_s1_to_s2/src/lower/directive.rs	1	6	0	0	0	0	0	0
-s1_to_s2	lower	crates/vize_s1_to_s2/src/lower/element.rs	1	2	0	0	1	4	0	0
+s1_to_s2	lower	crates/vize_s1_to_s2/src/lower/element.rs	1	2	1	1	1	4	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/lower/expr.rs	0	0	1	4	0	0	0	0
 s1_to_s2	lower	crates/vize_s1_to_s2/src/lower/forop.rs	1	2	1	5	1	2	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/lower/html.rs	0	0	1	2	0	0	0	0
