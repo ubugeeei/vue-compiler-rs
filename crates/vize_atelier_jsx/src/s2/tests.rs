@@ -15,6 +15,11 @@ fn lower_source_attaches_static_intrinsic_s2_root() {
     let s2 = root.s2.as_ref().expect("static intrinsic S2 root");
     assert_eq!(s2.source, source);
     assert_eq!(s2.op_count, 4);
+    assert!(!s2.features.has_if_ops());
+    assert!(!s2.features.has_for_ops());
+    assert!(!s2.features.has_slot_carriers());
+    assert!(!s2.features.has_text_compounds());
+    assert!(!s2.features.has_model_bindings());
     let Op::Element(element) = &s2.root.ops[0] else {
         panic!("root is an element");
     };
@@ -39,6 +44,11 @@ fn lower_source_attaches_component_s2_root() {
     let root = lowered.roots.first().expect("one JSX root");
 
     let s2 = root.s2.as_ref().expect("component S2 root");
+    assert!(s2.features.has_slot_carriers());
+    assert!(!s2.features.has_if_ops());
+    assert!(!s2.features.has_for_ops());
+    assert!(!s2.features.has_text_compounds());
+    assert!(!s2.features.has_model_bindings());
     let Op::Component(component) = &s2.root.ops[0] else {
         panic!("root is a component");
     };

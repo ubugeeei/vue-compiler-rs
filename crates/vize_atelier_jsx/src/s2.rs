@@ -11,6 +11,7 @@ use vize_relief::{
     TemplateChildNode,
 };
 use vize_s0::{Allocator, Box, Vec};
+use vize_s1_to_s2::lower::{LoweringFeatures, OpFamily};
 use vize_s2::expr::ExprRef;
 use vize_s2::op::{
     Attribute, BindOp, BindingOp, ComponentOp, DynamicName, ElementOp, InterpolationOp, Namespace,
@@ -26,6 +27,8 @@ pub struct JsxS2Root<'a> {
     pub root: Region<'a>,
     /// Number of operations, including attached bindings when they land.
     pub op_count: u32,
+    /// S2 operation families observed while projecting this JSX root.
+    pub features: LoweringFeatures,
 }
 
 /// A construct which needs a dedicated S2 lowering and must not be silently
@@ -55,11 +58,13 @@ pub fn try_lower_root<'a>(
     root: &RootNode<'a>,
 ) -> Result<JsxS2Root<'a>, S2Refusal> {
     let mut op_count = 0;
-    let ops = lower_children(allocator, &root.children, &mut op_count)?;
+    let mut features = LoweringFeatures::EMPTY;
+    let ops = lower_children(allocator, &root.children, &mut op_count, &mut features)?;
     Ok(JsxS2Root {
         source,
         root: Region { ops },
         op_count,
+        features,
     })
 }
 
@@ -67,10 +72,11 @@ fn lower_children<'a>(
     allocator: &'a Allocator,
     children: &[TemplateChildNode<'a>],
     op_count: &mut u32,
+    features: &mut LoweringFeatures,
 ) -> Result<Vec<'a, Op<'a>>, S2Refusal> {
     let mut ops = Vec::new_in(&allocator);
     for child in children {
-        ops.push(lower_child(allocator, child, op_count)?);
+        ops.push(lower_child(allocator, child, op_count, features)?);
     }
     Ok(ops)
 }
@@ -79,6 +85,7 @@ fn lower_child<'a>(
     allocator: &'a Allocator,
     child: &TemplateChildNode<'a>,
     op_count: &mut u32,
+    features: &mut LoweringFeatures,
 ) -> Result<Op<'a>, S2Refusal> {
     *op_count = op_count.saturating_add(1);
     match child {
@@ -99,7 +106,9 @@ fn lower_child<'a>(
                 &allocator,
             )))
         }
-        TemplateChildNode::Element(element) => lower_element(allocator, element, op_count),
+        TemplateChildNode::Element(element) => {
+            lower_element(allocator, element, op_count, features)
+        }
         TemplateChildNode::If(_)
         | TemplateChildNode::IfBranch(_)
         | TemplateChildNode::For(_)
@@ -114,11 +123,12 @@ fn lower_element<'a>(
     allocator: &'a Allocator,
     element: &vize_relief::ElementNode<'a>,
     op_count: &mut u32,
+    features: &mut LoweringFeatures,
 ) -> Result<Op<'a>, S2Refusal> {
     let props = lower_props(allocator, &element.props)?;
     *op_count = op_count.saturating_add(props.binding_count);
     let children = Region {
-        ops: lower_children(allocator, &element.children, op_count)?,
+        ops: lower_children(allocator, &element.children, op_count, features)?,
     };
     match element.tag_type {
         ElementType::Element => Ok(Op::Element(Box::new_in(
@@ -132,16 +142,19 @@ fn lower_element<'a>(
             },
             &allocator,
         ))),
-        ElementType::Component => Ok(Op::Component(Box::new_in(
-            ComponentOp {
-                name: element.tag,
-                attributes: props.attributes,
-                bindings: props.bindings,
-                children,
-                span: element.loc.span,
-            },
-            &allocator,
-        ))),
+        ElementType::Component => {
+            *features = features.observing(OpFamily::SlotCarrier);
+            Ok(Op::Component(Box::new_in(
+                ComponentOp {
+                    name: element.tag,
+                    attributes: props.attributes,
+                    bindings: props.bindings,
+                    children,
+                    span: element.loc.span,
+                },
+                &allocator,
+            )))
+        }
         ElementType::Slot | ElementType::Template => Err(S2Refusal::UnsupportedElement),
     }
 }
