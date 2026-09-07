@@ -65,8 +65,8 @@ pub use jsx::{
 };
 #[cfg(feature = "native")]
 pub use jsx::{
-    JsxImplementationService, JsxReferencesService, JsxRenameService, JsxService,
-    JsxTypeDefinitionService,
+    JsxDeclarationService, JsxImplementationService, JsxReferencesService, JsxRenameService,
+    JsxService, JsxTypeDefinitionService,
 };
 pub use references::ReferencesService;
 pub use rename::RenameService;

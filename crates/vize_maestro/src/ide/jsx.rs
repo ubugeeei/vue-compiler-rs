@@ -34,6 +34,8 @@ pub use semantic_tokens::JsxSemanticTokensService;
 // (the bridge is a native-only feature) and reached only when
 // `typeChecker.jsxTypecheck` is enabled.
 #[cfg(feature = "native")]
+mod declaration;
+#[cfg(feature = "native")]
 mod implementation;
 #[cfg(feature = "native")]
 mod references;
@@ -48,6 +50,8 @@ mod signature_help_trace;
 #[cfg(feature = "native")]
 mod type_definition;
 
+#[cfg(feature = "native")]
+pub use declaration::JsxDeclarationService;
 #[cfg(feature = "native")]
 pub use implementation::JsxImplementationService;
 #[cfg(feature = "native")]
