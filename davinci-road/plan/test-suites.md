@@ -102,7 +102,7 @@
 | ----- | --------------------------------------------------------------------------- |
 | P0    | TS-1..9 (unchanged) + TS-10..16 established                                 |
 | P1    | all of P0 + TS-25, TS-26; TS-11 **empty**                                   |
-| P2    | all prior + TS-17..24, TS-52; TS-11 empty for DOM                           |
+| P2    | all prior + TS-17..24, TS-52; TS-11 empty for DOM and JSX                   |
 | P3    | all prior + TS-27..33; TS-11 empty for SSR (byte) / TS-33 for Vapor         |
 | P4    | all prior + TS-34..41; TS-37 at 100% recall per class, TS-38 zero untriaged |
 | P5    | all prior + TS-42..47                                                       |
