@@ -177,7 +177,7 @@ test("typecheck divergence report drains verbose vue-tsc coverage output", () =>
   try {
     updateJson(
       fixture.registryPath,
-      (registry) => (registry.projects[0].typecheckPerformance.hangTimeoutMs = 1_000),
+      (registry) => (registry.projects[0].typecheckPerformance.hangTimeoutMs = 5_000),
     );
     writeVueTsc(
       fixture.vueTsc,

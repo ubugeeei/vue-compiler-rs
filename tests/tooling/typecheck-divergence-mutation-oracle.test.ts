@@ -9,6 +9,7 @@ import {
   run,
   setup,
   updateJson,
+  updateVizeOutput,
 } from "./_helpers/typecheck-divergence-report-fixture.ts";
 
 const outerHarnessTimeoutMs = 20_000;
@@ -43,6 +44,48 @@ test("seeded mutation oracle accepts a shared probe with shifted compiler coordi
     assert.equal(repairedState.messageMismatchCount, 0);
     assert.notEqual(brokenState.sourceSha256, cleanState.sourceSha256);
     assert.equal(repairedState.sourceSha256, cleanState.sourceSha256);
+  } finally {
+    cleanup(fixture);
+  }
+});
+
+test("seeded mutation oracle narrows checker reruns to the selected probe file", () => {
+  const fixture = setup({
+    baselineOutput: "",
+    baselineFiles: ["src/App.vue", "src/Other.vue"],
+    vizeDiagnostics: [],
+  });
+  try {
+    fs.writeFileSync(path.join(fixture.fixtureRoot, "src", "Other.vue"), "<template />\n");
+    updateVizeOutput(fixture, (parsed) => {
+      parsed.fileCount = 2;
+      parsed.files = [
+        { file: "src/App.vue", diagnostics: [] },
+        { file: "src/Other.vue", diagnostics: [] },
+      ];
+    });
+
+    const result = run(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    const artifact = readJson(artifactPath(fixture, "json"));
+    const oracle = artifact.mutationOracle;
+    assert.equal(oracle.passed, true);
+
+    const fullBaselineConfig = readJson(
+      path.join(fixture.reportDir, "fixture-vue-tsc.tsconfig.json"),
+    );
+    assert.deepEqual(fullBaselineConfig.files, ["../src/App.vue", "../src/Other.vue"]);
+
+    const mutationConfig = readJson(
+      path.join(fixture.fixtureRoot, ".vize-baseline", "fixture-mutation-vue-tsc.tsconfig.json"),
+    );
+    assert.deepEqual(mutationConfig.files, [`../${oracle.file}`]);
+
+    for (const state of oracle.states) {
+      assert.match(state.vize.command, new RegExp(` check ${oracle.file.replace("/", "\\/")} `));
+      assert.doesNotMatch(state.vize.command, /src\/\*\*\/\*\.vue/u);
+      assert.match(state.baseline.command, /fixture-mutation-vue-tsc\.tsconfig\.json/u);
+    }
   } finally {
     cleanup(fixture);
   }
