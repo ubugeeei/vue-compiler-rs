@@ -16,6 +16,7 @@ export interface RepositoryGuardOptions {
   remoteTagExists?: boolean;
   pushFails?: boolean;
   stagedFiles?: boolean;
+  manifestPrecheckFails?: boolean;
   manifestTestFails?: boolean;
   guardFails?: boolean;
 }
@@ -24,6 +25,8 @@ export function runRepositoryGuardFixture(options: RepositoryGuardOptions) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "vize-release-guard-"));
   const binDir = path.join(tempDir, "bin");
   const gitLogPath = path.join(tempDir, "git.log");
+  const nodeLogPath = path.join(tempDir, "node.log");
+  const manifestTestCountPath = path.join(tempDir, "manifest-test-count.txt");
   const guardShimPath = path.join(tempDir, "release-local-guard-shim.mjs");
   const cargoTomlPath = path.join(tempDir, "Cargo.toml");
   const cargoToml = '[workspace.package]\nversion = "0.290.0"\n';
@@ -31,6 +34,8 @@ export function runRepositoryGuardFixture(options: RepositoryGuardOptions) {
   fs.mkdirSync(path.join(tempDir, "npm"));
   fs.mkdirSync(path.join(tempDir, "tests/tooling"), { recursive: true });
   fs.writeFileSync(gitLogPath, "");
+  fs.writeFileSync(nodeLogPath, "");
+  fs.writeFileSync(manifestTestCountPath, "0");
   fs.writeFileSync(cargoTomlPath, cargoToml);
   fs.writeFileSync(path.join(tempDir, "pnpm-workspace.yaml"), "");
   fs.writeFileSync(path.join(tempDir, "pnpm-lock.yaml"), "");
@@ -65,6 +70,22 @@ export function runRepositoryGuardFixture(options: RepositoryGuardOptions) {
       "process.exit(1);",
     ].join("\n"),
   );
+  writeFakeCommand(
+    binDir,
+    "fake-node",
+    [
+      "const fs = require('node:fs');",
+      "const args = process.argv.slice(2);",
+      "fs.appendFileSync(process.env.NODE_LOG, args.join(' ') + '\\n');",
+      "if (args[0] !== '--test' || args[1] !== 'tests/tooling/package-manifests.test.ts') process.exit(1);",
+      "const countPath = process.env.MANIFEST_TEST_COUNT;",
+      "const count = Number(fs.readFileSync(countPath, 'utf8')) + 1;",
+      "fs.writeFileSync(countPath, String(count));",
+      "if (process.env.TEST_MANIFEST_PRECHECK_FAILS === 'true' && count === 1) process.exit(1);",
+      "if (process.env.TEST_MANIFEST_TEST_FAILS === 'true' && count > 1) process.exit(1);",
+      "process.exit(0);",
+    ].join("\n"),
+  );
 
   const result = runMoonScript("release", ["patch", "-y"], {
     cwd: tempDir,
@@ -83,11 +104,17 @@ export function runRepositoryGuardFixture(options: RepositoryGuardOptions) {
       REMOTE_TAG_EXISTS: String(options.remoteTagExists),
       TEST_PUSH_FAIL: String(options.pushFails ?? false),
       TEST_STAGED_FILES: String(options.stagedFiles ?? true),
+      TEST_MANIFEST_PRECHECK_FAILS: String(options.manifestPrecheckFails ?? false),
+      TEST_MANIFEST_TEST_FAILS: String(options.manifestTestFails ?? false),
       TEST_GUARD_FAILS: String(options.guardFails ?? false),
       VIZE_RELEASE_GUARD_SCRIPT: guardShimPath,
       VIZE_RELEASE_GUARD_RUNNER: process.execPath,
+      VIZE_RELEASE_NODE: path.join(binDir, "fake-node"),
+      NODE_LOG: nodeLogPath,
+      MANIFEST_TEST_COUNT: manifestTestCountPath,
     },
   });
   const gitLog = fs.readFileSync(gitLogPath, "utf8");
-  return { cargoToml, cargoTomlPath, gitLog, result, tempDir };
+  const nodeLog = fs.readFileSync(nodeLogPath, "utf8");
+  return { cargoToml, cargoTomlPath, gitLog, nodeLog, result, tempDir };
 }

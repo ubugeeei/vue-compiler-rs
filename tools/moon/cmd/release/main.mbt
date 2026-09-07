@@ -535,6 +535,10 @@ async fn run_app() -> Int {
     return 1
   }
 
+  if !verify_manifest_alignment_before_mutation() {
+    return 1
+  }
+
   println("Updating Cargo.toml...")
   if !write_string_to_file(
     cargo_toml_path,
@@ -777,11 +781,7 @@ async fn run_app() -> Int {
     return 1
   }
 
-  println("Verifying manifest alignment with tests/tooling/package-manifests.test.ts...")
-  if @process.run("node", ["--test", "tests/tooling/package-manifests.test.ts"]) != 0 {
-    @stdio.stderr.write(
-      "Error: package manifest alignment tests failed against the release commit. Inspect tests/tooling/package-manifests.test.ts, then run `git reset --hard origin/main` after confirming there is no work to keep, fix the drift, and retry.\n",
-    )
+  if !verify_manifest_alignment_after_commit() {
     return 1
   }
 
