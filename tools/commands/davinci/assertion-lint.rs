@@ -303,9 +303,9 @@ fn load_allowlist(path: &Path) -> Result<BTreeMap<String, AllowEntry>, String> {
                     "{where_}: paths must be repo-root-relative forward-slash strings"
                 ));
             };
-            if entry_path.is_empty() || entry_path.contains('\\') {
+            if !is_allowlist_path(entry_path) {
                 return Err(format!(
-                    "{where_}: paths must be repo-root-relative forward-slash strings"
+                    "{where_}: paths must be normalized repo-root-relative forward-slash strings"
                 ));
             }
             if by_path
@@ -323,6 +323,15 @@ fn load_allowlist(path: &Path) -> Result<BTreeMap<String, AllowEntry>, String> {
         }
     }
     Ok(by_path)
+}
+
+fn is_allowlist_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.contains('\\')
+        && !path.starts_with('/')
+        && path
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
 }
 
 fn parse_toml_value(value: &str) -> Result<TomlValue, String> {
