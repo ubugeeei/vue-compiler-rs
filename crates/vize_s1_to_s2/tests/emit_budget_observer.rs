@@ -31,28 +31,28 @@ struct EmitCount {
 ///
 /// The transform column is per fixture rather than a constant because the
 /// planner declines a mandatory pass whose op family the lowering never
-/// built (`lower::features`). Two walks — the text pass and the static
-/// analysis — is the floor every artifact pays; each structural family
-/// present adds its own:
+/// built (`lower::features`). The optional static analysis is the floor
+/// every default artifact pays; compound text and each structural family
+/// add their own pass only when the lowering built that product:
 ///
 /// | fixture       | families present                      | transform walks |
 /// | ------------- | ------------------------------------- | --------------- |
-/// | small         | none                                  | 2               |
-/// | medium        | components (`el-row`, `svg-icon`, ...)| 3               |
-/// | large         | `v-if`, `v-for`, components, `<slot>` | 5               |
-/// | stress-deep   | `v-if`                                | 3               |
-/// | stress-wide   | none                                  | 2               |
-/// | stress-interp | none                                  | 2               |
+/// | small         | compound text                         | 2               |
+/// | medium        | components (`el-row`, `svg-icon`, ...)| 2               |
+/// | large         | `v-if`, `v-for`, slot carriers        | 4               |
+/// | stress-deep   | `v-if`                                | 2               |
+/// | stress-wide   | none                                  | 1               |
+/// | stress-interp | compound text                         | 2               |
 ///
 /// `medium` is the reminder that a slot carrier is any non-native tag,
 /// kebab-case included — it has no `v-slot` anywhere and still owes the
 /// slot pass its grouping walk.
 const S2_DOM_EMIT_COUNTS: [(&str, u32, u32, u32); 6] = [
     ("small", 1, 5, 2),
-    ("medium", 1, 33, 3),
-    ("large", 1, 54, 5),
-    ("stress-deep", 1, 72, 3),
-    ("stress-wide", 1, 2, 2),
+    ("medium", 1, 33, 2),
+    ("large", 1, 54, 4),
+    ("stress-deep", 1, 72, 2),
+    ("stress-wide", 1, 2, 1),
     ("stress-interp", 1, 201, 2),
 ];
 
@@ -162,11 +162,11 @@ fn model_bindings_keep_the_model_diagnostic_pass_in_the_emit_budget() {
         plain.assembled(),
         "the profiling observer must not change model output"
     );
-    // `v-model` alone: the model pass rejoins the two-walk floor.
-    assert_eq!(observed.budget.transform.walks, 3);
-    assert_eq!(observed.budget.transform.passes, 3);
+    // `v-model` alone: the model pass rejoins the optional analysis floor.
+    assert_eq!(observed.budget.transform.walks, 2);
+    assert_eq!(observed.budget.transform.passes, 2);
     assert_eq!(observed.budget.emit_walks, 1);
-    assert_eq!(observed.budget.total_walks(), 4);
+    assert_eq!(observed.budget.total_walks(), 3);
 }
 
 #[test]
@@ -199,11 +199,12 @@ fn disabled_static_hoist_skips_the_optional_analysis_walk() {
         observed.emit.preamble.len(),
         "static-hoist-disabled preamble must not append hoist declarations"
     );
-    // No structural family, no model, no analysis: the text pass alone.
-    assert_eq!(observed.budget.transform.walks, 1);
-    assert_eq!(observed.budget.transform.passes, 1);
+    // No structural family, no model, no analysis, no compound text: no
+    // transform pass is planned.
+    assert_eq!(observed.budget.transform.walks, 0);
+    assert_eq!(observed.budget.transform.passes, 0);
     assert_eq!(observed.budget.emit_walks, 1);
-    assert_eq!(observed.budget.total_walks(), 2);
+    assert_eq!(observed.budget.total_walks(), 1);
 }
 
 #[test]
@@ -224,10 +225,10 @@ fn disabled_static_hoist_keeps_model_diagnostics_when_models_exist() {
 
     // The analysis is declined by the option, the model pass is not:
     // declining a pass may never decline a diagnostic.
-    assert_eq!(observed.budget.transform.walks, 2);
-    assert_eq!(observed.budget.transform.passes, 2);
+    assert_eq!(observed.budget.transform.walks, 1);
+    assert_eq!(observed.budget.transform.passes, 1);
     assert_eq!(observed.budget.emit_walks, 1);
-    assert_eq!(observed.budget.total_walks(), 3);
+    assert_eq!(observed.budget.total_walks(), 2);
 }
 
 fn s2_dom_emit_count(fixture: &str) -> EmitCount {

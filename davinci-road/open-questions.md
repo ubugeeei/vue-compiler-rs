@@ -84,10 +84,13 @@ that uses every family still pays six.
 
 Prototype note (2026-09-07, third): source-map-free DOM compiles now skip the
 legacy pre-S2 transform when S2 emission succeeds. The profiled build counter
-therefore matches the S2 observer total on the ladder set: small/stress-wide/
-stress-interp 3 walks, medium/stress-deep 4 walks, and large 6 walks. P2-12b's
-remaining work is S2 transform fusion for the genuinely required passes above
-the one-walk emit floor; source-map requests still use the compatibility path.
+therefore matches the S2 observer total on the ladder set. After the text pass
+became demand-gated by compound text records, the current counts are: small,
+medium, stress-deep and stress-interp at 3 walks; stress-wide at 2 walks; and
+large at 5 walks. P2-12b's remaining work is S2 transform fusion for the
+genuinely required passes above the one-walk emit floor, plus the direct
+parse-to-S2 path and exact traversal gate; source-map requests still use the
+compatibility path.
 
 One measured correction to the derivation: the first cut read the family
 bits off provenance rule names, which is wrong. Provenance records

@@ -12,7 +12,7 @@
 > not exempt from. A record grows with its task, and 22 of them cannot share a
 > page.
 
-## Current completion evidence (2026-09-06)
+## Current completion evidence (2026-09-07)
 
 This table is the current ledger. The task files below remain historical
 records of what was measured at landing time; current task counts, suite range
@@ -20,8 +20,9 @@ and fixture inventory are checked by
 [`davinci-phase2-ledger.test.ts`](../../tests/tooling/davinci-phase2-ledger.test.ts).
 There are **18 of 22 complete**, **0 active and blocked**, **2 ready**
 (P2-12b, P2-16), and **2 open and dependency-blocked** (P2-17, P2-20).
-P2-12b has TS-22 groundwork in `emit_budget_observer`, but not the fused
-build-path switch.
+P2-12b has TS-22 groundwork in `emit_budget_observer`, build-path reconciliation
+in `davinci_s2_build_profile`, and a demand-gated text transform, but not direct
+parse-to-S2, transform fusion, or the exact traversal gate.
 Rows use executable witnesses except where a task's acceptance was explicitly
 a review point. P2-19 is that exception: its decision record is review evidence,
 and the adjacent TS-52 tests execute the shared feed contract, not a production

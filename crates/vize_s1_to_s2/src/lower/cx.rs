@@ -137,6 +137,7 @@ impl<'a> Cx<'a> {
     /// Attach a merged run's recorded parts to its compound op, when the
     /// op has an id (the `attach_scope` exhaustion rule).
     pub(crate) fn attach_texts(&mut self, node: Option<NodeId>, parts: super::text::TextParts) {
+        self.observe(super::features::OpFamily::TextCompound);
         if let Some(id) = node {
             self.texts.insert(id, parts);
         }

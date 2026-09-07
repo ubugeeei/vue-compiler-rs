@@ -1,6 +1,6 @@
 //! Artifact-scoped S2 transform plans.
 //!
-//! The static seven-pass table stays the review unit, but the build path
+//! The static transform table stays the review unit, but the build path
 //! should not pay a diagnostic pass for an op family the lowering did not
 //! produce. Feature bits come from the lowering construction sites, not a
 //! second S2 walk.
@@ -12,7 +12,7 @@
 //! so the reachable plans are the *subsets* of [`SELECTABLE`], not a short
 //! list of shapes. Enumerating them as named `const` pipelines cost one
 //! item per combination and doubled with every pass that learned to
-//! decline; at four selectable passes it was already sixteen names for one
+//! decline; at seven selectable passes it is already 128 names for one
 //! rule. [`plan_for_mask`] states the rule once instead, and [`PLANS`]
 //! holds its answer for every mask so a [`Pipeline`]'s
 //! `&'static [PassDesc]` still points at data nobody built at run time.
@@ -75,11 +75,12 @@ impl TransformProfile {
 /// filtered — never reordered. The passes touch disjoint op families and
 /// carry no semantic dependency on one another (`super::TRANSFORM`'s
 /// docs), which is what makes an arbitrary subset a legal pipeline.
-const SELECTABLE: [(PassDesc, u8); 6] = [
+const SELECTABLE: [(PassDesc, u8); 7] = [
     (legacy::DESC, LEGACY_SUGAR),
     (vif::DESC, IF_OPS),
     (vfor::DESC, FOR_OPS),
     (vslot::DESC, SLOT_CARRIERS),
+    (text::DESC, TEXT_COMPOUNDS),
     (vmodel::DESC, MODEL_BINDINGS),
     (hoist::DESC, STATIC_ANALYSIS),
 ];
@@ -88,23 +89,12 @@ const LEGACY_SUGAR: u8 = 1 << 0;
 const IF_OPS: u8 = 1 << 1;
 const FOR_OPS: u8 = 1 << 2;
 const SLOT_CARRIERS: u8 = 1 << 3;
-const MODEL_BINDINGS: u8 = 1 << 4;
-const STATIC_ANALYSIS: u8 = 1 << 5;
+const TEXT_COMPOUNDS: u8 = 1 << 4;
+const MODEL_BINDINGS: u8 = 1 << 5;
+const STATIC_ANALYSIS: u8 = 1 << 6;
 
 /// Every mask, hence every plan.
 const PLAN_COUNT: usize = 1 << SELECTABLE.len();
-
-/// The text pass is not selectable: besides consuming compounds it
-/// asserts the adjacency law over *every* region, and that check is
-/// owed by artifacts with no compound at all — precisely the artifacts a
-/// "no compound recorded" bit would have declined it for.
-const ALWAYS: PassDesc = text::DESC;
-
-/// The bit whose pass [`ALWAYS`] immediately precedes in the landed
-/// pipeline. Splicing there is what keeps every plan a *subsequence* of
-/// `TRANSFORM_PASSES` rather than a re-ordering of it — pinned by
-/// `every_plan_is_a_subsequence_of_the_full_pipeline`.
-const ALWAYS_PRECEDES: u8 = MODEL_BINDINGS;
 
 /// The passes one mask selects, in execution order.
 ///
@@ -113,13 +103,13 @@ const ALWAYS_PRECEDES: u8 = MODEL_BINDINGS;
 /// [`Plan::pipeline`] is the only reader and it slices to `len`.
 #[derive(Debug, Clone, Copy)]
 struct Plan {
-    passes: [PassDesc; SELECTABLE.len() + 1],
+    passes: [PassDesc; SELECTABLE.len()],
     len: usize,
 }
 
 impl Plan {
     const EMPTY: Self = Self {
-        passes: [ALWAYS; SELECTABLE.len() + 1],
+        passes: [text::DESC; SELECTABLE.len()],
         len: 0,
     };
 
@@ -128,17 +118,12 @@ impl Plan {
     }
 }
 
-/// The plan `mask` selects: [`SELECTABLE`] filtered, with [`ALWAYS`]
-/// spliced in at the position it holds in the full pipeline.
+/// The plan `mask` selects: [`SELECTABLE`] filtered in landed order.
 const fn plan_for_mask(mask: u8) -> Plan {
     let mut plan = Plan::EMPTY;
     let mut index = 0;
     while index < SELECTABLE.len() {
         let (desc, bit) = SELECTABLE[index];
-        if bit == ALWAYS_PRECEDES {
-            plan.passes[plan.len] = ALWAYS;
-            plan.len += 1;
-        }
         if mask & bit != 0 {
             plan.passes[plan.len] = desc;
             plan.len += 1;
@@ -152,7 +137,7 @@ const fn all_plans() -> [Plan; PLAN_COUNT] {
     let mut plans = [Plan::EMPTY; PLAN_COUNT];
     let mut mask = 0;
     while mask < PLAN_COUNT {
-        // `mask` is bounded by `PLAN_COUNT`, which is `1 << 6`.
+        // `mask` is bounded by `PLAN_COUNT`, which is `1 << 7`.
         #[expect(clippy::cast_possible_truncation)]
         let bits = mask as u8;
         plans[mask] = plan_for_mask(bits);
@@ -164,12 +149,11 @@ const fn all_plans() -> [Plan; PLAN_COUNT] {
 /// Every plan, so a selected [`Pipeline`] borrows rather than builds.
 static PLANS: [Plan; PLAN_COUNT] = all_plans();
 
-// The full plan is still the six-pass table the series landed, and the
-// empty plan is still the text pass alone: a plan-shape regression is a
-// compile error, not a test failure.
+// The full plan is the landed selectable table, and the empty plan is now
+// truly empty: a plan-shape regression is a compile error, not a test failure.
 const _: () = assert!(plan_for_mask(u8::MAX).len == 7);
-const _: () = assert!(plan_for_mask(0).len == 1);
-const _: () = assert!(plan_for_mask(STATIC_ANALYSIS).len == 2);
+const _: () = assert!(plan_for_mask(0).len == 0);
+const _: () = assert!(plan_for_mask(STATIC_ANALYSIS).len == 1);
 
 fn mask_for(caps: LegacyCaps, features: LoweringFeatures, profile: TransformProfile) -> u8 {
     let mut mask = 0;
@@ -184,6 +168,9 @@ fn mask_for(caps: LegacyCaps, features: LoweringFeatures, profile: TransformProf
     }
     if features.has_slot_carriers() {
         mask |= SLOT_CARRIERS;
+    }
+    if features.has_text_compounds() {
+        mask |= TEXT_COMPOUNDS;
     }
     if features.has_model_bindings() {
         mask |= MODEL_BINDINGS;

@@ -24,16 +24,16 @@ static PROFILER_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 ///
 /// The transform column is per fixture because the S2 pass planner
 /// declines a mandatory pass whose op family the lowering never built
-/// (`vize_s1_to_s2::lower::features`): two walks — the text pass and the
-/// static analysis — is the floor, and each family present adds one.
-/// `medium` pays three for its kebab-case components, which are slot
+/// (`vize_s1_to_s2::lower::features`): static analysis is the default
+/// floor, compound text and each structural family add one walk only when
+/// present. `medium` pays two for its kebab-case components, which are slot
 /// carriers even though it spells no `v-slot`.
 const S2_DOM_EMIT_COUNTS: [(&str, u64, u64, u64); 6] = [
     ("small", 1, 5, 2),
-    ("medium", 1, 33, 3),
-    ("large", 1, 54, 5),
-    ("stress-deep", 1, 72, 3),
-    ("stress-wide", 1, 2, 2),
+    ("medium", 1, 33, 2),
+    ("large", 1, 54, 4),
+    ("stress-deep", 1, 72, 2),
+    ("stress-wide", 1, 2, 1),
     ("stress-interp", 1, 201, 2),
 ];
 
@@ -65,14 +65,13 @@ fn profile_reports_real_s2_dom_walks() {
     assert_eq!(result.code, unobserved.code);
     assert_eq!(result.preamble, unobserved.preamble);
     assert_eq!(counter(&counters, "davinci.s2_dom.files"), 1);
-    // `<div>{{ msg }}</div>` builds no `ui.if`, no `ui.for`, no slot
-    // carrier and no `ui.model`, so the plan is the text pass plus the
-    // static analysis.
-    assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 2);
-    assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 2);
+    // `<div>{{ msg }}</div>` builds no compound text and no structural
+    // family, so the plan is the static analysis alone.
+    assert_eq!(counter(&counters, "davinci.s2_dom.transform.walks"), 1);
+    assert_eq!(counter(&counters, "davinci.s2_dom.transform.passes"), 1);
     assert_eq!(counter(&counters, "davinci.s2_dom.emit.walks"), 1);
     assert!(counter(&counters, "davinci.s2_dom.emit.visits") > 0);
-    assert_eq!(counter(&counters, "davinci.s2_dom.total.walks"), 3);
+    assert_eq!(counter(&counters, "davinci.s2_dom.total.walks"), 2);
 }
 
 #[test]

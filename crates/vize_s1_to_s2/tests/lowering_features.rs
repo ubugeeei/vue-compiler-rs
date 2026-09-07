@@ -27,16 +27,24 @@ use vize_s1_to_s2::pass::{S2Facts, run_transform};
 use vize_s1_to_s2::{LegacyCaps, LoweringFeatures, OpFamily, lower, lower_with_caps};
 use vize_s2::folio::DisegnoFolio;
 
-/// One template per family, plus the family-free controls the planner is
-/// supposed to save walks on.
-const FAMILY_FREE: &[(&str, &str)] = &[
-    ("plain element", "<div class=\"a\">text</div>"),
-    ("nested elements", "<section><p>a</p><p>b</p></section>"),
-    ("interpolation", "<p>{{ msg }} tail</p>"),
-    ("bind and on", "<button :id=\"id\" @click=\"go\">x</button>"),
-    ("comment", "<div><!-- note --><span>x</span></div>"),
-    ("show directive", "<div v-show=\"open\">x</div>"),
-    ("html directive", "<div v-html=\"raw\"></div>"),
+/// Controls whose absent families the planner is supposed to save walks on.
+///
+/// `planned_passes` includes the optional static analysis pass because DOM
+/// emission consumes it when `hoist_static` is left enabled. A compound text
+/// run buys back the text pass; a lone interpolation does not.
+const DECLINED_PASS_CASES: &[(&str, &str, u32)] = &[
+    ("plain element", "<div class=\"a\">text</div>", 1),
+    ("nested elements", "<section><p>a</p><p>b</p></section>", 1),
+    ("lone interpolation", "<p>{{ msg }}</p>", 1),
+    ("compound interpolation", "<p>{{ msg }} tail</p>", 2),
+    (
+        "bind and on",
+        "<button :id=\"id\" @click=\"go\">x</button>",
+        1,
+    ),
+    ("comment", "<div><!-- note --><span>x</span></div>", 1),
+    ("show directive", "<div v-show=\"open\">x</div>", 1),
+    ("html directive", "<div v-html=\"raw\"></div>", 1),
 ];
 
 fn features_of(source: &str) -> LoweringFeatures {
@@ -88,6 +96,11 @@ fn each_family_sets_exactly_its_own_bit() {
             "<input v-model=\"text\" />",
             LoweringFeatures::has_model_bindings,
         ),
+        (
+            "compound text",
+            "<p>hello {{ name }}</p>",
+            LoweringFeatures::has_text_compounds,
+        ),
         // The malformed spellings are the reason the bit is set at the op
         // and not read off a provenance rule name: each of these lowers
         // under an `error.*` rule and still leaves its op in the tree, so
@@ -137,13 +150,24 @@ fn an_erroring_spelling_that_mints_no_op_leaves_the_bit_clear() {
 
 #[test]
 fn a_family_free_template_sets_no_bit() {
-    for (name, source) in FAMILY_FREE {
+    for (name, source, expected_passes) in DECLINED_PASS_CASES {
         let features = features_of(source);
-        assert_eq!(
-            features,
-            LoweringFeatures::EMPTY,
-            "{name} should reach the planner with no family claimed",
-        );
+        if *expected_passes == 1 {
+            assert_eq!(
+                features,
+                LoweringFeatures::EMPTY,
+                "{name} should reach the planner with no family claimed",
+            );
+        } else {
+            assert!(
+                features.has_text_compounds(),
+                "{name} should claim the text pass and no structural family"
+            );
+            assert!(!features.has_if_ops());
+            assert!(!features.has_for_ops());
+            assert!(!features.has_slot_carriers());
+            assert!(!features.has_model_bindings());
+        }
     }
 }
 
@@ -195,6 +219,7 @@ fn run(source: &str, force_every_pass: bool) -> (Products, u32) {
             OpFamily::If,
             OpFamily::For,
             OpFamily::SlotCarrier,
+            OpFamily::TextCompound,
             OpFamily::Model,
         ]
         .into_iter()
@@ -212,7 +237,7 @@ fn run(source: &str, force_every_pass: bool) -> (Products, u32) {
 
 #[test]
 fn declining_a_pass_changes_no_product() {
-    for (name, source) in FAMILY_FREE {
+    for (name, source, expected_planned_passes) in DECLINED_PASS_CASES {
         let (planned, planned_passes) = run(source, false);
         let (forced, forced_passes) = run(source, true);
         assert_eq!(
@@ -225,8 +250,8 @@ fn declining_a_pass_changes_no_product() {
              so the comparison proves nothing",
         );
         assert_eq!(
-            planned_passes, 2,
-            "{name}: a family-free artifact should plan the text pass and the analysis pass alone",
+            planned_passes, *expected_planned_passes,
+            "{name}: planned pass count",
         );
         assert_eq!(forced_passes, 6, "{name}: the full table is six passes");
     }
@@ -234,7 +259,7 @@ fn declining_a_pass_changes_no_product() {
 
 /// The headline measurement, kept beside the claim it supports.
 #[test]
-fn a_family_free_template_plans_two_passes_not_six() {
+fn a_family_free_template_plans_one_pass_not_six() {
     let (_, passes) = run("<div class=\"a\"><span>b</span></div>", false);
-    assert_eq!(passes, 2);
+    assert_eq!(passes, 1);
 }
