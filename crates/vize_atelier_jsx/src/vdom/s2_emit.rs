@@ -261,6 +261,8 @@ mod events_tests;
 #[cfg(test)]
 mod model_tests;
 #[cfg(test)]
+mod scoped_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod vue_directives_tests;

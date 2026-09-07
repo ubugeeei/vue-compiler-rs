@@ -114,6 +114,11 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "scoped style",
+            r#"const A = () => <><section class="box" /><style scoped>{`.box { color: red; }`}</style></>;"#,
+            JsxLang::Jsx,
+        ),
+        (
             "element v-html",
             "const A = () => <div v-html={raw} />;",
             JsxLang::Jsx,
