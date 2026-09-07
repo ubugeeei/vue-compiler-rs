@@ -6,7 +6,10 @@ use vize_s1_to_s2::pass::{TransformProfile, run_transform_with_profile};
 use vize_s1_to_s2::{
     DomEmitMode, DomEmitOptions, LegacyCaps, Lowered as S2Lowered, emit_dom_with_options,
 };
-use vize_s2::op::{BindingOp, ComponentOp, DynamicName, ElementOp, Op, Region, SlotContentOp};
+use vize_s2::expr::ExprRef;
+use vize_s2::op::{
+    BindingOp, ComponentOp, DynamicName, ElementOp, ModelOp, Op, Region, SlotContentOp,
+};
 
 use crate::s2::{JsxS2Root, S2Refusal};
 
@@ -221,9 +224,30 @@ fn component_binding_is_supported(binding: &BindingOp<'_>, dynamic_component: bo
                 && event_option_modifiers_are_supported(&on.modifiers)
                 && matches!(on.name, Some(DynamicName::Static(_)))
         }
+        BindingOp::Model(model) => component_model_is_supported(model),
         BindingOp::VueShow(_) => true,
         _ => false,
     }
+}
+
+fn component_model_is_supported(model: &ModelOp<'_>) -> bool {
+    let has_component_kind = model
+        .attributes
+        .iter()
+        .any(|attribute| attribute.name == "element-kind" && attribute.value == Some("component"));
+    has_component_kind
+        && model.attributes.iter().all(|attribute| {
+            if attribute.name == "element-kind" {
+                attribute.value == Some("component")
+            } else {
+                attribute.value.is_none()
+            }
+        })
+        && model.contract.read.source() == model.contract.write.source()
+        && model.contract.read.span() == model.contract.write.span()
+        && matches!(model.contract.read, ExprRef::Js(_))
+        && matches!(model.contract.write, ExprRef::Js(_))
+        && matches!(model.argument, None | Some(DynamicName::Static(_)))
 }
 
 fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
@@ -234,6 +258,8 @@ fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
 
 #[cfg(test)]
 mod events_tests;
+#[cfg(test)]
+mod model_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

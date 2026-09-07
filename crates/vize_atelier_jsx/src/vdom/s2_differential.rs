@@ -73,6 +73,16 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "component v-model",
+            "const A = () => <Input v-model={value} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "component v-model argument modifiers",
+            "const A = () => <Input v-model={[value, \"foo\", [\"trim\"]]} />;",
+            JsxLang::Jsx,
+        ),
+        (
             "component paramless named slots",
             "const A = () => <Comp>{{ header: () => <h1>Hi</h1>, footer: () => <p>Bye</p> \
              }}</Comp>;",
