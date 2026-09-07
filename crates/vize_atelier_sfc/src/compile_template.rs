@@ -9,6 +9,8 @@ mod string_tracking;
 mod vapor;
 
 #[cfg(test)]
+mod section_offsets_tests;
+#[cfg(test)]
 mod tests;
 
 pub(crate) use extraction::{
@@ -193,8 +195,12 @@ pub(crate) fn compile_template_block(
         dom_opts.croquis = Some(Box::new(c));
     }
 
-    // Compile template
-    let (errors, result) = if inline {
+    // Compile template. SFC assembly consumes only diagnostics and emitted
+    // render code, so use the section-only entry when it can preserve the
+    // requested semantics. Module-mode static hoisting still stays on the
+    // compatibility path until S2's hoist analysis covers the full DOM lane.
+    let route_through_sections = inline || !dom_opts.hoist_static;
+    let (errors, result) = if route_through_sections {
         profile!(
             "atelier.sfc.template.dom",
             vize_atelier_dom::compile_sfc_template_with_custom_elements_and_template_syntax_and_hoisted_scope_id_with_sections_and_codegen_options(
