@@ -73,7 +73,7 @@ Each ID links to its contract in [phase-2-tasks.md](./phase-2-tasks.md); what a 
 - [x] [P2-19](./phase-2-tasks-later.md#p2-19--devtool-protocol-spike) DevTool protocol spike — landed 2026-08-21; decided **document over JSON-RPC**: the P2-18 feed document stays the unit on every surface — C-7's local server speaks content-mapper-style JSON-RPC whose `initialize` negotiates the feed `schema_version` before any payload is serialized (the only candidate that negotiates rather than refusing after the producer wrote everything), served files stay the at-rest form, the wasm playground keeps the P2-18 embedding, JSON-lines rejected (every named consumer reassembles the document anyway); spike deleted deliberately, measurements and reproduction recipe in the record ([record](./phase-2-records/p2-19.md))
 - [ ] [P2-20](./phase-2-tasks-later.md#p2-20--phase-exit) Phase exit
 
-## Current execution ledger (2026-09-06)
+## Current execution ledger (2026-09-07)
 
 This is the current snapshot. The phase re-cut above and the per-installment
 records are historical evidence and are not silently rewritten when current
@@ -83,17 +83,18 @@ counts or fixture availability changes.
   P2-7, P2-8, P2-9, P2-10, P2-11, P2-12a, P2-13, P2-14, P2-15,
   P2-18 and P2-19.**
   Each completion is joined to its merged PR and current evidence in the
-  [evidence index](./phase-2-records.md#current-completion-evidence-2026-09-06);
+  [evidence index](./phase-2-records.md#current-completion-evidence-2026-09-07);
   review-only evidence is labeled there rather than presented as executable.
   P2-11 keeps the hydrated full-corpus differential contract pinned as
   144 DOM-output comparisons.
 - **Active and blocked: 0 of 22 — none.**
 - **Ready: 2 of 22 — P2-12b and P2-16.** P2-12b now has all declared
-  dependencies closed (P2-12a, P2-11 and P2-3); TS-22 groundwork exposes
-  `emit_dom_source_observed` and `emit_budget_observer` for the one
-  code-producing S2 DOM emit walk, so the next work is the fused build-path
-  switch and exact traversal gate. P2-16 is unblocked by P2-11's completed S2
-  DOM backend and can now move JSX lowering onto S2.
+  dependencies closed (P2-12a, P2-11 and P2-3); TS-22 groundwork now exposes
+  the one code-producing S2 DOM emit walk, a source-map-free build counter that
+  reconciles with the S2 observer, and a demand-gated text transform. The
+  remaining P2-12b work is direct parse-to-S2, transform fusion for genuinely
+  required passes, and the exact traversal gate. P2-16 is unblocked by
+  P2-11's completed S2 DOM backend and can now move JSX lowering onto S2.
 - **Open and dependency-blocked: 2 of 22 — P2-17 and P2-20.** P2-17 depends on
   P2-11, P2-12b and P2-13; P2-11 and P2-13 are available, so P2-12b is the
   remaining dependency gate. P2-20 depends on all of P2-1 through P2-19 and

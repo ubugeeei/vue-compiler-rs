@@ -28,18 +28,18 @@ struct TraversalBudget {
 ///
 /// | fixture       | families present                      | S2 | build |
 /// | ------------- | ------------------------------------- | -- | ----- |
-/// | small         | none                                  | 3  | 3     |
-/// | medium        | components                            | 4  | 4     |
-/// | large         | `v-if`, `v-for`, components, `<slot>` | 6  | 6     |
-/// | stress-deep   | `v-if`                                | 4  | 4     |
-/// | stress-wide   | none                                  | 3  | 3     |
-/// | stress-interp | none                                  | 3  | 3     |
+/// | small         | compound text                         | 3  | 3     |
+/// | medium        | components                            | 3  | 3     |
+/// | large         | `v-if`, `v-for`, slot carriers        | 5  | 5     |
+/// | stress-deep   | `v-if`                                | 3  | 3     |
+/// | stress-wide   | none                                  | 2  | 2     |
+/// | stress-interp | compound text                         | 3  | 3     |
 const CURRENT_WALKS: [(&str, u64, u64); 6] = [
     ("small", 3, 3),
-    ("medium", 4, 4),
-    ("large", 6, 6),
-    ("stress-deep", 4, 4),
-    ("stress-wide", 3, 3),
+    ("medium", 3, 3),
+    ("large", 5, 5),
+    ("stress-deep", 3, 3),
+    ("stress-wide", 2, 2),
     ("stress-interp", 3, 3),
 ];
 

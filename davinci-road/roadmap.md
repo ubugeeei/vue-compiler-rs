@@ -113,14 +113,16 @@ holds or improves — this phase should be a measurable win, not a wash.
   timing, remark emission) land with the pass manager itself, so the DevTool's
   data feed exists from the first S2 build.
 
-**Current execution ledger (2026-09-06):** [18 of 22 tasks are complete](./plan/phase-2.md#current-execution-ledger-2026-09-06).
+**Current execution ledger (2026-09-07):** [18 of 22 tasks are complete](./plan/phase-2.md#current-execution-ledger-2026-09-07).
 P2-9 is complete: the hydrated corpus run compiled 41,580 files at zero
 divergence and measured the retained-`None` residual at 11.73%. P2-11 is now
 complete through [#5860](https://github.com/ubugeeei-prod/vize/pull/5860), so
 there are no active blocked tasks; P2-12b and P2-16 are ready, while P2-17 and
 P2-20 remain dependency-blocked. P2-12b has TS-22 groundwork for observed S2
-DOM emit walks, but not the fused build-path switch. P2-11 has 123 landed
-installments through [#5860](https://github.com/ubugeeei-prod/vize/pull/5860).
+DOM emit walks, build-path reconciliation and a demand-gated text transform,
+but not direct parse-to-S2, transform fusion or the exact traversal gate.
+P2-11 has 123 landed installments through
+[#5860](https://github.com/ubugeeei-prod/vize/pull/5860).
 Installments 84-123 open and close the production option surface the switch
 needed: module output,
 identifier prefixing, binding metadata, TypeScript erasure, component-name

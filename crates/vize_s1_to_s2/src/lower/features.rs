@@ -6,7 +6,8 @@
 //! Every mandatory S2 pass is the consumer of one op family:
 //! [`pass::vif`](crate::pass::vif) reads `ui.if`,
 //! [`pass::vfor`](crate::pass::vfor) reads `ui.for`,
-//! [`pass::vslot`](crate::pass::vslot) reads the slot carriers, and
+//! [`pass::vslot`](crate::pass::vslot) reads the slot carriers,
+//! [`pass::text`](crate::pass::text) reads compound text records, and
 //! [`pass::vmodel`](crate::pass::vmodel) reads `ui.model`. Run against an
 //! artifact whose family the lowering never built, such a pass walks the
 //! whole tree to publish an empty fact table and raise no diagnostic — a
@@ -49,6 +50,9 @@ pub enum OpFamily {
     /// outlet or a `ui.slot-content` binding (the two `VSlotMisplaced`
     /// anchors, which fire with no component in sight).
     SlotCarrier,
+    /// A compound text/interpolation run whose structured parts are read by
+    /// the text pass.
+    TextCompound,
     /// A `ui.model` binding.
     Model,
 }
@@ -81,6 +85,12 @@ impl LoweringFeatures {
         self.holds(OpFamily::SlotCarrier)
     }
 
+    /// Whether the lowering built any compound text/interpolation run.
+    #[must_use]
+    pub const fn has_text_compounds(self) -> bool {
+        self.holds(OpFamily::TextCompound)
+    }
+
     /// Whether the lowering built any `ui.model` binding.
     #[must_use]
     pub const fn has_model_bindings(self) -> bool {
@@ -106,7 +116,8 @@ impl OpFamily {
             OpFamily::If => 1 << 0,
             OpFamily::For => 1 << 1,
             OpFamily::SlotCarrier => 1 << 2,
-            OpFamily::Model => 1 << 3,
+            OpFamily::TextCompound => 1 << 3,
+            OpFamily::Model => 1 << 4,
         }
     }
 }
@@ -115,10 +126,11 @@ impl OpFamily {
 mod tests {
     use super::{LoweringFeatures, OpFamily};
 
-    const EVERY: [OpFamily; 4] = [
+    const EVERY: [OpFamily; 5] = [
         OpFamily::If,
         OpFamily::For,
         OpFamily::SlotCarrier,
+        OpFamily::TextCompound,
         OpFamily::Model,
     ];
 
@@ -129,6 +141,7 @@ mod tests {
         assert!(!features.has_if_ops());
         assert!(!features.has_for_ops());
         assert!(!features.has_slot_carriers());
+        assert!(!features.has_text_compounds());
         assert_eq!(features, LoweringFeatures::default());
     }
 
@@ -152,6 +165,7 @@ mod tests {
         assert!(once.has_for_ops());
         assert!(!once.has_if_ops());
         assert!(!once.has_slot_carriers());
+        assert!(!once.has_text_compounds());
         assert!(!once.has_model_bindings());
 
         let all = EVERY
