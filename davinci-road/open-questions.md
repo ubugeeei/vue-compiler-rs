@@ -74,8 +74,16 @@ agree on the artifact, its diagnostics, its provenance and every fact
 table.
 
 This narrows the fusion question rather than answering it. What remains
-above the one-walk target is (a) the pre-S2 template walk, which
-parse-to-S2 removes, and (b) the passes an artifact genuinely owes —
+above the one-walk target is (a) the pre-S2 template walk — **which the
+production path has already stopped paying**: `vize_atelier_sfc` calls
+`compile_sfc_template_*`, whose S2 fast path
+(`vize_atelier_dom/src/compile/sfc.rs`) never parses or transforms
+through the legacy lane, so the ladder measures 3/4/6/4/3/3 S2 walks
+there against the `compile_template` entry's 4/5/7/5/4/4. That last walk
+is owed to `compile_template`'s public contract, which returns the
+transformed AST, not to any build; the witness is
+`the_sfc_entry_pays_no_pre_s2_walk`. And (b) the passes an artifact
+genuinely owes —
 `v-if`'s sibling lookahead and `v-slot`'s slot collection are the two the
 task contract already names as region-local, so those are the ones real
 fusion has to earn. **Skipping is not fusing**, and the walk counts above
