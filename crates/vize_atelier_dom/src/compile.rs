@@ -1,11 +1,8 @@
 //! DOM template compilation: parse, transform, and codegen entry points.
 
-pub mod custom_elements;
-
-use vize_atelier_core::codegen::{CodegenResult, CodegenResultWithSections};
 use vize_atelier_core::{
     CompilerError, RootNode,
-    codegen::generate_with_sections,
+    codegen::{CodegenResult, CodegenResultWithSections, generate_with_sections},
     lane::transform_with_custom_elements_and_template_syntax_quirks_and_hoisted_scope_id,
     options::{CodegenOptions, CustomElementMatcher, TemplateSyntaxMode},
     parser::parse_with_options_custom_elements_and_template_syntax,
@@ -14,6 +11,9 @@ use vize_atelier_core::{
 use vize_croquis::Croquis;
 use vize_s0::{Allocator, String, profile, profiler::global_profiler};
 
+pub mod custom_elements;
+#[cfg(feature = "davinci-differential")]
+pub(crate) mod legacy;
 mod pipeline;
 mod sfc;
 mod source_map;

@@ -36,6 +36,19 @@ impl DomCompilePipelineOptions {
         }
     }
 
+    /// The legacy lane, S2 declined — the differential lanes' old side.
+    #[cfg(feature = "davinci-differential")]
+    pub(super) fn deny_s2(
+        custom_elements: CustomElementMatcher,
+        codegen_options: CodegenOptions,
+    ) -> Self {
+        Self {
+            custom_elements,
+            codegen_options,
+            s2_emit_selection: S2EmitSelection::Disabled,
+        }
+    }
+
     pub(super) fn require_sections_compat(
         custom_elements: CustomElementMatcher,
         codegen_options: CodegenOptions,
