@@ -68,6 +68,17 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "component paramless named slots",
+            "const A = () => <Comp>{{ header: () => <h1>Hi</h1>, footer: () => <p>Bye</p> \
+             }}</Comp>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "component paramless default slot",
+            "const A = () => <List>{() => <li>Empty</li>}</List>;",
+            JsxLang::Jsx,
+        ),
+        (
             "dynamic component",
             "const A = () => <Widget.Panel foo={1} />;",
             JsxLang::Jsx,

@@ -109,6 +109,58 @@ fn component_plain_children_emit_from_s2_with_slot_facts() {
 }
 
 #[test]
+fn component_paramless_static_slots_emit_from_s2() {
+    let allocator = Allocator::new();
+    let source = "const A = () => <Comp>{{ header: () => <h1>Hi</h1>, footer: () => \
+                  <p>Bye</p> }}</Comp>;";
+    let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
+    let mut root = lowered.roots.pop().expect("one JSX root");
+    let s2 = root.s2.as_ref().expect("paramless slots project to S2");
+
+    assert_eq!(super::root_is_supported(s2), true);
+
+    root.root.children.clear();
+    let mut diagnostics = Vec::new();
+    let component = compile_root_to_vdom(
+        &allocator,
+        root,
+        analysis,
+        false,
+        &VdomCompileOptions::default(),
+        VdomCompatOptions::default(),
+        &mut diagnostics,
+        source,
+    );
+
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { resolveComponent as _resolveComponent, createElementVNode as \
+         _createElementVNode, openBlock as _openBlock, createBlock as _createBlock, withCtx as \
+         _withCtx } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  const _component_Comp = \
+         _resolveComponent(\"Comp\")\n  \n  return (_openBlock(), _createBlock(_component_Comp, \
+         null, {\n    header: _withCtx(() => [\n      _createElementVNode(\"h1\", null, \
+         \"Hi\")\n    ]),\n    footer: _withCtx(() => [\n      _createElementVNode(\"p\", null, \
+         \"Bye\")\n    ]),\n    _: 1 /* STABLE */\n  }))\n}"
+    );
+}
+
+#[test]
+fn component_scoped_slots_still_refuse_s2_projection() {
+    let allocator = Allocator::new();
+    let source = "const A = () => <List>{{ item: ({ x }) => <li>{x}</li> }}</List>;";
+    let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
+    let root = lowered.roots.pop().expect("one JSX root");
+
+    assert_eq!(root.s2.err(), Some(crate::s2::S2Refusal::Directive));
+}
+
+#[test]
 fn leaf_root_component_with_static_props_emits_from_s2() {
     let allocator = Allocator::new();
     let source = "const A = () => <B foo={f} title=\"ok\" />";

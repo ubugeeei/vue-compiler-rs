@@ -18,6 +18,8 @@ use vize_s2::op::{
     OnOp, Op, Region, TextOp, VueShowOp,
 };
 
+use self::slots::{has_slot_content, lower_slot_content, slot_template_span};
+
 /// A JSX render root represented as S2 operations.
 #[derive(Debug)]
 pub struct JsxS2Root<'a> {
@@ -155,6 +157,21 @@ fn lower_element<'a>(
                 &allocator,
             )))
         }
+        ElementType::Template if has_slot_content(&props.bindings) => {
+            *features = features.observing(OpFamily::SlotCarrier);
+            let span = slot_template_span(element.loc.span, &props.bindings);
+            Ok(Op::Element(Box::new_in(
+                ElementOp {
+                    tag: element.tag,
+                    namespace: namespace(element.ns),
+                    attributes: props.attributes,
+                    bindings: props.bindings,
+                    children,
+                    span,
+                },
+                &allocator,
+            )))
+        }
         ElementType::Slot | ElementType::Template => Err(S2Refusal::UnsupportedElement),
     }
 }
@@ -198,6 +215,7 @@ fn lower_binding<'a>(
     match directive.name {
         "bind" | "on" => lower_bind_or_on(allocator, directive),
         "show" => lower_show(allocator, directive),
+        "slot" => lower_slot_content(allocator, directive),
         _ => Err(S2Refusal::Directive),
     }
 }
@@ -313,3 +331,5 @@ const fn namespace(namespace: ReliefNamespace) -> Namespace {
 
 #[cfg(test)]
 mod tests;
+
+mod slots;
