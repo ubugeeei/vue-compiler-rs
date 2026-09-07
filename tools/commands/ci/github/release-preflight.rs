@@ -624,7 +624,17 @@ fn bootstrap_required_workflow_runs(
             match run {
                 None => missing.push(*workflow_name),
                 Some(run) if run.get("status").and_then(Value::as_str) != Some("completed") => {
-                    pending.push(*workflow_name)
+                    if required_workflow_has_terminal_failed_job(
+                        api_url,
+                        repository,
+                        token,
+                        workflow_name,
+                        run,
+                    ) {
+                        failed = true;
+                    } else {
+                        pending.push(*workflow_name)
+                    }
                 }
                 Some(run) if run.get("conclusion").and_then(Value::as_str) != Some("success") => {
                     failed = true
@@ -846,6 +856,31 @@ fn collect_required_workflow_failure_details(
         }
     }
     details
+}
+
+fn required_workflow_has_terminal_failed_job(
+    api_url: &str,
+    repository: &str,
+    token: &str,
+    workflow_name: &str,
+    run: &Value,
+) -> bool {
+    if !workflow_requires_job_evidence(workflow_name) {
+        return false;
+    }
+    let Some(run_id) = run.get("id").and_then(Value::as_i64) else {
+        return false;
+    };
+    github_api_pages_with_timeouts(
+        api_url,
+        repository,
+        token,
+        &format!("actions/runs/{run_id}/jobs"),
+        None,
+        FAILURE_DETAIL_GITHUB_TIMEOUTS,
+    )
+    .ok()
+    .is_some_and(|jobs| required_jobs_contain_terminal_failure(workflow_name, &jobs))
 }
 
 fn latest_required_workflow_run<'a>(
@@ -1080,6 +1115,25 @@ fn summarize_required_workflow_job_failures(
         reported.push(format!("and {omitted} more"));
     }
     Some(format!("required jobs: {}", reported.join(", ")))
+}
+
+fn required_jobs_contain_terminal_failure(workflow_name: &str, jobs_response: &[Value]) -> bool {
+    let job_names = required_workflow_job_names(workflow_name);
+    if job_names.is_empty() {
+        return false;
+    }
+    let mut jobs = flatten_collection(jobs_response, "jobs");
+    if jobs.is_empty() && jobs_response.iter().all(Value::is_object) {
+        jobs.extend(jobs_response);
+    }
+    job_names.into_iter().any(|name| {
+        jobs.iter()
+            .filter(|job| job.get("name").and_then(Value::as_str) == Some(name.as_str()))
+            .any(|job| {
+                job.get("status").and_then(Value::as_str) == Some("completed")
+                    && job.get("conclusion").and_then(Value::as_str) != Some("success")
+            })
+    })
 }
 
 fn find_release_blockers(issues: &[Value], tag: Option<&str>) -> Result<Vec<Value>, String> {

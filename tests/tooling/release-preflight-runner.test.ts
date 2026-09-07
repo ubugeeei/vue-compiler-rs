@@ -229,6 +229,45 @@ test("verify-only mode reports failed matrix shard jobs for red release evidence
   }
 });
 
+test("bootstrap mode stops waiting when an in-progress gate has failed required jobs", () => {
+  const tempDir = fs.mkdtempSync(path.join(tmpdir(), "vize-release-red-pending-matrix-"));
+  try {
+    const fixture = createReleasePreflightVerifyOnlyFixture(tempDir, {
+      requireJobTimeoutArgs: true,
+      mutateRuns(runs) {
+        const matrix = runs.find((run) => run.name === "Real Project Matrix");
+        assert.ok(matrix);
+        matrix.status = "in_progress";
+        matrix.conclusion = null;
+      },
+      mutateJobs(jobs) {
+        const matrixJobs = jobs[106];
+        assert.ok(matrixJobs);
+        matrixJobs[0] = { ...matrixJobs[0], conclusion: "failure" };
+        matrixJobs[12] = { ...matrixJobs[12], status: "in_progress", conclusion: null };
+      },
+    });
+    const result = spawnSync("rust-script", ["tools/commands/ci/github/release-preflight.rs"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${fixture.binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+        ...fixture.env,
+      },
+      timeout: 10_000,
+    });
+
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, `${result.stderr}\n${result.stdout}`.trim());
+    assert.match(result.stderr, /Real Project Matrix: in_progress\/no conclusion/);
+    assert.match(result.stderr, /real projects \(0\/22\)=completed\/failure/);
+    assert.match(result.stderr, /real projects \(12\/22\)=in_progress\/no conclusion/);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("verify-only mode rejects mutation states with observed typecheck drift", () => {
   const tempDir = fs.mkdtempSync(path.join(tmpdir(), "vize-release-mutation-drift-"));
   try {
