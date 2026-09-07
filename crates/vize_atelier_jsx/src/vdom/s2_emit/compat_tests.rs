@@ -46,12 +46,12 @@ fn babel_compat_surface_options_decline_s2_emit() {
         "mergeProps false",
     );
     assert_s2_emit_declines_with_compat(
-        S2_SUPPORTED_SOURCE,
+        "const A = () => <input v-model={value} />;",
         VdomCompatOptions {
             allow_static_v_model_arg_on_element: true,
             ..Default::default()
         },
-        "static element v-model arguments",
+        "native input v-model with static element argument compat",
     );
 
     let custom_element_spans = [(0, 1)];
