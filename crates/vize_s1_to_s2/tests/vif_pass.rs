@@ -193,9 +193,10 @@ fn an_unwrapped_single_child_keeps_its_own_key() {
 
 #[test]
 fn the_pipeline_reports_one_walk_per_barrier_pass() {
-    // Four mandatory barriers plus the series-6 fusable singleton
-    // (v-if, v-for, v-slot, text, hoist-static): five walks for an
-    // artifact with no ui.model bindings.
+    // One walk per planned pass, still: the artifact builds a `ui.if`
+    // and nothing else, so the plan is the v-if barrier, the text
+    // barrier and the series-6 fusable singleton — three walks, and no
+    // group holds two passes.
     with_transformed(r#"<div v-if="a">x</div>"#, |_, _, _, budget| {
         assert_eq!(
             vize_davinci::folio::Folio::print_to_string(
@@ -203,9 +204,19 @@ fn the_pipeline_reports_one_walk_per_barrier_pass() {
                 vize_davinci::folio::FolioMode::Full
             )
             .as_str(),
-            "[budget-observer]\nwalks=5\npasses=5\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=3\npasses=3\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
     });
+
+    // The law is walks == passes, not a fixed number: an artifact with
+    // every family pays six, and still one walk each.
+    with_transformed(
+        r#"<Comp v-if="a"><template #s="p">{{ p }}</template></Comp><input v-else v-model="m" v-for="m in ms">"#,
+        |_, _, _, budget| {
+            assert_eq!(budget.walks, budget.passes);
+            assert_eq!(budget.walks, 6);
+        },
+    );
 }
 
 #[test]

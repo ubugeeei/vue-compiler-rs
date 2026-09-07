@@ -57,6 +57,40 @@ artifacts also skip the `v-model` diagnostic pass, dropping the observed
 build path to 7 walks (1 pre-S2 + 6 S2 observer). P2-12b still needs
 parse-to-S2 and S2 transform fusion to reach the phase target.
 
+Prototype note (2026-09-07, second): **most of the transform's walks were
+not fusion's to save.** Each mandatory S2 pass consumes exactly one op
+family, so against an artifact whose family the lowering never built it
+walks the whole tree to publish an empty fact table and raise no
+diagnostic. The lowering now records the families it built
+(`vize_s1_to_s2::lower::features`, one bit set where the op is minted) and
+the planner drops those passes. Ladder evidence, transform walks per
+fixture: small 5 -> 2, medium 5 -> 3, large 5 -> 5, stress-deep 5 -> 3,
+stress-wide 5 -> 2, stress-interp 5 -> 2; the profiled build path falls
+from 7 walks to 4/5/7/5/4/4. Four corpus lanes (default, prefixed,
+bindings over 12,062 hydrated templates; the lowering lane over 12,215
+files) stay at zero divergence, and `tests/lowering_features.rs` pins the
+stronger claim per artifact: the planned run and the forced six-pass table
+agree on the artifact, its diagnostics, its provenance and every fact
+table.
+
+This narrows the fusion question rather than answering it. What remains
+above the one-walk target is (a) the pre-S2 template walk, which
+parse-to-S2 removes, and (b) the passes an artifact genuinely owes —
+`v-if`'s sibling lookahead and `v-slot`'s slot collection are the two the
+task contract already names as region-local, so those are the ones real
+fusion has to earn. **Skipping is not fusing**, and the walk counts above
+should not be read as evidence that fusion is unnecessary: an artifact
+that uses every family still pays six.
+
+One measured correction to the derivation: the first cut read the family
+bits off provenance rule names, which is wrong. Provenance records
+_decisions_, and a failed decision records a different rule while still
+leaving its op behind — `<p v-for="items">` records
+`error.v-for-malformed` and keeps its `ui.for`, so the pass that reads
+that op was skipped and its facts lost. `vfor_pass.rs`'s
+`an_undecomposable_value_is_pessimally_pending` caught it. The bits are
+set at the op's construction site instead.
+
 ## Orphan analyses: productize or cut
 
 `RaceConditionTracker` and `ProvideInjectTracker` have zero consumers;

@@ -1,14 +1,42 @@
 //! Artifact-scoped S2 transform plans.
 //!
-//! The static six-pass table stays the review unit, but the build path
+//! The static seven-pass table stays the review unit, but the build path
 //! should not pay a diagnostic pass for an op family the lowering did not
-//! produce. Feature bits come from lowering provenance, not a second S2 walk.
+//! produce. Feature bits come from the lowering construction sites, not a
+//! second S2 walk.
+//!
+//! # Why the plan is a mask, not a match arm
+//!
+//! Each selectable pass is declined independently — its own op family is
+//! absent, or the DOM emit declared it cannot consume the pass's product —
+//! so the reachable plans are the *subsets* of [`SELECTABLE`], not a short
+//! list of shapes. Enumerating them as named `const` pipelines cost one
+//! item per combination and doubled with every pass that learned to
+//! decline; at four selectable passes it was already sixteen names for one
+//! rule. [`plan_for_mask`] states the rule once instead, and [`PLANS`]
+//! holds its answer for every mask so a [`Pipeline`]'s
+//! `&'static [PassDesc]` still points at data nobody built at run time.
+//!
+//! The `const fn` is what keeps the compile-time pins available: the
+//! `const _: () = assert!(…)` items below evaluate [`plan_for_mask`]
+//! directly, so a plan-shape regression is a **compile error** exactly as
+//! it was when each shape had a name (the P2-2 convention).
+//!
+//! # What a decline may cost
+//!
+//! Nothing the artifact can observe. A declined pass is one whose op
+//! family the lowering never built, so its walk would publish an empty
+//! fact table and raise no diagnostic — see each pass's `run` for the
+//! `if let Op::…` that is its whole body, and
+//! `tests/lowering_features.rs` for the behavioural pin. `hoist` is the
+//! one decline made for a different reason: it is `Optional`, and the DOM
+//! emit declines its product outright under `hoist_static: false`.
 
 use vize_davinci::pass::{PassDesc, Pipeline};
 
 use crate::lower::{LegacyCaps, LoweringFeatures};
 
-use super::{S2_STAGE, TRANSFORM, hoist, legacy, text, vfor, vif, vmodel, vslot};
+use super::{S2_STAGE, hoist, legacy, text, vfor, vif, vmodel, vslot};
 
 /// Product-facing selection for optional S2 transform work.
 ///
@@ -41,185 +69,138 @@ impl TransformProfile {
     }
 }
 
-pub(super) const TRANSFORM_WITHOUT_MODEL_PASSES: &[PassDesc] =
-    &[vif::DESC, vfor::DESC, vslot::DESC, text::DESC, hoist::DESC];
-
-pub(super) const TRANSFORM_WITHOUT_MODEL: Pipeline =
-    Pipeline::new(S2_STAGE, TRANSFORM_WITHOUT_MODEL_PASSES);
-
-pub(super) const TRANSFORM_WITHOUT_HOIST_PASSES: &[PassDesc] =
-    &[vif::DESC, vfor::DESC, vslot::DESC, text::DESC, vmodel::DESC];
-
-pub(super) const TRANSFORM_WITHOUT_HOIST: Pipeline =
-    Pipeline::new(S2_STAGE, TRANSFORM_WITHOUT_HOIST_PASSES);
-
-pub(super) const TRANSFORM_WITHOUT_MODEL_OR_HOIST_PASSES: &[PassDesc] =
-    &[vif::DESC, vfor::DESC, vslot::DESC, text::DESC];
-
-pub(super) const TRANSFORM_WITHOUT_MODEL_OR_HOIST: Pipeline =
-    Pipeline::new(S2_STAGE, TRANSFORM_WITHOUT_MODEL_OR_HOIST_PASSES);
-
-pub(super) const LEGACY_WITHOUT_MODEL_PASSES: &[PassDesc] = &[
-    legacy::DESC,
-    vif::DESC,
-    vfor::DESC,
-    vslot::DESC,
-    text::DESC,
-    hoist::DESC,
+/// One selectable pass and the mask bit that keeps it.
+///
+/// Order here is the pipeline's execution order, so a plan is this table
+/// filtered — never reordered. The passes touch disjoint op families and
+/// carry no semantic dependency on one another (`super::TRANSFORM`'s
+/// docs), which is what makes an arbitrary subset a legal pipeline.
+const SELECTABLE: [(PassDesc, u8); 6] = [
+    (legacy::DESC, LEGACY_SUGAR),
+    (vif::DESC, IF_OPS),
+    (vfor::DESC, FOR_OPS),
+    (vslot::DESC, SLOT_CARRIERS),
+    (vmodel::DESC, MODEL_BINDINGS),
+    (hoist::DESC, STATIC_ANALYSIS),
 ];
 
-pub(super) const LEGACY_WITHOUT_MODEL: Pipeline =
-    Pipeline::new(S2_STAGE, LEGACY_WITHOUT_MODEL_PASSES);
+const LEGACY_SUGAR: u8 = 1 << 0;
+const IF_OPS: u8 = 1 << 1;
+const FOR_OPS: u8 = 1 << 2;
+const SLOT_CARRIERS: u8 = 1 << 3;
+const MODEL_BINDINGS: u8 = 1 << 4;
+const STATIC_ANALYSIS: u8 = 1 << 5;
 
-pub(super) const LEGACY_WITHOUT_HOIST_PASSES: &[PassDesc] = &[
-    legacy::DESC,
-    vif::DESC,
-    vfor::DESC,
-    vslot::DESC,
-    text::DESC,
-    vmodel::DESC,
-];
+/// Every mask, hence every plan.
+const PLAN_COUNT: usize = 1 << SELECTABLE.len();
 
-pub(super) const LEGACY_WITHOUT_HOIST: Pipeline =
-    Pipeline::new(S2_STAGE, LEGACY_WITHOUT_HOIST_PASSES);
+/// The text pass is not selectable: besides consuming compounds it
+/// asserts the adjacency law over *every* region, and that check is
+/// owed by artifacts with no compound at all — precisely the artifacts a
+/// "no compound recorded" bit would have declined it for.
+const ALWAYS: PassDesc = text::DESC;
 
-pub(super) const LEGACY_WITHOUT_MODEL_OR_HOIST_PASSES: &[PassDesc] =
-    &[legacy::DESC, vif::DESC, vfor::DESC, vslot::DESC, text::DESC];
+/// The bit whose pass [`ALWAYS`] immediately precedes in the landed
+/// pipeline. Splicing there is what keeps every plan a *subsequence* of
+/// `TRANSFORM_PASSES` rather than a re-ordering of it — pinned by
+/// `every_plan_is_a_subsequence_of_the_full_pipeline`.
+const ALWAYS_PRECEDES: u8 = MODEL_BINDINGS;
 
-pub(super) const LEGACY_WITHOUT_MODEL_OR_HOIST: Pipeline =
-    Pipeline::new(S2_STAGE, LEGACY_WITHOUT_MODEL_OR_HOIST_PASSES);
+/// The passes one mask selects, in execution order.
+///
+/// `passes` is fixed-capacity because a [`Pipeline`] borrows
+/// `&'static [PassDesc]`; slots past `len` are filler and never exposed —
+/// [`Plan::pipeline`] is the only reader and it slices to `len`.
+#[derive(Debug, Clone, Copy)]
+struct Plan {
+    passes: [PassDesc; SELECTABLE.len() + 1],
+    len: usize,
+}
 
-const _: () = assert!(TRANSFORM_WITHOUT_MODEL.group_count() == 5);
-const _: () = assert!(TRANSFORM_WITHOUT_HOIST.group_count() == 5);
-const _: () = assert!(TRANSFORM_WITHOUT_MODEL_OR_HOIST.group_count() == 4);
-const _: () = assert!(LEGACY_WITHOUT_MODEL.group_count() == 6);
-const _: () = assert!(LEGACY_WITHOUT_HOIST.group_count() == 6);
-const _: () = assert!(LEGACY_WITHOUT_MODEL_OR_HOIST.group_count() == 5);
+impl Plan {
+    const EMPTY: Self = Self {
+        passes: [ALWAYS; SELECTABLE.len() + 1],
+        len: 0,
+    };
 
-pub(super) const fn pipeline_for_profile(
+    fn pipeline(&'static self) -> Pipeline {
+        Pipeline::new(S2_STAGE, &self.passes[..self.len])
+    }
+}
+
+/// The plan `mask` selects: [`SELECTABLE`] filtered, with [`ALWAYS`]
+/// spliced in at the position it holds in the full pipeline.
+const fn plan_for_mask(mask: u8) -> Plan {
+    let mut plan = Plan::EMPTY;
+    let mut index = 0;
+    while index < SELECTABLE.len() {
+        let (desc, bit) = SELECTABLE[index];
+        if bit == ALWAYS_PRECEDES {
+            plan.passes[plan.len] = ALWAYS;
+            plan.len += 1;
+        }
+        if mask & bit != 0 {
+            plan.passes[plan.len] = desc;
+            plan.len += 1;
+        }
+        index += 1;
+    }
+    plan
+}
+
+const fn all_plans() -> [Plan; PLAN_COUNT] {
+    let mut plans = [Plan::EMPTY; PLAN_COUNT];
+    let mut mask = 0;
+    while mask < PLAN_COUNT {
+        // `mask` is bounded by `PLAN_COUNT`, which is `1 << 6`.
+        #[expect(clippy::cast_possible_truncation)]
+        let bits = mask as u8;
+        plans[mask] = plan_for_mask(bits);
+        mask += 1;
+    }
+    plans
+}
+
+/// Every plan, so a selected [`Pipeline`] borrows rather than builds.
+static PLANS: [Plan; PLAN_COUNT] = all_plans();
+
+// The full plan is still the six-pass table the series landed, and the
+// empty plan is still the text pass alone: a plan-shape regression is a
+// compile error, not a test failure.
+const _: () = assert!(plan_for_mask(u8::MAX).len == 7);
+const _: () = assert!(plan_for_mask(0).len == 1);
+const _: () = assert!(plan_for_mask(STATIC_ANALYSIS).len == 2);
+
+fn mask_for(caps: LegacyCaps, features: LoweringFeatures, profile: TransformProfile) -> u8 {
+    let mut mask = 0;
+    if caps.needs_sugar() {
+        mask |= LEGACY_SUGAR;
+    }
+    if features.has_if_ops() {
+        mask |= IF_OPS;
+    }
+    if features.has_for_ops() {
+        mask |= FOR_OPS;
+    }
+    if features.has_slot_carriers() {
+        mask |= SLOT_CARRIERS;
+    }
+    if features.has_model_bindings() {
+        mask |= MODEL_BINDINGS;
+    }
+    if profile.includes_static_analysis() {
+        mask |= STATIC_ANALYSIS;
+    }
+    mask
+}
+
+pub(super) fn pipeline_for_profile(
     caps: LegacyCaps,
     features: LoweringFeatures,
     profile: TransformProfile,
 ) -> Pipeline {
-    match (
-        caps.needs_sugar(),
-        features.has_model_bindings(),
-        profile.includes_static_analysis(),
-    ) {
-        (true, true, true) => legacy::LEGACY,
-        (true, true, false) => LEGACY_WITHOUT_HOIST,
-        (true, false, true) => LEGACY_WITHOUT_MODEL,
-        (true, false, false) => LEGACY_WITHOUT_MODEL_OR_HOIST,
-        (false, true, true) => TRANSFORM,
-        (false, true, false) => TRANSFORM_WITHOUT_HOIST,
-        (false, false, true) => TRANSFORM_WITHOUT_MODEL,
-        (false, false, false) => TRANSFORM_WITHOUT_MODEL_OR_HOIST,
-    }
+    PLANS[usize::from(mask_for(caps, features, profile))].pipeline()
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        LEGACY_WITHOUT_HOIST, LEGACY_WITHOUT_MODEL, LEGACY_WITHOUT_MODEL_OR_HOIST,
-        TRANSFORM_WITHOUT_HOIST, TRANSFORM_WITHOUT_MODEL, TRANSFORM_WITHOUT_MODEL_OR_HOIST,
-        pipeline_for_profile,
-    };
-    use crate::lower::{LegacyCaps, LoweringFeatures};
-    use crate::pass::{TRANSFORM, TransformProfile, hoist, legacy, vmodel};
-    use vize_s0::config::VueVersion;
-
-    fn with_model() -> LoweringFeatures {
-        LoweringFeatures::EMPTY.with_model_bindings()
-    }
-
-    fn default_pipeline_for(
-        caps: LegacyCaps,
-        features: LoweringFeatures,
-    ) -> vize_davinci::pass::Pipeline {
-        pipeline_for_profile(caps, features, TransformProfile::DEFAULT)
-    }
-
-    #[test]
-    fn vue3_omits_the_model_pass_when_lowering_found_no_model_ops() {
-        let pipeline = default_pipeline_for(LegacyCaps::VUE3, LoweringFeatures::EMPTY);
-        assert_eq!(pipeline, TRANSFORM_WITHOUT_MODEL);
-        assert_eq!(pipeline.passes.len(), 5);
-        assert_eq!(pipeline.group_count(), 5);
-        assert_eq!(pipeline.passes[4], hoist::DESC);
-        assert!(!pipeline.passes.iter().any(|pass| pass.name == vmodel::NAME));
-    }
-
-    #[test]
-    fn vue3_keeps_the_model_pass_when_diagnostics_may_need_it() {
-        let pipeline = default_pipeline_for(LegacyCaps::VUE3, with_model());
-        assert_eq!(pipeline, TRANSFORM);
-        assert_eq!(pipeline.passes.len(), 6);
-        assert_eq!(pipeline.group_count(), 6);
-        assert_eq!(pipeline.passes[4], vmodel::DESC);
-    }
-
-    #[test]
-    fn vue3_omits_static_analysis_when_dom_emit_cannot_use_it() {
-        let profile = TransformProfile::DEFAULT.without_static_analysis();
-
-        let without_model =
-            pipeline_for_profile(LegacyCaps::VUE3, LoweringFeatures::EMPTY, profile);
-        assert_eq!(without_model, TRANSFORM_WITHOUT_MODEL_OR_HOIST);
-        assert_eq!(without_model.passes.len(), 4);
-        assert_eq!(without_model.group_count(), 4);
-        assert!(
-            !without_model
-                .passes
-                .iter()
-                .any(|pass| pass.name == hoist::NAME)
-        );
-        assert!(
-            !without_model
-                .passes
-                .iter()
-                .any(|pass| pass.name == vmodel::NAME)
-        );
-
-        let with_model = pipeline_for_profile(LegacyCaps::VUE3, with_model(), profile);
-        assert_eq!(with_model, TRANSFORM_WITHOUT_HOIST);
-        assert_eq!(with_model.passes.len(), 5);
-        assert_eq!(with_model.group_count(), 5);
-        assert_eq!(with_model.passes[4], vmodel::DESC);
-        assert!(
-            !with_model
-                .passes
-                .iter()
-                .any(|pass| pass.name == hoist::NAME)
-        );
-    }
-
-    #[test]
-    fn vue2_legacy_sugar_still_prepends_the_selected_vue3_shape() {
-        let caps = LegacyCaps::for_version(VueVersion::V2);
-        let without_model = default_pipeline_for(caps, LoweringFeatures::EMPTY);
-        assert_eq!(without_model, LEGACY_WITHOUT_MODEL);
-        assert_eq!(without_model.passes.len(), 6);
-        assert_eq!(without_model.group_count(), 6);
-
-        let with_model = default_pipeline_for(caps, with_model());
-        assert_eq!(with_model, legacy::LEGACY);
-        assert_eq!(with_model.passes.len(), 7);
-        assert_eq!(with_model.group_count(), 7);
-    }
-
-    #[test]
-    fn vue2_legacy_sugar_preserves_the_dom_emit_static_analysis_choice() {
-        let caps = LegacyCaps::for_version(VueVersion::V2);
-        let profile = TransformProfile::DEFAULT.without_static_analysis();
-
-        let without_model = pipeline_for_profile(caps, LoweringFeatures::EMPTY, profile);
-        assert_eq!(without_model, LEGACY_WITHOUT_MODEL_OR_HOIST);
-        assert_eq!(without_model.passes.len(), 5);
-        assert_eq!(without_model.group_count(), 5);
-
-        let with_model = pipeline_for_profile(caps, with_model(), profile);
-        assert_eq!(with_model, LEGACY_WITHOUT_HOIST);
-        assert_eq!(with_model.passes.len(), 6);
-        assert_eq!(with_model.group_count(), 6);
-    }
-}
+mod tests;

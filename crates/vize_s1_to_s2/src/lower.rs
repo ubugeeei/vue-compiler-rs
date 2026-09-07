@@ -42,6 +42,7 @@ mod cx;
 mod directive;
 mod element;
 mod expr;
+mod features;
 mod forop;
 mod html;
 mod leaf;
@@ -56,6 +57,7 @@ mod vfor;
 mod vtext;
 
 pub use caps::LegacyCaps;
+pub use features::{LoweringFeatures, OpFamily};
 
 // The one-scanner rule (#4365): the S2 passes re-derive binding names
 // with exactly the enumeration the lowering used, never a second one.
@@ -68,43 +70,6 @@ pub use structural::{ForWrapper, WrapperAttr, WrapperClass, WrapperKey, WrapperK
 // compound's source with exactly the spelling the lowering minted.
 pub use text::{TextPart, TextParts, rebuild_source};
 pub(crate) use text::{legacy_slot_filler_needs_props_placeholder, legacy_slot_filler_text};
-
-/// Feature bits the lowering observed while building S2.
-///
-/// These are not another tree scan: they are derived from the lowering's
-/// own decision stream so the pass planner can skip artifact-irrelevant
-/// mandatory passes without hiding traversal work.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct LoweringFeatures {
-    model_bindings: bool,
-}
-
-impl LoweringFeatures {
-    pub const EMPTY: Self = Self {
-        model_bindings: false,
-    };
-
-    #[must_use]
-    pub const fn has_model_bindings(self) -> bool {
-        self.model_bindings
-    }
-
-    pub(crate) const fn with_model_bindings(self) -> Self {
-        Self {
-            model_bindings: true,
-        }
-    }
-
-    fn from_provenance(records: &[ProvenanceRecord]) -> Self {
-        let mut features = Self::EMPTY;
-        for record in records {
-            if record.rule.as_str() == "lower.model" {
-                features = features.with_model_bindings();
-            }
-        }
-        features
-    }
-}
 
 /// The S2 artifact one lowering produces: the op tree plus the three
 /// fact channels, all live even when diagnostics are present (the
@@ -274,7 +239,6 @@ fn lower_source_block_with_caps_and_comment_policy<'a>(
         ));
     }
     let ops = structural::lower_children(&mut cx, &tree.children, Namespace::Html);
-    let features = LoweringFeatures::from_provenance(&cx.provenance);
     Lowered {
         allocator,
         source: block.root_source(),
@@ -286,7 +250,7 @@ fn lower_source_block_with_caps_and_comment_policy<'a>(
         texts: cx.texts,
         wrappers: cx.wrappers,
         for_wrappers: cx.for_wrappers,
-        features,
+        features: cx.features,
         caps,
     }
 }

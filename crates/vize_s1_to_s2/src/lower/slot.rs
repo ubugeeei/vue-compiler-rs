@@ -15,6 +15,7 @@
 //! still-deferred built-ins keep their counted `defer.slot-directive`
 //! records with realization (P2-11) as the named owner.
 
+use super::features::OpFamily;
 use vize_s0::{Box, String, Vec, cstr};
 use vize_s1::Element;
 
@@ -160,6 +161,7 @@ pub(crate) fn lower_slot<'a>(
     let fallback = Region {
         ops: lower_children(cx, &element.children, ns),
     };
+    cx.observe(OpFamily::SlotCarrier);
     Op::Slot(Box::new_in(
         SlotOp {
             name,

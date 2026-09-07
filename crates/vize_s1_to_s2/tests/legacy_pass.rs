@@ -31,9 +31,12 @@ fn vue3_model_free_legacy_spellings_skip_the_model_pass() {
              \n"
         );
         assert_eq!(lowered.caps, LegacyCaps::VUE3);
+        // `Comp` is a slot carrier, so the slot pass is planned; the
+        // `.sync` spelling lowers to no `ui.model`, so the model pass is
+        // not. Three walks: slot, text, analysis.
         assert_eq!(
             Folio::print_to_string(budget, FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=5\npasses=5\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=3\npasses=3\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
     });
     assert_transformed_sound(source, "vue3-sync-inert-pass");
@@ -54,9 +57,10 @@ fn vue2_expands_sync_into_bind_plus_update_listener() {
              \x20 ui.on name=\"update:title\" handler=js(\"$event => ((heading) = $event)\" @6:27) @6:27\n\
              \n"
         );
+        // The Vue 2 sugar pass leads the same three.
         assert_eq!(
             Folio::print_to_string(budget, FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=6\npasses=6\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=4\npasses=4\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         assert_eq!(u64::from(lowered.op_count), folio.op_count());
     });

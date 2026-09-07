@@ -37,11 +37,13 @@ fn the_loops_fixture_snapshots_the_post_pass_folio() {
         // The oracle: the full normalized folio after the pipeline ran.
         assert_folio_snapshot!(*folio);
 
-        // Supplements: the model-free plan's walk accounting through
-        // the budget observer's own derived page.
+        // Supplements: the planned walk accounting through the budget
+        // observer's own derived page. The fixture builds `v-if` and
+        // `v-for` but no slot carrier and no model, so the plan is those
+        // two plus the text pass and the analysis.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=5\npasses=5\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=4\npasses=4\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         // Three loops, consumed in document order with fresh tags: the
         // keyed `li`, the destructuring `<template v-for>`, the
