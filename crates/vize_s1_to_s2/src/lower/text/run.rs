@@ -11,17 +11,16 @@ use crate::lower::expr::{desc, opaque_at, trimmed};
 
 /// Fold a consumed dropped-member gap into the preceding part's
 /// authored range, so the recorded parts tile the merged span exactly.
-/// A dropped tail always follows its condensed whitespace head (the
-/// neighbour rules put a `Drop` between two kept text-family members in
-/// no other position), so the fold target is always a static part.
+///
+/// The gap is either a condensed whitespace run's dropped tail — which
+/// the neighbour rules only ever place after its condensed head, a
+/// static part — or a comment this compile is not preserving, which can
+/// sit after either kind. Both fold the same way: the preceding part's
+/// range grows to cover the consumed bytes.
 fn fold_gap(parts: &mut StdVec<TextPart>, pending: &mut Option<u32>) {
     if let Some(gap_end) = pending.take()
         && let Some(last) = parts.last_mut()
     {
-        debug_assert!(
-            !last.dynamic,
-            "a dropped run tail always follows its condensed head"
-        );
         last.span.end = gap_end;
     }
 }
@@ -69,6 +68,27 @@ pub(crate) fn lower_text_run<'a>(
     let mut pending_gap: Option<u32> = None;
     while i < children.len() {
         let probe = pending_gap.unwrap_or(end);
+        // A comment the compile is not preserving is not a run boundary:
+        // it is not a child at all. Vue's parser builds no node for it,
+        // and `onText` appends the next chunk to the previous text child
+        // without checking contiguity — so `a<!--c-->b` reaches
+        // condensing as the one node `ab`. Consumed here exactly like a
+        // dropped whitespace member: recorded, and its bytes folded into
+        // the preceding part's range so the parts still tile the merged
+        // span. Contiguity is still required, so the merged span is
+        // still the authored bytes.
+        if i > start
+            && let SurfaceChild::Comment(token) = &children[i]
+            && !cx.preserve_comments()
+            && token.leading.is_empty()
+            && cx.offset(token.text) == probe
+        {
+            let span = cx.token_span(token);
+            cx.record("drop.comment", None, token.text, String::default(), span);
+            pending_gap = Some(span.end);
+            i += 1;
+            continue;
+        }
         if i > start && !extends_run(cx, &children[i], probe) {
             break;
         }

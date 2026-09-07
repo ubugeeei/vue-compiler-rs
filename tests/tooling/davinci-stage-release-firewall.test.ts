@@ -60,7 +60,18 @@ test("DOM production keeps the published S2 renderer available for profiling", (
   const dom = workspacePackage(metadata, "vize_atelier_dom");
   assert.deepEqual(dom.features, {
     legacy: ["vize_atelier_core/legacy"],
+    // Test-only surface: exposes `compile_template_legacy_with_options` so
+    // the DOM differential lanes have a real old side. Its value list is
+    // empty, so unlike `legacy` it selects nothing at all — it cannot pull
+    // an unpublished stage in, which is what this firewall exists to stop.
+    // Asserted below rather than trusted from the name.
+    "davinci-differential": [],
   });
+  assert.deepEqual(
+    dom.features["davinci-differential"],
+    [],
+    "a test-only feature must select nothing",
+  );
 
   const stageEdges = dom.dependencies
     .filter((dependency) => publishedDavinciStages.has(dependency.name))

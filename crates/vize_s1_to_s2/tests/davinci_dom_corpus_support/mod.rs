@@ -7,7 +7,7 @@ use davinci_test_support::corpus::CorpusSweep;
 use sfc_inputs::{binding_table, sfc_bindings, sfc_is_ts};
 use vize_atelier_core::options::CodegenMode;
 use vize_atelier_dom::errors::ErrorCode;
-use vize_atelier_dom::{DomCompilerOptions, compile_template_with_options};
+use vize_atelier_dom::{DomCompilerOptions, compile_template_legacy_with_options};
 use vize_atelier_sfc::{SfcParseOptions, parse_sfc};
 use vize_s0::Allocator;
 use vize_s1_to_s2::{
@@ -118,10 +118,19 @@ pub fn compare_sfc_template_lane(name: &str, source: &str, report: &mut Report, 
     // `extract_component_name`: the SFC filename's stem.
     let component_name = matches!(lane, Lane::Bindings).then(|| component_name_of(name));
 
+    // The **legacy** lane, S2 declined. The ordinary `compile_template*`
+    // entry points route through the S2 emitter since the P2-11 production
+    // switch, so building the old side on them compares S2 against itself:
+    // measured, renaming `Helper::CreateElementVNode`'s alias in the S2
+    // emitter left this sweep at `compared=12062 divergences=0`.
     let old_allocator = Allocator::new();
     let (_, errors, old) = match lane {
-        Lane::Default => vize_atelier_dom::compile_template(&old_allocator, &template.content),
-        Lane::Prefixed => compile_template_with_options(
+        Lane::Default => compile_template_legacy_with_options(
+            &old_allocator,
+            &template.content,
+            DomCompilerOptions::default(),
+        ),
+        Lane::Prefixed => compile_template_legacy_with_options(
             &old_allocator,
             &template.content,
             DomCompilerOptions {
@@ -129,7 +138,7 @@ pub fn compare_sfc_template_lane(name: &str, source: &str, report: &mut Report, 
                 ..Default::default()
             },
         ),
-        Lane::Bindings => compile_template_with_options(
+        Lane::Bindings => compile_template_legacy_with_options(
             &old_allocator,
             &template.content,
             DomCompilerOptions {

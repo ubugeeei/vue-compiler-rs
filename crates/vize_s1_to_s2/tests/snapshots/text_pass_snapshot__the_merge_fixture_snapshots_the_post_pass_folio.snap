@@ -3,7 +3,7 @@ source: crates/vize_s1_to_s2/tests/text_pass_snapshot.rs
 expression: "$crate :: folio :: Folio ::\nprint_to_string(& *folio, $crate :: folio :: FolioMode :: Full,)"
 ---
 [disegno]
-ops=8
+ops=7
 
 [disegno.ops]
 ui.element section @0:138
@@ -12,5 +12,4 @@ ui.element section @0:138
   ui.element p @29:94
     ui.interpolation opaque(compound "Hello {{ user.name }}! You have {{ count }} new messages." @32:90) @32:90
   ui.element p @97:127
-    ui.text "a" @100:101
-    ui.interpolation opaque(compound "b {{ tail }}" @111:123) @111:123
+    ui.interpolation opaque(compound "ab {{ tail }}" @100:123) @100:123

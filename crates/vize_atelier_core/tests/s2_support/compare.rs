@@ -42,13 +42,41 @@ pub fn compare_with(name: &str, source: &str, counters: &mut Counters, dialect: 
         return;
     }
 
-    // Legacy lane: the shipped parse + transform. Options stay default
-    // except `is_pre_tag`, which takes the shipped DOM configuration
+    // Legacy lane: the shipped parse + transform.
+    //
+    // `is_pre_tag` takes the shipped DOM configuration
     // (`crates/vize_atelier_dom/src/compile/stage_options.rs`) so both
-    // lanes exempt `<pre>` from whitespace condensing the same way —
-    // the default `|_| false` would condense inside `<pre>`, which no
-    // shipped compile does. `is_pre_tag` feeds only the condense
-    // strategy, so every pre-series-4 projection is unaffected.
+    // lanes exempt `<pre>` from whitespace condensing the same way — the
+    // default `|_| false` would condense inside `<pre>`, which no shipped
+    // compile does. It feeds only the condense strategy, so every
+    // pre-series-4 projection is unaffected.
+    //
+    // `comments` stays at its `ParserOptions` default of `true`, which
+    // the slot, surface and hoist projections below are calibrated
+    // against. The **text** projection cannot use this tree: comments are
+    // an input to both halves of the text lane — the condense neighbour
+    // rule and the run grouping — and the S2 side lowers with
+    // `preserve_comments = false`, the shipped `DomCompilerOptions`
+    // default. Comparing a comment-bearing legacy tree against a
+    // comment-free S2 one made the lanes disagree by construction on
+    // every comment-adjacent shape (11 of 12,017 corpus templates), so
+    // the text projection takes its own parse below.
+    //
+    // Moving the other three projections onto the shipped configuration
+    // is a task of its own, and not a free one: dropping comments there
+    // retires `hoist_old::has_comment_child`, which is what keeps
+    // comment-bearing owners out of the hoist replay, and the first owner
+    // it then reaches already disagrees. `a-menu-item` in ant-design-vue's
+    // `site/src/layouts/header/Navigation.vue` carries S2 facts
+    // `NotStatic, props_hoistable, nested_static`, which `hoist::predict`
+    // turns into `Props` where the legacy lane decides `None`. That is a
+    // gap in the **replay**, not in what ships: `davinci_dom_corpus`
+    // finds the two lanes' compiled output for that file byte-identical,
+    // and a props hoist is visible in output (`_hoisted_1 = {…}`), so the
+    // effective decision agrees. What differs is that `pass::hoist`
+    // publishes `props_hoistable` as a *permission* — its module docs put
+    // the position- and option-dependent decision in DOM realization —
+    // and the replay reads it as the decision.
     let old_allocator = Allocator::new();
     let options = ParserOptions {
         is_pre_tag: |tag| tag == "pre",
@@ -71,8 +99,28 @@ pub fn compare_with(name: &str, source: &str, counters: &mut Counters, dialect: 
     let mut old_units = Vec::new();
     let mut old_outlets = Vec::new();
     slots_old::collect_old(&root.children, source, &mut old_units, &mut old_outlets);
+    // The text projection's own lane: the shipped comments-off parse, so
+    // both sides answer the same question. Whitespace condensing runs at
+    // parse time, so this has to be a second parse rather than a filter
+    // over the tree above.
+    let text_allocator = Allocator::new();
+    let (mut text_root, _) = old_parse_with_options(
+        &text_allocator,
+        source,
+        ParserOptions {
+            is_pre_tag: |tag| tag == "pre",
+            comments: false,
+            ..ParserOptions::default()
+        },
+    );
+    let _ = transform(
+        &text_allocator,
+        &mut text_root,
+        transform_options(dialect, false),
+        None,
+    );
     let mut old_text_units = Vec::new();
-    text_old::collect_units(&root.children, &mut old_text_units);
+    text_old::collect_units(&text_root.children, &mut old_text_units);
     let mut old_surfaces = Vec::new();
     surface_old::collect_surfaces(
         &root.children,

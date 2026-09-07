@@ -5,18 +5,12 @@
 //! holds them. The merge half (and the module-level decision record)
 //! stays in `lower/text.rs`.
 
-mod boundary;
-
 use alloc::vec::Vec as StdVec;
 
 use vize_s0::{String, StringBuilder};
 use vize_s1::SurfaceChild;
 
 use super::super::cx::Cx;
-use boundary::{
-    comment_separated_element_gap_with_newline, comments_reach_left_boundary,
-    comments_reach_right_boundary, trailing_comment_padding,
-};
 
 /// Whether `tag` suppresses condensing for its whole subtree: the
 /// shipped `is_pre_tag` (`tag == "pre"`).
@@ -29,6 +23,13 @@ pub(crate) fn suppresses_condense(tag: &str) -> bool {
 #[inline]
 pub(super) fn is_vue_ws(c: char) -> bool {
     matches!(c, ' ' | '\t' | '\n' | '\u{000C}' | '\r')
+}
+
+/// Whether `child` is a comment this compile is not preserving — a
+/// child the shipped lane never built, so the text rules must look past
+/// it in every direction.
+fn invisible_comment(cx: &Cx<'_>, child: &SurfaceChild<'_>) -> bool {
+    !cx.preserve_comments() && matches!(child, SurfaceChild::Comment(_))
 }
 
 /// The plan for one text child, computed list-wide before lowering.
@@ -146,6 +147,12 @@ pub(super) fn collapse_fused(text: &mut String) {
 struct TextGroup {
     start: usize,
     end: usize,
+    /// How many **text** children the group holds. Not `end - start`:
+    /// an absorbed dropped comment occupies an index and no text.
+    texts: usize,
+    /// Index of the group's first text child. Not `start`: a dropped
+    /// comment can open the run (`<!--c-->\n  a`).
+    first_text: usize,
     ws_only: bool,
     has_newline: bool,
 }
@@ -154,31 +161,59 @@ fn text_groups<'a>(cx: &Cx<'a>, children: &[SurfaceChild<'a>]) -> StdVec<TextGro
     let mut groups = StdVec::new();
     let mut i = 0usize;
     while i < children.len() {
-        let SurfaceChild::Text(token) = &children[i] else {
-            i += 1;
-            continue;
-        };
+        // A group is a byte-contiguous run of text children and of the
+        // comments this compile is not preserving, holding at least one
+        // text child. Absorbing the comments is what makes the rules
+        // below see the child list the shipped lane sees: Vue's parser
+        // builds no node for a dropped comment, so the text either side
+        // of one is a single node to it and this run is a single group
+        // to us. A byte gap (recovered junk) still ends the run, so the
+        // group covers exactly the authored bytes.
         let start = i;
-        let mut ws_only = token.text.chars().all(is_vue_ws);
-        let mut has_newline = token.text.contains('\n') || token.text.contains('\r');
-        let mut end_offset = cx.offset(token.text) + token.text.len() as u32;
-        i += 1;
+        let mut ws_only = true;
+        let mut has_newline = false;
+        let mut texts = 0usize;
+        let mut first_text = start;
+        let mut end_offset = None;
         while i < children.len() {
-            let SurfaceChild::Text(next) = &children[i] else {
-                break;
+            let (offset, len, end) = match &children[i] {
+                SurfaceChild::Text(token) if token.leading.is_empty() => {
+                    (cx.offset(token.text), token.text.len() as u32, None::<u32>)
+                }
+                SurfaceChild::Comment(token)
+                    if invisible_comment(cx, &children[i]) && token.leading.is_empty() =>
+                {
+                    (cx.offset(token.text), 0, Some(cx.token_span(token).end))
+                }
+                _ => break,
             };
-            if !next.leading.is_empty() || cx.offset(next.text) != end_offset {
-                // A byte gap (recovered junk) is a group boundary.
+            if end_offset.is_some_and(|at| at != offset) {
                 break;
             }
-            ws_only &= next.text.chars().all(is_vue_ws);
-            has_newline |= next.text.contains('\n') || next.text.contains('\r');
-            end_offset += next.text.len() as u32;
+            if let SurfaceChild::Text(token) = &children[i] {
+                if texts == 0 {
+                    first_text = i;
+                }
+                ws_only &= token.text.chars().all(is_vue_ws);
+                has_newline |= token.text.contains('\n') || token.text.contains('\r');
+                texts += 1;
+                end_offset = Some(offset + len);
+            } else {
+                end_offset = end;
+            }
             i += 1;
+        }
+        if texts == 0 {
+            // A comment run on its own is nobody's group; step past its
+            // first member and rescan (the next child may start one).
+            i = start + 1;
+            continue;
         }
         groups.push(TextGroup {
             start,
             end: i,
+            texts,
+            first_text,
             ws_only,
             has_newline,
         });
@@ -234,25 +269,19 @@ pub(crate) fn plan_whitespace<'a>(
 
     for group in &groups[first_group..last_group] {
         if group.ws_only {
-            if comment_separated_element_gap_with_newline(children, group, lo, hi) {
-                for slot in &mut plan[group.start..group.end] {
-                    *slot = TextAction::Drop;
-                }
-                continue;
-            }
             // Group neighbours are the nearest non-text children (on
-            // parser output exactly `whitespace.rs:107-113`).
+            // parser output exactly `whitespace.rs:107-113`). This is
+            // the whole rule in both comment configurations: a comment
+            // the compile preserves is a real, non-text-like neighbour,
+            // and one it drops was already absorbed into this group by
+            // `text_groups`, so it is not a neighbour at all. The four
+            // comment-edge special cases this arm used to carry were
+            // emulating the second case from inside the first, and
+            // measured against `@vue/compiler-dom` they got it wrong on
+            // the shapes `dropped_comment_text_runs` now pins.
             let prev_is_text = group.start > lo && text_like(&children[group.start - 1]);
             let next_is_text = group.end < hi && text_like(&children[group.end]);
-            let prev_comment_edge =
-                group.start > lo && comments_reach_left_boundary(children, group.start - 1, lo);
-            let next_comment_edge =
-                group.end < hi && comments_reach_right_boundary(children, group.end, hi);
-            if trailing_comment_padding(children, group.start, lo)
-                || (!prev_is_text && !next_is_text && group.has_newline)
-                || (prev_is_text && next_comment_edge)
-                || (next_is_text && prev_comment_edge)
-            {
+            if !prev_is_text && !next_is_text && group.has_newline {
                 for slot in &mut plan[group.start..group.end] {
                     *slot = TextAction::Drop;
                 }
@@ -267,12 +296,12 @@ pub(crate) fn plan_whitespace<'a>(
             // collapse happens here, and a multi-member group's collapse
             // runs over the fused content at merge time instead
             // (`collapse_fused` — the two compose to the same bytes).
-            if group.end - group.start == 1
-                && let SurfaceChild::Text(token) = &children[group.start]
+            if group.texts == 1
+                && let SurfaceChild::Text(token) = &children[group.first_text]
                 && !token.text.chars().all(is_vue_ws)
                 && let Some(condensed) = condense_internal(cx, token.text)
             {
-                plan[group.start] = TextAction::Content(condensed);
+                plan[group.first_text] = TextAction::Content(condensed);
             }
         }
     }

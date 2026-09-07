@@ -10,6 +10,8 @@ use vize_atelier_core::{
 use vize_s0::{Allocator, String};
 
 mod inner;
+#[cfg(feature = "davinci-differential")]
+pub(crate) mod legacy;
 mod pipeline;
 mod sfc;
 mod source_map;

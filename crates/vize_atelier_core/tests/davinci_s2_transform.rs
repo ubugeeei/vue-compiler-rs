@@ -48,8 +48,8 @@ fn expected() -> Counters {
             outlets_dynamic: 1,
         },
         text: TextCounters {
-            units: 109,
-            parts_static: 95,
+            units: 107,
+            parts_static: 93,
             parts_dynamic: 25,
             compound_units: 8,
             vpre_templates: 1,
