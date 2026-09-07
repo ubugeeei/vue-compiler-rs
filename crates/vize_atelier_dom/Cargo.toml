@@ -11,6 +11,15 @@ metadata.vize.stability = "alpha-supported"
 [features]
 legacy = ["vize_atelier_core/legacy"]
 
+# Arms the Davinci DOM differential lanes by exposing
+# `compile_template_legacy_with_options` — the shipped parse/transform/codegen
+# lane with the S2 emitter declined. The corpus comparators need it as their
+# *old* side: since the P2-11 production switch the ordinary entry points
+# route through S2, so a differential built on them compares S2 to itself.
+# Adds no dependency and no production code path; off in production builds,
+# exactly like `vize_atelier_core`'s feature of the same name.
+davinci-differential = []
+
 [dependencies]
 vize_s0 = { workspace = true }
 vize_atelier_core = { workspace = true }
