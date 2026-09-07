@@ -16,12 +16,14 @@
 //!
 //! # Counted classes, never silence
 //!
-//! - `vpre_templates` — the legacy parser reads `v-pre` (interpolations
-//!   inside become plain text) while S2 lowers the subtree as ordinary
-//!   content (`defer.v-pre`, the recorded P2-8 deferral), so the two
-//!   trees genuinely disagree inside it; a template carrying `v-pre`
-//!   skips the text projection as one counted class, owned by the
-//!   installment that gives `v-pre` an S2 story.
+//! - `vpre_templates` — **retired**, and kept at zero as the proof. It
+//!   counted templates skipped because S2 lowered a `v-pre` subtree as
+//!   ordinary content (`defer.v-pre`, the recorded P2-8 deferral) while
+//!   the legacy parser froze it. The installment that owed `v-pre` an S2
+//!   story has landed: the lowering now freezes the subtree the way Vue
+//!   does, no `defer.v-pre` record is written, and these templates are
+//!   compared like any other. A non-zero count here means the deferral
+//!   came back.
 //! - `entity_templates` — the legacy parser decodes entities in text
 //!   and interpolation content; S1 v1 deliberately does not (the
 //!   recorded deviation). A template whose S2 parts carry

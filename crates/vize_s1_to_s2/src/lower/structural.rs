@@ -65,7 +65,7 @@ fn lower_children_guarded<'a>(
     while i < children.len() {
         match &children[i] {
             SurfaceChild::Element(element) => {
-                let analyzed = analyze(element);
+                let analyzed = analyze(element, cx.v_pre_suppressed());
                 match analyzed.branch {
                     Some((idx, BranchKind::If)) => {
                         i = lower_if_group(
@@ -142,7 +142,7 @@ fn lower_if_group<'a>(
         match &children[j] {
             gap if is_branch_gap(gap) => pending.push(j),
             SurfaceChild::Element(element) => {
-                let analyzed = analyze(element);
+                let analyzed = analyze(element, cx.v_pre_suppressed());
                 match analyzed.branch {
                     Some((idx, kind @ (BranchKind::ElseIf | BranchKind::Else))) => {
                         branches.push((element, analyzed, idx, core::mem::take(&mut pending)));

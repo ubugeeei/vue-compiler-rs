@@ -57,3 +57,9 @@ required-features = ["legacy"]
 [[test]]
 name = "text_shape_matrix"
 required-features = ["davinci-differential"]
+
+# The `v-pre` witness compares against the differential lane's legacy
+# entry, the same oracle the shape matrix uses.
+[[test]]
+name = "v_pre_freezes_its_subtree"
+required-features = ["davinci-differential"]

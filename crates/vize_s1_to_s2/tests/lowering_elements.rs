@@ -287,30 +287,33 @@ fn ill_formed_v_once_spellings_still_defer() {
 }
 
 #[test]
-fn an_unmappable_binding_defers_with_info_and_keeps_the_fragment() {
-    // `v-pre` still has no S2 op: the element is kept, the deferral is
-    // an exact Info diagnostic — the input is not wrong, the stage is
-    // younger than the construct.
-    let art = artifact("<p v-pre>x</p>");
+fn v_pre_freezes_its_subtree_and_leaves_no_diagnostic() {
+    // `v-pre` has an S2 story now: the spelling drops out (recorded as
+    // `drop.v-pre`), the binding stays the attribute it was authored as
+    // and the interpolation stays literal text, so nothing is deferred
+    // and nothing is reported. The compiled form is pinned in
+    // `vize_atelier_dom/tests/v_pre_freezes_its_subtree.rs`.
+    let art = artifact("<p v-pre :x=\"1\">{{ y }}</p>");
     assert_eq!(
         art.folio,
         "[disegno]\n\
          ops=2\n\
          \n\
          [disegno.ops]\n\
-         ui.element p @0:14\n\
-         \x20 ui.text \"x\" @9:10\n\
+         ui.element p @0:27\n\
+         \x20 attr :x=\"1\" @9:15\n\
+         \x20 ui.text \"{{ y }}\" @16:23\n\
          \n"
     );
-    assert_eq!(
-        art.diagnostics,
-        vec![Diagnostic::new(
-            Severity::Info,
-            Stage::Semantic,
-            Span::new(3, 8),
-            "`v-pre` has no S2 representation; its subtree lowers as ordinary content",
-        )]
-    );
+    assert_eq!(art.diagnostics, vec![]);
+    // The whole decision stream, exactly: the spelling is dropped under
+    // its own rule and the deferral it used to carry is gone.
+    let rules: Vec<&str> = art
+        .provenance
+        .iter()
+        .map(|record| record.rule.as_str())
+        .collect();
+    assert_eq!(rules, ["lower.element", "drop.v-pre", "lower.v-pre-text"]);
 }
 
 #[test]
