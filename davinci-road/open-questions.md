@@ -84,7 +84,7 @@ that uses every family still pays six.
 
 One measured correction to the derivation: the first cut read the family
 bits off provenance rule names, which is wrong. Provenance records
-*decisions*, and a failed decision records a different rule while still
+_decisions_, and a failed decision records a different rule while still
 leaving its op behind — `<p v-for="items">` records
 `error.v-for-malformed` and keeps its `ui.for`, so the pass that reads
 that op was skipped and its facts lost. `vfor_pass.rs`'s

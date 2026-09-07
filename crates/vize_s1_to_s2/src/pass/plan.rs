@@ -2,7 +2,8 @@
 //!
 //! The static seven-pass table stays the review unit, but the build path
 //! should not pay a diagnostic pass for an op family the lowering did not
-//! produce. Feature bits come from lowering provenance, not a second S2 walk.
+//! produce. Feature bits come from the lowering construction sites, not a
+//! second S2 walk.
 //!
 //! # Why the plan is a mask, not a match arm
 //!
