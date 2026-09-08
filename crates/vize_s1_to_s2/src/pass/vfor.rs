@@ -15,38 +15,13 @@
 //! [`ScopeFacts`]: vize_s2::scope::ScopeFacts
 
 use vize_davinci::side_table::SideTable;
-use vize_s2::scope::ScopeTag;
 
-use crate::lower::{ForParts, Lowered};
+use crate::lower::Lowered;
 
-pub use crate::lower::ForName;
+pub use crate::lower::{ForName, ForParts as ForFacts};
 
 /// The pass name kept for existing folio/report strings.
 pub const NAME: &str = "v-for";
-
-/// One `ui.for`'s consumed scope view, positions in grammar order.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ForFacts {
-    /// The introduction-site tag the lowering minted.
-    pub tag: ScopeTag,
-    /// The value position.
-    pub value: ForName,
-    /// The second position (object key).
-    pub key: ForName,
-    /// The third position (index).
-    pub index: ForName,
-}
-
-impl From<&ForParts> for ForFacts {
-    fn from(parts: &ForParts) -> Self {
-        Self {
-            tag: parts.tag,
-            value: parts.value.clone(),
-            key: parts.key.clone(),
-            index: parts.index.clone(),
-        }
-    }
-}
 
 /// Facts cross compile boundaries with their artifact (P1-11; the same
 /// enforcement `Diagnostic` and `ProvenanceRecord` carry).
@@ -67,9 +42,5 @@ const _: () = {
 /// Mirror lowering-published `ui.for` facts for transform consumers.
 #[must_use]
 pub fn facts_from_lowering(lowered: &Lowered<'_>) -> SideTable<ForFacts> {
-    let mut facts = SideTable::new();
-    for (id, parts) in lowered.for_facts.sorted_entries() {
-        facts.insert(id, ForFacts::from(parts));
-    }
-    facts
+    lowered.for_facts.clone()
 }

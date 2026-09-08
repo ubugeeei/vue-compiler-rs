@@ -226,7 +226,7 @@ fn alias_position<'a>(cx: &mut Cx<'a>, slice: Option<&&'a str>) -> Option<ExprRe
 /// Re-derive the consumed scope view from the just-built `ForBinding`, then
 /// assert it byte-equals the `ScopeFacts` the lowering recorded.
 fn derive_for_parts(tag: ScopeTag, binding: &ForBinding<'_>, recorded: &ScopeFacts) -> ForParts {
-    assert!(
+    debug_assert!(
         recorded.tag == tag,
         "hygiene law broken: ui.for scope recorded tag {} but lowering minted {tag}",
         recorded.tag,
@@ -256,7 +256,7 @@ fn derive_for_parts(tag: ScopeTag, binding: &ForBinding<'_>, recorded: &ScopeFac
         _ => None,
     })
     .collect();
-    assert!(
+    debug_assert!(
         recorded.bindings == expected,
         "hygiene law broken: ui.for recorded bindings {:?} but its binding surface derives {:?}",
         recorded.bindings,
