@@ -77,10 +77,6 @@ impl ProjectCx {
         id
     }
 
-    fn skip_ops(&mut self, count: u32) {
-        self.op_count = self.op_count.saturating_add(count);
-    }
-
     fn observe(&mut self, family: OpFamily) {
         self.features = self.features.observing(family);
     }
@@ -171,7 +167,6 @@ fn lower_child<'a>(
 struct LoweredProps<'a> {
     attributes: Vec<'a, Attribute<'a>>,
     bindings: Vec<'a, BindingOp<'a>>,
-    binding_count: u32,
 }
 
 fn lower_props<'a>(
@@ -191,21 +186,21 @@ fn lower_props<'a>(
                 span: attribute.loc.span,
             }),
             PropNode::Directive(directive) => {
+                let node = cx.mint_op();
                 bindings.push(lower_binding(
                     allocator,
                     directive,
                     element_type,
                     native_model_kind,
-                    &mut cx.features,
+                    node,
+                    cx,
                 )?);
             }
         }
     }
-    let binding_count = bindings.len() as u32;
     Ok(LoweredProps {
         attributes,
         bindings,
-        binding_count,
     })
 }
 
@@ -214,7 +209,8 @@ fn lower_binding<'a>(
     directive: &vize_relief::DirectiveNode<'a>,
     element_type: ElementType,
     native_model_kind: Option<&'a str>,
-    features: &mut LoweringFeatures,
+    node: Option<NodeId>,
+    cx: &mut ProjectCx,
 ) -> Result<BindingOp<'a>, S2Refusal> {
     match directive.name {
         "bind" | "on" => lower_bind_or_on(allocator, directive),
@@ -223,10 +219,10 @@ fn lower_binding<'a>(
             directive,
             element_type,
             native_model_kind,
-            features,
+            &mut cx.features,
         ),
         "show" | "html" | "text" => lower_vue_directive(allocator, directive, element_type),
-        "slot" => lower_slot_content(allocator, directive),
+        "slot" => lower_slot_content(allocator, directive, node, cx),
         _ => Err(S2Refusal::Directive),
     }
 }
@@ -308,6 +304,16 @@ pub(super) fn lower_expression<'a>(
             simple.loc.span,
         )),
         ExpressionNode::Compound(_) => Err(S2Refusal::CompoundExpression),
+    }
+}
+
+pub(super) fn simple_identifier<'a>(expr: &ExprRef<'a>) -> Option<&'a str> {
+    match expr {
+        ExprRef::Js(js) => match js.ast {
+            oxc_ast::ast::Expression::Identifier(_) => Some(js.source),
+            _ => None,
+        },
+        ExprRef::Foreign(_) | ExprRef::Filter(_) | ExprRef::Opaque(_) => None,
     }
 }
 

@@ -151,13 +151,32 @@ fn component_paramless_static_slots_emit_from_s2() {
 }
 
 #[test]
-fn component_scoped_slots_still_refuse_s2_projection() {
+fn component_scoped_slots_emit_from_s2() {
     let allocator = Allocator::new();
-    let source = "const A = () => <List>{{ item: ({ x }) => <li>{x}</li> }}</List>;";
+    let source = "const A = () => <List>{{ item: (row) => <li>{row}</li> }}</List>;";
     let mut lowered = lower_source(&allocator, allocator.as_oxc(), source, JsxLang::Jsx);
-    let root = lowered.roots.pop().expect("one JSX root");
+    let analysis: &Croquis = allocator.alloc_owned(lowered.analysis);
+    let mut root = lowered.roots.pop().expect("one JSX root");
+    let s2 = root.s2.as_ref().expect("scoped slots project to S2");
 
-    assert_eq!(root.s2.err(), Some(crate::s2::S2Refusal::Directive));
+    assert_eq!(super::root_is_supported(s2), true);
+
+    root.root.children.clear();
+    let mut diagnostics = Vec::new();
+    let component = compile_root_to_vdom(
+        &allocator,
+        root,
+        analysis,
+        false,
+        &VdomCompileOptions::default(),
+        VdomCompatOptions::default(),
+        &mut diagnostics,
+        source,
+    );
+
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    assert!(component.code.contains("item: _withCtx((row) => ["));
+    assert!(component.code.contains("_toDisplayString(row)"));
 }
 
 #[test]

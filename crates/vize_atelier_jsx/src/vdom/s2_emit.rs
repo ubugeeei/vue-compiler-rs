@@ -7,13 +7,12 @@ use vize_s1_to_s2::{
     DomEmitMode, DomEmitOptions, LegacyCaps, Lowered as S2Lowered, emit_dom_with_options,
 };
 use vize_s2::expr::ExprRef;
-use vize_s2::op::{
-    BindingOp, ComponentOp, DynamicName, ElementOp, ModelOp, Op, Region, SlotContentOp,
-};
+use vize_s2::op::{BindingOp, ComponentOp, DynamicName, ElementOp, ModelOp, Op, Region};
 
 use crate::s2::{JsxS2Root, S2Refusal};
 
 use super::{VdomCompatOptions, VdomCompileOptions};
+use slots::{has_slot_content, slot_template_is_supported};
 
 pub(super) struct S2VdomEmit {
     pub code: String,
@@ -125,27 +124,6 @@ fn op_is_supported(op: &Op<'_>) -> bool {
         Op::For(for_op) => control_flow::for_is_supported(for_op),
         Op::Comment(_) | Op::Slot(_) => false,
     }
-}
-
-fn slot_template_is_supported(element: &ElementOp<'_>) -> bool {
-    element.attributes.is_empty()
-        && matches!(
-            element.bindings.as_slice(),
-            [BindingOp::SlotContent(content)] if slot_content_is_supported(content)
-        )
-        && region_is_supported(&element.children)
-}
-
-fn has_slot_content(bindings: &[BindingOp<'_>]) -> bool {
-    bindings
-        .iter()
-        .any(|binding| matches!(binding, BindingOp::SlotContent(_)))
-}
-
-fn slot_content_is_supported(content: &SlotContentOp<'_>) -> bool {
-    content.params.is_none()
-        && content.modifiers.is_empty()
-        && matches!(content.name, None | Some(DynamicName::Static(_)))
 }
 
 fn element_bindings_are_supported(element: &ElementOp<'_>) -> bool {
@@ -342,6 +320,7 @@ mod native_model_tests;
 mod options_tests;
 #[cfg(test)]
 mod scoped_tests;
+mod slots;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

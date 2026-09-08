@@ -1,5 +1,7 @@
+use vize_davinci::id::NodeId;
 use vize_s0::Allocator;
 use vize_s2::op::{BindingOp, DynamicName, Op};
+use vize_s2::scope::ScopeOrigin;
 
 use crate::{JsxLang, lower_source};
 
@@ -83,7 +85,7 @@ fn paramless_static_slots_project_to_s2_slot_content() {
 }
 
 #[test]
-fn scoped_slots_stay_on_directive_refusal_path() {
+fn scoped_slots_project_to_s2_slot_content_scope() {
     let allocator = Allocator::new();
     let lowered = lower_source(
         &allocator,
@@ -93,7 +95,30 @@ fn scoped_slots_stay_on_directive_refusal_path() {
     );
     let root = lowered.roots.first().expect("one JSX root");
 
-    assert!(matches!(root.s2, Err(S2Refusal::Directive)));
+    let s2 = root.s2.as_ref().expect("scoped slot projects to S2");
+    assert_eq!(s2.op_count, 5);
+    let Op::Component(component) = &s2.root.ops[0] else {
+        panic!("root is a component");
+    };
+    let Op::Element(template) = &component.children.ops[0] else {
+        panic!("slot carrier is a template element");
+    };
+    let BindingOp::SlotContent(content) = &template.bindings[0] else {
+        panic!("binding is ui.slot-content");
+    };
+    let params = content.params.as_ref().expect("slot params are kept");
+    assert_eq!(params.source(), "row");
+    let scope_id = NodeId::from_index(2).expect("slot-content binding has an id");
+    let scope = s2.scopes.get(scope_id).expect("slot params record a scope");
+    assert_eq!(scope.tag.index(), 0);
+    assert_eq!(scope.bindings.len(), 1);
+    assert_eq!(scope.bindings[0].name, "row");
+    assert_eq!(
+        scope.bindings[0].origin,
+        ScopeOrigin::Authored {
+            span: params.span()
+        }
+    );
 }
 
 #[test]
