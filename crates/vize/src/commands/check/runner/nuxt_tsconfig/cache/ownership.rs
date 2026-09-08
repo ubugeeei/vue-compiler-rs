@@ -10,6 +10,12 @@ use super::publish_config_atomically;
 const DIGEST_LENGTH: usize = 64;
 const SHARD_LENGTH: usize = 2;
 
+enum MarkerlessDirectoryState {
+    Publishable,
+    Published,
+    Foreign,
+}
+
 pub(in crate::commands::check::runner::nuxt_tsconfig) fn ensure_bucket(
     cache_root: &Path,
     shard: &str,
@@ -91,35 +97,93 @@ fn ensure_owned_directory(
         Err(error) => return Err(error),
     }
     validate_directory_path(parent, &path)?;
-    let marker = path.join(format!(".{kind}-owner"));
+    match validate_owned_directory(parent, &path, identity, kind) {
+        Ok(()) => return Ok(path),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
+    let marker_name = format!(".{kind}-owner");
+    let marker = path.join(&marker_name);
     let expected = format!("vize-nuxt-{kind}:v2:{identity}\n");
-    if !marker.exists() {
-        let mut saw_entry = false;
-        let mut has_bootstrap_lock = false;
-        let mut unknown = false;
-        for entry in fs::read_dir(&path)?.filter_map(Result::ok) {
-            saw_entry = true;
-            let name = entry.file_name();
-            match name.to_str() {
-                Some(".publish.lock") => {
-                    let metadata = fs::symlink_metadata(entry.path())?;
-                    has_bootstrap_lock = !metadata.file_type().is_symlink() && metadata.is_file();
-                    unknown |= !has_bootstrap_lock;
-                }
-                Some(name) if super::is_pending_name(name) => {}
-                _ => unknown = true,
-            }
+    match inspect_markerless_directory(&path, &marker_name)? {
+        MarkerlessDirectoryState::Publishable => {
+            publish_config_atomically(&marker, expected.as_bytes())?;
         }
-        if unknown || (saw_entry && !has_bootstrap_lock) {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Nuxt config cache directory has no ownership marker",
-            ));
+        MarkerlessDirectoryState::Published => {}
+        MarkerlessDirectoryState::Foreign => {
+            validate_or_missing_marker_error(parent, &path, identity, kind)?;
+            return Ok(path);
         }
-        publish_config_atomically(&marker, expected.as_bytes())?;
     }
     validate_owned_directory(parent, &path, identity, kind)?;
     Ok(path)
+}
+
+fn inspect_markerless_directory(
+    path: &Path,
+    marker_name: &str,
+) -> Result<MarkerlessDirectoryState, std::io::Error> {
+    let mut saw_entry = false;
+    let mut has_bootstrap_lock = false;
+    let mut unknown = false;
+    for entry in fs::read_dir(path)?.filter_map(Result::ok) {
+        saw_entry = true;
+        let name = entry.file_name();
+        match name.to_str() {
+            Some(name) if name == marker_name => {
+                return Ok(MarkerlessDirectoryState::Published);
+            }
+            Some(".publish.lock") => {
+                has_bootstrap_lock = validate_bootstrap_lock(&entry.path())?;
+                unknown |= !has_bootstrap_lock;
+            }
+            Some(name) if super::is_pending_name(name) => {}
+            _ => unknown = true,
+        }
+    }
+    if saw_entry && !has_bootstrap_lock {
+        has_bootstrap_lock = validate_bootstrap_lock(&path.join(".publish.lock"))?;
+    }
+    if unknown || (saw_entry && !has_bootstrap_lock) {
+        return Ok(MarkerlessDirectoryState::Foreign);
+    }
+    Ok(MarkerlessDirectoryState::Publishable)
+}
+
+fn validate_bootstrap_lock(path: &Path) -> Result<bool, std::io::Error> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Nuxt config publication lock is not a regular file",
+            ))
+        }
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+fn validate_or_missing_marker_error(
+    parent: &Path,
+    path: &Path,
+    identity: &str,
+    kind: &str,
+) -> Result<(), std::io::Error> {
+    match validate_owned_directory(parent, path, identity, kind) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Err(missing_ownership_marker_error())
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn missing_ownership_marker_error() -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::InvalidData,
+        "Nuxt config cache directory has no ownership marker",
+    )
 }
 
 fn validate_owned_directory(
@@ -181,113 +245,5 @@ fn is_shard(value: &str) -> bool {
 }
 
 #[cfg(all(test, unix))]
-mod tests {
-    use super::{ensure_bucket, ensure_entry, ensure_project};
-    use std::{fs, os::unix::fs::symlink};
-
-    #[test]
-    fn project_and_entry_symlinks_never_mutate_their_targets() {
-        let case = tempfile::tempdir().unwrap();
-        let cache = case.path().join("cache");
-        let dependency = case.path().join("node_modules/package");
-        fs::create_dir_all(&cache).unwrap();
-        fs::create_dir_all(&dependency).unwrap();
-        let sentinel = dependency.join("sentinel.txt");
-        fs::write(&sentinel, "owned by dependency\n").unwrap();
-
-        let bucket = ensure_bucket(&cache, "00").unwrap();
-        let project_digest = format!("{:064x}", 1);
-        symlink(&dependency, bucket.join(&project_digest)).unwrap();
-        assert!(ensure_project(&bucket, &project_digest).is_err());
-        assert_eq!(
-            fs::read_to_string(&sentinel).unwrap(),
-            "owned by dependency\n"
-        );
-
-        fs::remove_file(bucket.join(&project_digest)).unwrap();
-        let project = ensure_project(&bucket, &project_digest).unwrap();
-        let entry_digest = format!("{:064x}", 2);
-        symlink(&dependency, project.join(&entry_digest)).unwrap();
-        assert!(ensure_entry(&project, &entry_digest).is_err());
-        assert_eq!(
-            fs::read_to_string(&sentinel).unwrap(),
-            "owned by dependency\n"
-        );
-    }
-
-    #[test]
-    fn a_foreign_digest_directory_is_never_adopted() {
-        let case = tempfile::tempdir().unwrap();
-        let cache = case.path().join("cache");
-        fs::create_dir(&cache).unwrap();
-        let bucket = ensure_bucket(&cache, "00").unwrap();
-        let digest = format!("{:064x}", 3);
-        let foreign = bucket.join(&digest);
-        fs::create_dir(&foreign).unwrap();
-        let sentinel = foreign.join("foreign.txt");
-        fs::write(&sentinel, "foreign\n").unwrap();
-
-        assert!(ensure_project(&bucket, &digest).is_err());
-        assert_eq!(fs::read_to_string(sentinel).unwrap(), "foreign\n");
-    }
-
-    #[test]
-    fn an_in_progress_bootstrap_lock_is_the_only_adoptable_regular_file() {
-        let case = tempfile::tempdir().unwrap();
-        let cache = case.path().join("cache");
-        fs::create_dir(&cache).unwrap();
-        let bucket = cache.join("ab");
-        fs::create_dir(&bucket).unwrap();
-        fs::write(bucket.join(".publish.lock"), []).unwrap();
-
-        assert_eq!(ensure_bucket(&cache, "ab").unwrap(), bucket);
-        assert_eq!(
-            fs::read_to_string(bucket.join(".bucket-owner")).unwrap(),
-            "vize-nuxt-bucket:v2:ab\n"
-        );
-    }
-
-    #[test]
-    fn a_pending_named_file_without_the_bootstrap_lock_is_foreign() {
-        let case = tempfile::tempdir().unwrap();
-        let cache = case.path().join("cache");
-        fs::create_dir(&cache).unwrap();
-        let digest = format!("{:064x}", 4);
-        let foreign = cache.join(&digest);
-        fs::create_dir(&foreign).unwrap();
-        let pending = foreign.join(".vize-nuxt-config-1-foreign.pending");
-        fs::write(&pending, "foreign\n").unwrap();
-
-        assert!(ensure_project(&cache, &digest).is_err());
-        assert_eq!(fs::read_to_string(pending).unwrap(), "foreign\n");
-        assert!(!foreign.join(".project-owner").exists());
-    }
-
-    #[test]
-    fn concurrent_first_users_publish_one_exact_bucket_identity() {
-        let case = tempfile::tempdir().unwrap();
-        let cache = case.path().join("cache");
-        fs::create_dir(&cache).unwrap();
-        let start = std::sync::Arc::new(std::sync::Barrier::new(3));
-        let tasks = (0..2)
-            .map(|_| {
-                let cache = cache.clone();
-                let start = std::sync::Arc::clone(&start);
-                std::thread::spawn(move || {
-                    start.wait();
-                    ensure_bucket(&cache, "cd").unwrap()
-                })
-            })
-            .collect::<Vec<_>>();
-        start.wait();
-        let paths = tasks
-            .into_iter()
-            .map(|task| task.join().unwrap())
-            .collect::<Vec<_>>();
-        assert_eq!(paths[0], paths[1]);
-        assert_eq!(
-            fs::read_to_string(paths[0].join(".bucket-owner")).unwrap(),
-            "vize-nuxt-bucket:v2:cd\n"
-        );
-    }
-}
+#[path = "ownership_tests.rs"]
+mod ownership_tests;
