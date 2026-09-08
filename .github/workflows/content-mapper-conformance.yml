@@ -21,6 +21,7 @@ on:
       - "crates/vize/tests/davinci_ts40_projection_cli.rs"
       - "crates/vize/tests/snapshots/davinci_ts40_projection_cli__*.snap"
       - "crates/vize/tests/content_mapper_tsgo_lsp.rs"
+      - "crates/vize/tests/content_mapper_lsp_shutdown.rs"
       - "crates/vize/tests/content_mapper_tsgo_declaration_lsp.rs"
       - "crates/vize/tests/content_mapper_tsgo_lsp_event_forms.rs"
       - "crates/vize/tests/content_mapper_tsgo_lsp_event_forms/**"
@@ -82,6 +83,7 @@ on:
       - "crates/vize/tests/davinci_ts40_projection_cli.rs"
       - "crates/vize/tests/snapshots/davinci_ts40_projection_cli__*.snap"
       - "crates/vize/tests/content_mapper_tsgo_lsp.rs"
+      - "crates/vize/tests/content_mapper_lsp_shutdown.rs"
       - "crates/vize/tests/content_mapper_tsgo_declaration_lsp.rs"
       - "crates/vize/tests/content_mapper_tsgo_lsp_event_forms.rs"
       - "crates/vize/tests/content_mapper_tsgo_lsp_event_forms/**"
@@ -244,6 +246,7 @@ jobs:
           VIZE_TEST_CONTENT_MAPPER_TSGO: ${{ runner.temp }}/tsgo
         run: |
           cargo test -p vize --test content_mapper_tsgo_lsp -- --nocapture
+          cargo test -p vize --test content_mapper_lsp_shutdown -- --nocapture
           cargo test -p vize --test content_mapper_tsgo_declaration_lsp -- --nocapture
           cargo test -p vize --test content_mapper_tsgo_lsp_event_forms -- --nocapture
           cargo test -p vize_canon --test lsp_import_resolution -- --nocapture

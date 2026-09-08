@@ -40,6 +40,7 @@ const REQUIRED_TRIGGER_PATHS = [
   "crates/vize/tests/davinci_ts40_projection_cli.rs",
   "crates/vize/tests/snapshots/davinci_ts40_projection_cli__*.snap",
   "crates/vize/tests/content_mapper_tsgo_lsp.rs",
+  "crates/vize/tests/content_mapper_lsp_shutdown.rs",
   "crates/vize/tests/content_mapper_tsgo_declaration_lsp.rs",
   "crates/vize/tests/content_mapper_tsgo_lsp_event_forms.rs",
   "crates/vize/tests/content_mapper_tsgo_lsp_event_forms/**",
@@ -212,6 +213,7 @@ test("Content Mapper conformance pins and runs the exact upstream project path",
   assert.equal(packageRouteStep.env?.VIZE_TEST_REQUIRE_TSGO, "1");
   const editorCommands = [
     "cargo test -p vize --test content_mapper_tsgo_lsp -- --nocapture",
+    "cargo test -p vize --test content_mapper_lsp_shutdown -- --nocapture",
     "cargo test -p vize --test content_mapper_tsgo_declaration_lsp -- --nocapture",
     "cargo test -p vize --test content_mapper_tsgo_lsp_event_forms -- --nocapture",
     "cargo test -p vize_canon --test lsp_import_resolution -- --nocapture",
