@@ -118,6 +118,13 @@ fn provenance_pairs_are_recorded_per_decision_in_page_order() {
                 span: Span::new(20, 27),
             },
             ProvenanceRecord {
+                rule: String::from("lower.for-fact"),
+                node: NodeId::from_index(1),
+                before: String::from("scope #0 bindings=1"),
+                after: String::from("fact value=i key=- index=-"),
+                span: Span::new(20, 27),
+            },
+            ProvenanceRecord {
                 rule: String::from("lower.element"),
                 node: NodeId::from_index(2),
                 before: String::from("<p v-if=\"ok\" v-for=\"i in is\">"),
