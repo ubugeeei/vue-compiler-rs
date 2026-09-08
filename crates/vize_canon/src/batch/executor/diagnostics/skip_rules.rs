@@ -44,10 +44,10 @@ pub(crate) fn should_skip_original_diagnostic(
 }
 
 pub(crate) fn filter_authored_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
-    if !diagnostics
-        .iter()
-        .any(is_use_vmodel_passive_false_overload_diagnostic)
-    {
+    if !diagnostics.iter().any(|diagnostic| {
+        is_use_vmodel_passive_false_overload_diagnostic(diagnostic)
+            || is_multiline_ts_directive_candidate(diagnostic)
+    }) {
         return diagnostics;
     }
     let unused_expect_errors = unused_expect_error_lines(&diagnostics);
@@ -58,13 +58,30 @@ pub(crate) fn filter_authored_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<D
         .collect()
 }
 
+fn is_multiline_ts_directive_candidate(diagnostic: &Diagnostic) -> bool {
+    diagnostic.code != Some(2578)
+        && diagnostic.block_type != Some(crate::sfc_diagnostics::SfcBlockType::Template)
+        && is_vue_source(&diagnostic.file)
+}
+
 fn should_skip_authored_diagnostic(
     diagnostic: &Diagnostic,
     unused_expect_errors: &FxHashSet<DiagnosticLineKey>,
 ) -> bool {
-    if !is_use_vmodel_passive_false_overload_diagnostic(diagnostic) {
-        return false;
+    if is_use_vmodel_passive_false_overload_diagnostic(diagnostic)
+        && should_skip_use_vmodel_passive_false_diagnostic(diagnostic, unused_expect_errors)
+    {
+        return true;
     }
+
+    is_multiline_ts_directive_candidate(diagnostic)
+        && is_multiline_ts_directive_suppressed(diagnostic, unused_expect_errors)
+}
+
+fn should_skip_use_vmodel_passive_false_diagnostic(
+    diagnostic: &Diagnostic,
+    unused_expect_errors: &FxHashSet<DiagnosticLineKey>,
+) -> bool {
     let Ok(source) = fs::read_to_string(&diagnostic.file) else {
         return false;
     };
@@ -101,6 +118,84 @@ fn use_vmodel_passive_false_match(
     Some(UseVModelPassiveFalseMatch { expect_error_line })
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TsDirectiveKind {
+    Ignore,
+    ExpectError,
+}
+
+struct MultilineTsDirectiveMatch {
+    directive_line: usize,
+    kind: TsDirectiveKind,
+}
+
+fn is_multiline_ts_directive_suppressed(
+    diagnostic: &Diagnostic,
+    unused_expect_errors: &FxHashSet<DiagnosticLineKey>,
+) -> bool {
+    let Ok(source) = fs::read_to_string(&diagnostic.file) else {
+        return false;
+    };
+    let Some(matched) = multiline_ts_directive_match(&source, diagnostic.line as usize) else {
+        return false;
+    };
+    if matched.kind == TsDirectiveKind::ExpectError {
+        let key = (diagnostic.file.clone(), matched.directive_line as u32);
+        return !unused_expect_errors.contains(&key);
+    }
+    true
+}
+
+fn multiline_ts_directive_match(
+    source: &str,
+    diagnostic_line: usize,
+) -> Option<MultilineTsDirectiveMatch> {
+    let lines: Vec<_> = source.lines().collect();
+    if diagnostic_line >= lines.len() {
+        return None;
+    }
+
+    let lower_bound = diagnostic_line.saturating_sub(16);
+    for directive_line in (lower_bound..=diagnostic_line).rev() {
+        let line = lines[directive_line].trim();
+        let Some(kind) = ts_directive_kind(line) else {
+            continue;
+        };
+        let Some(call_start) = next_non_empty_line(&lines, directive_line + 1) else {
+            continue;
+        };
+        let Some(call_end) = call_end_line(&lines, call_start) else {
+            continue;
+        };
+        if diagnostic_line >= call_start && diagnostic_line <= call_end {
+            return Some(MultilineTsDirectiveMatch {
+                directive_line,
+                kind,
+            });
+        }
+    }
+
+    None
+}
+
+fn ts_directive_kind(line: &str) -> Option<TsDirectiveKind> {
+    if line.contains("@ts-ignore") {
+        Some(TsDirectiveKind::Ignore)
+    } else if line.contains("@ts-expect-error") {
+        Some(TsDirectiveKind::ExpectError)
+    } else {
+        None
+    }
+}
+
+fn next_non_empty_line(lines: &[&str], start: usize) -> Option<usize> {
+    lines
+        .iter()
+        .enumerate()
+        .skip(start)
+        .find_map(|(index, line)| (!line.trim().is_empty()).then_some(index))
+}
+
 fn containing_use_vmodel_call(lines: &[&str], diagnostic_line: usize) -> Option<(usize, usize)> {
     if diagnostic_line >= lines.len() {
         return None;
@@ -129,10 +224,10 @@ fn call_end_line(lines: &[&str], start: usize) -> Option<usize> {
                 depth += 1;
             } else if ch == ')' && saw_open {
                 depth -= 1;
-                if depth == 0 {
-                    return Some(index);
-                }
             }
+        }
+        if saw_open && depth == 0 {
+            return Some(index);
         }
     }
     None
@@ -184,158 +279,4 @@ fn is_vue_source(path: &Path) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{filter_authored_diagnostics, use_vmodel_passive_false_match};
-    use crate::batch::Diagnostic;
-    use std::{
-        fs,
-        path::{Path, PathBuf},
-    };
-    use tempfile::TempDir;
-
-    const PASSIVE_FALSE_OVERLOAD: &str = "No overload matches this call.\n\
-The last overload gave the following error.\n\
-Type 'false' is not assignable to type 'true'.";
-
-    #[test]
-    fn filters_use_vmodel_passive_false_overload_after_consumed_expect_error() {
-        let source = r#"useVModel(props, "modelValue", emit, {
-  // @ts-expect-error Missing infer for AcceptableValue
-  defaultValue: props.defaultValue ?? (multiple.value ? [] : undefined),
-  passive: (props.modelValue === undefined) as false,
-  deep: true,
-});
-"#;
-        let temp = TempDir::new().unwrap();
-        let file = write_vue(&temp, source);
-        let diagnostic = overload(&file, line_of(source, "passive:"));
-
-        assert!(filter_authored_diagnostics(vec![diagnostic]).is_empty());
-    }
-
-    #[test]
-    fn keeps_use_vmodel_passive_false_overload_without_expect_error() {
-        let source = r#"useVModel(props, "modelValue", emit, {
-  defaultValue: props.defaultValue,
-  passive: (props.modelValue === undefined) as false,
-  deep: true,
-});
-"#;
-
-        assert!(
-            use_vmodel_passive_false_match(source, line_of(source, "passive:") as usize).is_none()
-        );
-    }
-
-    #[test]
-    fn keeps_use_vmodel_overload_when_expect_error_is_unused() {
-        let source = r#"useVModel(props, "modelValue", emit, {
-  // @ts-expect-error Missing infer for AcceptableValue
-  defaultValue: props.defaultValue ?? (multiple.value ? [] : undefined),
-  passive: (props.modelValue === undefined) as false,
-  deep: true,
-});
-"#;
-        let temp = TempDir::new().unwrap();
-        let file = write_vue(&temp, source);
-        let diagnostics = filter_authored_diagnostics(vec![
-            overload(&file, line_of(source, "passive:")),
-            unused_directive(&file, line_of(source, "@ts-expect-error")),
-        ]);
-        let codes: Vec<_> = diagnostics
-            .iter()
-            .map(|diagnostic| diagnostic.code)
-            .collect();
-
-        assert_eq!(codes, [Some(2769), Some(2578)]);
-    }
-
-    #[test]
-    fn matches_multiline_passive_false_option() {
-        let source = r#"useVModel(props, "modelValue", emit, {
-  // @ts-expect-error Missing infer for AcceptableValue
-  defaultValue: props.defaultValue ?? (multiple.value ? [] : undefined),
-  passive:
-    (props.modelValue === undefined)
-      as false,
-  deep: true,
-});
-"#;
-        let matched =
-            use_vmodel_passive_false_match(source, line_of(source, "passive:") as usize).unwrap();
-
-        assert_eq!(
-            matched.expect_error_line,
-            line_of(source, "@ts-expect-error") as usize
-        );
-    }
-
-    #[test]
-    fn matches_use_vmodel_options_after_long_gap() {
-        let source = r#"useVModel(props, "modelValue", emit, {
-  option01: true,
-  option02: true,
-  option03: true,
-  option04: true,
-  option05: true,
-  option06: true,
-  option07: true,
-  option08: true,
-  option09: true,
-  option10: true,
-  option11: true,
-  option12: true,
-  option13: true,
-  // @ts-expect-error Missing infer for AcceptableValue
-  defaultValue: props.defaultValue ?? (multiple.value ? [] : undefined),
-  passive: (props.modelValue === undefined) as false,
-  deep: true,
-});
-"#;
-        let matched =
-            use_vmodel_passive_false_match(source, line_of(source, "passive:") as usize).unwrap();
-
-        assert_eq!(
-            matched.expect_error_line,
-            line_of(source, "@ts-expect-error") as usize
-        );
-    }
-
-    fn write_vue(temp: &TempDir, source: &str) -> PathBuf {
-        let file = temp.path().join("Foo.vue");
-        fs::write(&file, source).unwrap();
-        file
-    }
-
-    fn overload(file: &Path, line: u32) -> Diagnostic {
-        diagnostic(file, line, Some(2769), PASSIVE_FALSE_OVERLOAD)
-    }
-
-    fn unused_directive(file: &Path, line: u32) -> Diagnostic {
-        diagnostic(
-            file,
-            line,
-            Some(2578),
-            "Unused '@ts-expect-error' directive.",
-        )
-    }
-
-    fn diagnostic(file: &Path, line: u32, code: Option<u32>, message: &str) -> Diagnostic {
-        Diagnostic {
-            file: file.to_path_buf(),
-            line,
-            column: 2,
-            message: message.into(),
-            code,
-            severity: 1,
-            block_type: None,
-        }
-    }
-
-    fn line_of(source: &str, needle: &str) -> u32 {
-        source
-            .lines()
-            .position(|line| line.contains(needle))
-            .unwrap() as u32
-    }
-}
+mod tests;

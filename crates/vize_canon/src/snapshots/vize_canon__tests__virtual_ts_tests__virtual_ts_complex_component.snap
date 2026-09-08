@@ -30,7 +30,8 @@ type __EmitFn<T, __S = __EmitShape<T>, __K extends keyof __S & string = keyof __
 type __RuntimePropValue<T> = T extends abstract new (...args: any[]) => infer V ? V : T extends (...args: any[]) => infer V ? V : never;
 type __RuntimePropCtorInner<T> = T extends null | undefined ? never : T extends readonly (infer U)[] ? __RuntimePropCtorInner<U> : T extends { type: infer U } ? __RuntimePropCtorInner<U> : T extends StringConstructor ? string : T extends NumberConstructor ? number : T extends BooleanConstructor ? boolean : T extends ArrayConstructor ? unknown[] : T extends ObjectConstructor ? Record<string, any> : T extends DateConstructor ? Date : T extends FunctionConstructor ? (...args: any[]) => any : __RuntimePropValue<T>;
 type __RuntimePropCtor<T> = [__RuntimePropCtorInner<T>] extends [never] ? unknown : __RuntimePropCtorInner<T>;
-type __RuntimePropResolved<T> = T extends { required: true } ? true : T extends { default: any } ? true : false;
+type __RuntimePropHasBoolean<T> = T extends BooleanConstructor ? true : T extends readonly (infer U)[] ? __RuntimePropHasBoolean<U> : T extends { type: infer U } ? __RuntimePropHasBoolean<U> : false;
+type __RuntimePropResolved<T> = T extends { required: true } ? true : T extends { default: any } ? true : __RuntimePropHasBoolean<T>;
 type __RuntimePropShape<T extends Record<string, any>> = { [K in keyof T]: __RuntimePropResolved<T[K]> extends true ? __RuntimePropCtor<T[K]> : __RuntimePropCtor<T[K]> | undefined; };
 type __LooseRequired<T> = { [P in keyof (T & Required<T>)]: T[P] };
 type __VizeBooleanKey<T, K extends keyof T = keyof T> = K extends any ? [Exclude<T[K], undefined>] extends [never] ? never : [Exclude<T[K], undefined>] extends [boolean] ? K : never : never; type __DefineProps<T, __BKeys extends keyof T = __VizeBooleanKey<T>> = Readonly<T> & { readonly [K in __BKeys]-?: boolean };
@@ -52,11 +53,16 @@ type __VizeKebabProps<T> = { [K in keyof T & string as __VizeKebabCase<K>]: T[K]
 type __VizeRequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T];
 type __VizeDomListenerProps = { [K in keyof GlobalEventHandlersEventMap as K extends string ? `on${Capitalize<K>}` : never]?: (event: GlobalEventHandlersEventMap[K]) => void };
 type __VizeFallthroughAttrs<Owned = {}> = { class?: unknown; style?: unknown } & { [K in `data-${string}`]?: unknown } & { [K in `aria-${string}`]?: unknown } & Omit<__VizeDomListenerProps, keyof Owned>;
-type __VizeComponentInputProps<T, Declared = {}> = T extends unknown ? Partial<T> & Partial<__VizeKebabProps<T>> & Declared & __VizeFallthroughAttrs<T & Declared> : never;
+type __VizeReservedComponentInputProps = { key?: unknown; ref?: unknown };
+type __VizeComponentInputProps<T, Declared = {}> = T extends unknown ? Partial<T> & Partial<__VizeKebabProps<T>> & Declared & __VizeFallthroughAttrs<T & Declared> & __VizeReservedComponentInputProps : never;
 type __VizeMissingRequiredInputKeys<T, Authored, K extends __VizeRequiredKeys<T> & string = __VizeRequiredKeys<T> & string> = K extends unknown ? K extends keyof Authored ? never : __VizeKebabCase<K> extends keyof Authored ? never : K : never;
-type __VizeExtraInputKeys<Allowed, Authored> = Exclude<keyof Authored, keyof Allowed>;
-type __VizeComponentInputGuard<T, Declared, Authored> = T extends unknown ? [__VizeMissingRequiredInputKeys<T, Authored> | __VizeExtraInputKeys<__VizeComponentInputProps<T, Declared>, Authored>] extends [never] ? {} : { readonly __vizeInvalidComponentProps: { readonly missing: __VizeMissingRequiredInputKeys<T, Authored>; readonly extra: __VizeExtraInputKeys<__VizeComponentInputProps<T, Declared>, Authored>; } } : never;
-type __VizeComponentInput<T, Declared, Authored> = [Authored] extends [unknown] ? __VizeComponentInputProps<T, Declared> & __VizeComponentInputGuard<T, Declared, Authored> : never;
+type __VizeIsPropKeyUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : false;
+type __VizeIsSinglePropKey<T> = [T] extends [never] ? false : __VizeIsPropKeyUnion<T> extends true ? false : true;
+type __VizeRelaxedDynamicUnionExtra<T, Declared, Authored, K extends keyof Authored> = [keyof Declared] extends [never] ? __VizeIsSinglePropKey<__VizeRequiredKeys<T>> extends true ? K extends string ? K extends `on${string}` ? false : Authored[K] extends true ? false : true : false : false : false;
+type __VizeExtraInputKeys<T, Declared, Authored, Allowed = __VizeComponentInputProps<T, Declared>, K extends keyof Authored = Exclude<keyof Authored, keyof Allowed>> = K extends unknown ? __VizeRelaxedDynamicUnionExtra<T, Declared, Authored, K> extends true ? never : K : never;
+type __VizeComponentMissingInputGuard<T, Authored> = T extends unknown ? [__VizeMissingRequiredInputKeys<T, Authored>] extends [never] ? {} : { readonly __vizeInvalidComponentProps: { readonly missing: __VizeMissingRequiredInputKeys<T, Authored>; readonly extra: never; } } : never;
+type __VizeComponentInputGuard<T, Declared, Authored> = __VizeUsePublicInstance<Authored> extends true ? {} : T extends unknown ? [__VizeMissingRequiredInputKeys<T, Authored> | __VizeExtraInputKeys<T, Declared, Authored>] extends [never] ? {} : { readonly __vizeInvalidComponentProps: { readonly missing: __VizeMissingRequiredInputKeys<T, Authored>; readonly extra: __VizeExtraInputKeys<T, Declared, Authored>; } } : never;
+type __VizeComponentInput<T, Declared, Authored> = __VizeUsePublicInstance<Authored> extends true ? __VizeComponentInputProps<T, Declared> : __VizeComponentInputProps<T, Declared> & __VizeComponentInputGuard<T, Declared, Authored>;
 type __VizeAuthoredKeyWitness<T> = { [K in keyof T]: unknown };
 type __VizeIsUnknown<T> = unknown extends T ? [keyof T] extends [never] ? true : false : false;
 type __VizeUsePublicInstance<T> = __VizeIsAny<T> extends true ? true : __VizeIsUnknown<T>;
@@ -134,7 +140,7 @@ function __setup() {
     console.log('Count changed:', newVal)
   })
   
-  // @vize-map: 11362:11748 -> 0:501
+  // @vize-map: 12735:13121 -> 0:501
 
   // ========== Template Scope (inherits from setup) ==========
   // Ref type captures (before template scope shadows them)
@@ -197,7 +203,7 @@ type __VizeOverloadUnionRecursive<TOverload, TPartialOverload = unknown, TDepth 
 type __VizeOverloadUnion<TOverload extends (...args: any[]) => any> = Exclude<__VizeOverloadUnionRecursive<(() => never) & TOverload>, TOverload extends () => never ? never : () => never>;
 type __VizeOverloadParameters<T extends (...args: any[]) => any> = Parameters<__VizeOverloadUnion<T>>;
 type __VizeIsStringLiteral<T> = T extends string ? string extends T ? false : true : false;
-type __VizeParametersToFns<T extends any[]> = { [K in T[0]]: __VizeIsStringLiteral<K> extends true ? (...args: T extends [e: infer E, ...args: infer P] ? K extends E ? P : never : never) => any : never };
+type __VizeParametersToFns<T extends any[]> = string extends T[0] ? { [K in string]: (...args: T extends [e: any, ...args: infer P] ? P : any[]) => any } : { [K in T[0]]: __VizeIsStringLiteral<K> extends true ? (...args: T extends [e: infer E, ...args: infer P] ? K extends E ? P : never : never) => any : never };
 type __EmitOptions<T> = { [K in keyof __EmitShape<T> & string]: (...args: __EmitArgs<__EmitShape<T>, K>) => any } & (__EmitShape<T> extends (...args: any[]) => any ? __VizeParametersToFns<__VizeOverloadParameters<__EmitShape<T>>> : {});
 type __VizeCamelize<S extends string> = S extends `${infer Head}-${infer Tail}` ? `${Head}${Capitalize<__VizeCamelize<Tail>>}` : S;
 type __VizeHandlerKey<K extends string> = `on${Capitalize<__VizeCamelize<K>>}`;
@@ -213,7 +219,7 @@ type __VizeComponentInstance = {
   $slots: Slots;
 } & __VizeComponentPublicBase;
 type __VizeComponentConstructor = new <__VizeAuthoredProps = unknown>(props?: __VizeAuthoredProps & __VizeComponentInput<Props, __EmitProps<Emits>, __VizeAuthoredProps>, ...args: any[]) => __VizeUsePublicInstance<__VizeAuthoredProps> extends true ? __VizeComponentInstance : Omit<__VizeComponentInstance, '$props'> & {
-$props: __VizeAuthoredKeyWitness<__VizeAuthoredProps> & __VizeComponentInput<Props, __EmitProps<Emits>, __VizeAuthoredProps>;
+$props: __VizeAuthoredKeyWitness<__VizeAuthoredProps> & __VizeComponentInputProps<Props, __EmitProps<Emits>> & __VizeComponentInputGuard<Props, __EmitProps<Emits>, __VizeAuthoredProps>;
 };
 type __VizeVueComponentOptions = {
   [key: string]: any;

@@ -106,7 +106,7 @@ pub(super) fn emit_component_constructors(
         append!(
             *ts,
             "type __VizeComponentConstructor = new <__VizeAuthoredProps = unknown>(props?: __VizeAuthoredProps & __VizeComponentInput<{props_ref}, {emit_props_ref}, __VizeAuthoredProps>, ...args: any[]) => __VizeUsePublicInstance<__VizeAuthoredProps> extends true ? __VizeComponentInstance : Omit<__VizeComponentInstance, '$props'> & {{\n\
-  $props: __VizeAuthoredKeyWitness<__VizeAuthoredProps> & __VizeComponentInput<{props_ref}, {emit_props_ref}, __VizeAuthoredProps>;\n\
+  $props: __VizeAuthoredKeyWitness<__VizeAuthoredProps> & __VizeComponentInputProps<{props_ref}, {emit_props_ref}> & __VizeComponentInputGuard<{props_ref}, {emit_props_ref}, __VizeAuthoredProps>;\n\
 }};\n"
         );
     }

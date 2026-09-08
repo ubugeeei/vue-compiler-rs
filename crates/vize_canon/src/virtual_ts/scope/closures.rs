@@ -1,5 +1,3 @@
-//! Scope-closure generation and the recursive v-for/v-slot/event-handler walker.
-
 use vize_carton::{FxHashMap, FxHashSet, String, append, cstr, profile};
 use vize_croquis::{Croquis, Scope, ScopeData, ScopeId, ScopeKind};
 
@@ -322,6 +320,10 @@ pub(super) fn generate_scope_node(
         ScopeData::VSlot(data) => {
             generate_v_slot_scope(ts, mappings, ctx, scope, data, indent, &inner_indent);
         }
+        ScopeData::EventHandler(_)
+            if ctx
+                .slot_outlets
+                .covers_event_handler_scope(scope.span.start, scope.span.end) => {}
         ScopeData::EventHandler(data) if ctx.check_options.check_event_handlers() => {
             generate_event_handler_scope(ts, mappings, ctx, scope, data, indent, &inner_indent);
         }

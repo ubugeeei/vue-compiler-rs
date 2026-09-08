@@ -161,6 +161,9 @@ impl VirtualProject {
         for option in PATH_SENSITIVE_COMPILER_OPTIONS {
             compiler_options.remove(*option);
         }
+        // The mirror owns only virtual/support files; `composite` would make
+        // normal imports look like project-build membership errors (TS6307).
+        compiler_options.remove("composite");
         normalize_native_removed_options(&mut compiler_options);
         compiler_options.insert("allowImportingTsExtensions".into(), Value::Bool(true));
         if self

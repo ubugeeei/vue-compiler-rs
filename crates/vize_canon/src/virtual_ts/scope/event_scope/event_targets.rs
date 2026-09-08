@@ -1,3 +1,4 @@
+use vize_carton::String;
 use vize_croquis::EventHandlerScopeData;
 use vize_relief::{ElementNode, PropNode, RootNode, TemplateChildNode};
 
@@ -46,6 +47,13 @@ pub(super) fn dynamic_component_custom_event(
     )
 }
 
+pub(super) fn vnode_hook_signature(event_name: &str) -> Option<(&'static str, &'static str)> {
+    if !is_vnode_hook(event_name) {
+        return None;
+    }
+    Some(("import('vue').VNode", "[vnode: import('vue').VNode]"))
+}
+
 fn is_transition_hook(event_name: &str) -> bool {
     matches!(
         event_name,
@@ -70,6 +78,25 @@ fn is_transition_hook(event_name: &str) -> bool {
             | "afterAppear"
             | "appear-cancelled"
             | "appearCancelled"
+    )
+}
+
+fn is_vnode_hook(event_name: &str) -> bool {
+    let rest = event_name
+        .strip_prefix("vue:")
+        .or_else(|| event_name.strip_prefix("vnode-"))
+        .or_else(|| event_name.strip_prefix("vnode"));
+    let Some(rest) = rest else {
+        return false;
+    };
+    let normalized = rest
+        .chars()
+        .filter(|ch| *ch != '-')
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+    matches!(
+        normalized.as_str(),
+        "beforemount" | "mounted" | "beforeupdate" | "updated" | "beforeunmount" | "unmounted"
     )
 }
 
@@ -182,7 +209,10 @@ fn host_tag_open_offset(prefix: &str) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{dynamic_component_custom_event, event_belongs_to_transition, event_host_tag};
+    use super::{
+        dynamic_component_custom_event, event_belongs_to_transition, event_host_tag,
+        vnode_hook_signature,
+    };
     use vize_carton::Allocator;
 
     fn directive_start(source: &str, directive: &str) -> u32 {
@@ -245,5 +275,18 @@ mod tests {
             start,
             "picked"
         ));
+    }
+
+    #[test]
+    fn vnode_hooks_use_vue_vnode_payloads() {
+        assert_eq!(
+            vnode_hook_signature("vue:mounted"),
+            Some(("import('vue').VNode", "[vnode: import('vue').VNode]"))
+        );
+        assert_eq!(
+            vnode_hook_signature("vue:before-unmount"),
+            Some(("import('vue').VNode", "[vnode: import('vue').VNode]"))
+        );
+        assert_eq!(vnode_hook_signature("click"), None);
     }
 }

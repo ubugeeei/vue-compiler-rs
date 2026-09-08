@@ -67,14 +67,12 @@ impl TemplatePropsModel {
 
         let mut defaulted_prop_names = collect_with_defaults_default_names(summary);
         // A runtime `default:` is Vue's own substitution, so the prop is never
-        // `undefined` inside its own template. Only the runtime object form
-        // declares one; the type-only form carries its defaults through
-        // `withDefaults`, already collected above.
-        if define_props_type_args.is_none() {
-            for prop in props {
-                if prop.default_value.is_some() {
-                    defaulted_prop_names.insert(prop.name.as_str().into());
-                }
+        // `undefined` inside its own template. The virtual project pass also
+        // marks type-based `withDefaults` entries when their defaults resolve
+        // through imported values.
+        for prop in props {
+            if prop.default_value.is_some() {
+                defaulted_prop_names.insert(prop.name.as_str().into());
             }
         }
         for model in models {

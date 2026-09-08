@@ -6,12 +6,14 @@
 
 use super::super::helpers::generated_text_range;
 use super::super::types::VizeMapping;
+use super::component_ref_callbacks::generate_component_ref_callback_statement;
 use super::directive_values::generate_directive_value_statement;
 use super::native_props::generate_native_prop_statement;
 use super::reserved_props::rewrite_reserved_template_prop;
 use super::value_checks::TemplateValueChecks;
 use super::vif_chain::{VifControlFlowChain, emit_vif_control_flow_chain};
 use crate::virtual_ts::scope::{append_ignored_vif_guard_open, remove_enclosing_vif_guard_prefix};
+use std::borrow::Cow;
 use vize_carton::CompactString;
 use vize_carton::FxHashSet;
 use vize_carton::String;
@@ -120,15 +122,8 @@ impl<'a> ExpressionListEmitContext<'a> {
     }
 }
 
-/// Generate a template expression with optional v-if narrowing.
-///
-/// When the expression has a `vif_guard`, wraps it in an if block to enable TypeScript type narrowing.
-/// For example, `{{ todo.description }}` inside `v-if="todo.description"` generates:
-/// ```typescript
-/// if (todo.description) {
-///   const __expr_X = todo.description;
-/// }
-/// ```
+/// Generate a template expression, wrapping guarded expressions so TypeScript
+/// can narrow them.
 pub(crate) fn generate_expression(
     ts: &mut String,
     mappings: &mut Vec<VizeMapping>,
@@ -256,10 +251,17 @@ pub(super) fn generate_expression_statement(
 ) {
     let src_start = (template_offset + expr.start) as usize;
     let src_end = (template_offset + expr.end) as usize;
-    let expression = profile!(
-        "canon.virtual_ts.expression.strip_comments",
-        strip_js_comments(expr.content.as_str())
-    );
+    let is_component_ref_callback = checks
+        .component_ref_callbacks
+        .contains_key(&(expr.start, expr.end));
+    let expression = if is_component_ref_callback {
+        Cow::Borrowed(expr.content.as_str())
+    } else {
+        profile!(
+            "canon.virtual_ts.expression.strip_comments",
+            strip_js_comments(expr.content.as_str())
+        )
+    };
     let trimmed_expression = expression.as_ref().trim();
     if trimmed_expression.is_empty() {
         return;
@@ -291,6 +293,18 @@ pub(super) fn generate_expression_statement(
             mappings,
             expr,
             native_prop,
+            generated_expression,
+            template_offset,
+            indent,
+        );
+        return;
+    }
+
+    if is_component_ref_callback {
+        generate_component_ref_callback_statement(
+            ts,
+            mappings,
+            expr,
             generated_expression,
             template_offset,
             indent,

@@ -230,6 +230,9 @@ pub(super) fn collect_generated_template_globals(
     {
         collect_i18n_template_globals(options, &mut seen_globals);
     }
+    if !infer_i18n_globals {
+        collect_router_template_globals(options, &mut seen_globals, seen_auto_imports);
+    }
 }
 
 fn collect_i18n_template_globals(
@@ -246,6 +249,21 @@ fn collect_i18n_template_globals(
         ("$i18n", "any"),
     ] {
         push_template_global(options, seen_globals, name, type_annotation);
+    }
+}
+
+fn collect_router_template_globals(
+    options: &mut VirtualTsOptions,
+    seen_globals: &mut FxHashSet<String>,
+    seen_auto_imports: &FxHashSet<String>,
+) {
+    for (auto_import, name, type_annotation) in [
+        ("useRoute", "$route", "ReturnType<typeof useRoute>"),
+        ("useRouter", "$router", "ReturnType<typeof useRouter>"),
+    ] {
+        if seen_auto_imports.contains(auto_import) {
+            push_template_global(options, seen_globals, name, type_annotation);
+        }
     }
 }
 

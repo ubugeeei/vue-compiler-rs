@@ -27,6 +27,7 @@ use super::javascript_sfc::descriptor_is_unchecked_javascript;
 pub(super) use super::javascript_sfc::descriptor_uses_jsx_script;
 use super::jsx_build::build_jsx_registered_file;
 use super::passthrough::collect_passthrough_modules;
+use super::setup_props::RuntimePropResolveCache;
 use super::vue_codegen::{GeneratedVueFile, VueCodegenOptions, generate_vue_virtual_ts};
 
 pub(super) const VUE_JSX_REFERENCE_DIRECTIVE: &str = "/// <reference types=\"vue/jsx\" />\n";
@@ -64,6 +65,7 @@ pub(super) struct VirtualBuildContext<'a> {
     pub(super) preserve_relative_declarations: bool,
     pub(super) preserve_declaration_spelling: bool,
     pub(super) rewriter: &'a ImportRewriter,
+    pub(super) runtime_prop_resolve_cache: Option<&'a RuntimePropResolveCache>,
 }
 
 pub(super) fn build_registered_file(
@@ -147,15 +149,9 @@ pub(super) fn build_vue_registered_file(
                 check_options: context.virtual_ts_check_options,
                 preserve_unused_diagnostics: context.preserve_unused_diagnostics,
                 options_api: context.options_api,
-                // The batch project is the source of truth for both `vize
-                // check` and `--declaration`, so it must keep the authored
-                // default export the same way the content mapper does. Without
-                // it the emitted constructor is rebuilt from `Props`/`Emits`/
-                // `Slots` alone and every Options API `data`/`computed`/
-                // `methods`/setup-return member disappears from
-                // `InstanceType<typeof Component>` (#4010). Costs nothing for a
-                // `<script setup>` SFC: the aliases are gated on a plain script
-                // actually declaring `__default__`.
+                // Batch check/declaration codegen must keep the authored
+                // default export so Options API instance members survive
+                // `InstanceType<typeof Component>` (#4010).
                 preserve_authored_component: true,
                 component_name: None,
                 preserve_event_navigation: false,
@@ -165,6 +161,7 @@ pub(super) fn build_vue_registered_file(
                 experimental_in_tag_comments: context.experimental_in_tag_comments,
                 hoist_shared_preamble: context.hoist_shared_preamble,
                 omit_vite_client_reference: false,
+                runtime_prop_resolve_cache: context.runtime_prop_resolve_cache,
             },
         )
     )?;

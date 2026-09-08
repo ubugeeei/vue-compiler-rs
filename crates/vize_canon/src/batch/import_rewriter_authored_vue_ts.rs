@@ -2,7 +2,12 @@
 
 use std::path::Path;
 
+use vize_carton::{String, cstr};
+
 use super::virtual_rewrite::append_extension;
+use crate::batch::virtual_specifier_message::{
+    AUTHORED_VUE_TS_ALIAS_SENTINEL, AUTHORED_VUE_TS_SENTINEL, MISSING_VUE_IMPORT_SENTINEL,
+};
 
 pub(super) enum VueTsCollision {
     /// No authored candidate exists; use the child-path poison from #3482.
@@ -62,6 +67,51 @@ pub(super) fn authored_vue_ts_collides_with_sfc(
     } else {
         VueTsCollision::Authored
     })
+}
+
+pub(super) fn rewrite_authored_or_missing_vue_import(
+    specifier: &str,
+    source_dir: Option<&Path>,
+    preserve_missing_vue_diagnostics: bool,
+    include_absolute_missing_vue: bool,
+) -> Option<String> {
+    if let Some(collision) = authored_vue_ts_collides_with_sfc(specifier, source_dir) {
+        let marker = match collision {
+            VueTsCollision::Unresolved => AUTHORED_VUE_TS_SENTINEL,
+            VueTsCollision::Authored => AUTHORED_VUE_TS_ALIAS_SENTINEL,
+        };
+        return Some(cstr!("{specifier}{marker}"));
+    }
+    if !preserve_missing_vue_diagnostics {
+        return None;
+    }
+    missing_vue_import_is_proven_absent(specifier, source_dir, include_absolute_missing_vue)
+        .then(|| cstr!("{specifier}.ts{MISSING_VUE_IMPORT_SENTINEL}"))
+}
+
+fn missing_vue_import_is_proven_absent(
+    specifier: &str,
+    source_dir: Option<&Path>,
+    include_absolute: bool,
+) -> bool {
+    if !specifier.ends_with(".vue") {
+        return false;
+    }
+
+    let relative = specifier.starts_with("./") || specifier.starts_with("../");
+    let path = Path::new(specifier);
+    let candidate = if path.is_absolute() && include_absolute {
+        path.to_path_buf()
+    } else if relative {
+        let Some(source_dir) = source_dir else {
+            return false;
+        };
+        source_dir.join(path)
+    } else {
+        return false;
+    };
+
+    path_is_proven_absent(&candidate)
 }
 
 fn path_is_proven_absent(path: &Path) -> bool {

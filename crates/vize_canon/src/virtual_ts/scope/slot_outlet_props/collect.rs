@@ -2,9 +2,11 @@ use vize_carton::{CompactString, FxHashMap, FxHashSet};
 use vize_croquis::{
     Croquis, ScopeId, TemplateExpression, TemplateExpressionKind,
     croquis::{PassedProp, SpreadProp},
+    naming::to_pascal_case,
 };
 use vize_relief::{ElementNode, ExpressionNode, PropNode, RootNode, TemplateChildNode};
 
+use super::super::handler_shape::{inline_callback_event_argument, is_callable_handler_reference};
 use super::SlotOutlet;
 
 pub(super) fn collect_slot_outlets_by_scope(
@@ -26,22 +28,27 @@ pub(super) fn collect_slot_outlets_by_scope(
     by_scope
 }
 
-/// Authored v-bind ranges covered by already collected outlets. The v-bind
+/// Authored v-bind/v-on ranges covered by already collected outlets. The
 /// expressions are indexed by start offset once, so each outlet binding costs a
 /// binary search instead of a full scan of every template expression.
 pub(super) fn slot_outlet_expression_ranges(
     summary: &Croquis,
     by_scope: &FxHashMap<u32, Vec<SlotOutlet>>,
 ) -> FxHashSet<(u32, u32)> {
-    let mut v_binds: Vec<&TemplateExpression> = summary
+    let mut expressions: Vec<&TemplateExpression> = summary
         .template_expressions
         .iter()
-        .filter(|expr| expr.kind == TemplateExpressionKind::VBind)
+        .filter(|expr| {
+            matches!(
+                expr.kind,
+                TemplateExpressionKind::VBind | TemplateExpressionKind::VOn
+            )
+        })
         .collect();
-    v_binds.sort_unstable_by_key(|expr| expr.start);
-    let nested_v_bind = |start: u32, end: u32, content: &str| {
-        let from = v_binds.partition_point(|expr| expr.start < start);
-        v_binds[from..]
+    expressions.sort_unstable_by_key(|expr| expr.start);
+    let nested_expression = |start: u32, end: u32, content: &str| {
+        let from = expressions.partition_point(|expr| expr.start < start);
+        expressions[from..]
             .iter()
             .take_while(|expr| expr.start <= end)
             .find(|expr| expr.end <= end && expr.content.as_str().trim() == content)
@@ -53,14 +60,14 @@ pub(super) fn slot_outlet_expression_ranges(
         for prop in &outlet.props {
             if prop.is_dynamic
                 && let Some(value) = prop.value.as_ref()
-                && let Some(range) = nested_v_bind(prop.start, prop.end, value.as_str().trim())
+                && let Some(range) = nested_expression(prop.start, prop.end, value.as_str().trim())
             {
                 ranges.insert(range);
             }
         }
         for spread in &outlet.spread_props {
             if let Some(range) =
-                nested_v_bind(spread.start, spread.end, spread.expression.as_str().trim())
+                nested_expression(spread.start, spread.end, spread.expression.as_str().trim())
             {
                 ranges.insert(range);
             }
@@ -122,6 +129,7 @@ fn slot_outlet(summary: &Croquis, element: &ElementNode<'_>, source: &str) -> Op
     let mut name_source_range = None;
     let mut props = Vec::new();
     let mut spread_props = Vec::new();
+    let mut event_handler_ranges = Vec::new();
     let mut scope = None;
 
     for prop in &element.props {
@@ -181,6 +189,33 @@ fn slot_outlet(summary: &Croquis, element: &ElementNode<'_>, source: &str) -> Op
                     });
                 }
             }
+            PropNode::Directive(directive) if directive.name == "on" => {
+                let Some(ref arg) = directive.arg else {
+                    continue;
+                };
+                let (event_name, event_name_is_dynamic) = directive_argument(arg, source);
+                if event_name_is_dynamic {
+                    continue;
+                }
+                let Some(ref exp) = directive.exp else {
+                    continue;
+                };
+                let value = expression_content(exp, source);
+                if !is_slot_outlet_listener_value(value) {
+                    continue;
+                }
+                if let Some(range) = record_event_handler_parent_scope(summary, exp, &mut scope) {
+                    event_handler_ranges.push(range);
+                }
+                props.push(PassedProp {
+                    name: slot_listener_prop_name(event_name.as_str()),
+                    name_is_dynamic: false,
+                    value: Some(CompactString::new(value)),
+                    start: directive.loc.span.start,
+                    end: directive.loc.span.end,
+                    is_dynamic: true,
+                });
+            }
             PropNode::Directive(_) => {}
         }
     }
@@ -198,7 +233,20 @@ fn slot_outlet(summary: &Croquis, element: &ElementNode<'_>, source: &str) -> Op
         vif_guard,
         props,
         spread_props,
+        event_handler_ranges,
     })
+}
+
+fn slot_listener_prop_name(event_name: &str) -> CompactString {
+    let pascal_event = to_pascal_case(event_name);
+    let mut prop_name = CompactString::new("on");
+    prop_name.push_str(pascal_event.as_str());
+    prop_name
+}
+
+fn is_slot_outlet_listener_value(value: &str) -> bool {
+    let trimmed = value.trim();
+    is_callable_handler_reference(trimmed) || inline_callback_event_argument(trimmed).is_some()
 }
 
 fn directive_argument(arg: &ExpressionNode<'_>, source: &str) -> (CompactString, bool) {
@@ -222,16 +270,50 @@ fn record_expression_scope(
         return;
     };
     let loc = exp.loc();
-    let Some(expr) = template_expression(summary, loc.span.start, loc.span.end) else {
+    let Some(expr) = template_expression(
+        summary,
+        loc.span.start,
+        loc.span.end,
+        TemplateExpressionKind::VBind,
+    ) else {
         return;
     };
     *scope = Some((expr.scope_id.as_u32(), expr.vif_guard.clone()));
 }
 
-fn template_expression(summary: &Croquis, start: u32, end: u32) -> Option<&TemplateExpression> {
-    summary.template_expressions.iter().find(|expr| {
-        expr.kind == TemplateExpressionKind::VBind && expr.start == start && expr.end == end
-    })
+fn record_event_handler_parent_scope(
+    summary: &Croquis,
+    exp: &ExpressionNode<'_>,
+    scope: &mut Option<(u32, Option<CompactString>)>,
+) -> Option<std::ops::Range<u32>> {
+    let loc = exp.loc();
+    let expr = template_expression(
+        summary,
+        loc.span.start,
+        loc.span.end,
+        TemplateExpressionKind::VOn,
+    )?;
+    let event_scope = summary.scopes.get_scope(expr.scope_id)?;
+    let event_scope_range = event_scope.span.start..event_scope.span.end;
+    if scope.is_none() {
+        let parent_id = event_scope
+            .parent()
+            .map_or(ScopeId::ROOT.as_u32(), |id| id.as_u32());
+        *scope = Some((parent_id, expr.vif_guard.clone()));
+    }
+    Some(event_scope_range)
+}
+
+fn template_expression(
+    summary: &Croquis,
+    start: u32,
+    end: u32,
+    kind: TemplateExpressionKind,
+) -> Option<&TemplateExpression> {
+    summary
+        .template_expressions
+        .iter()
+        .find(|expr| expr.kind == kind && expr.start == start && expr.end == end)
 }
 
 fn is_payload_prop_name(name: &str) -> bool {

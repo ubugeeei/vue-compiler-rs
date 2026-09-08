@@ -8,11 +8,11 @@ use oxc_parser::Parser;
 use oxc_span::SourceType;
 use vize_carton::{String, ToCompactString, cstr};
 
-use super::{AUTHORED_VUE_TS_ALIAS_SENTINEL, AUTHORED_VUE_TS_SENTINEL};
-
 #[path = "import_rewriter_authored_vue_ts.rs"]
 mod authored_vue_ts;
-use authored_vue_ts::{VueTsCollision, authored_vue_ts_collides_with_sfc};
+
+#[path = "import_rewriter_policy.rs"]
+mod policy;
 
 #[path = "import_rewriter_collect.rs"]
 mod collect;
@@ -51,6 +51,16 @@ impl ImportRewriter {
         source_type: SourceType,
         source_dir: Option<&Path>,
     ) -> RewriteResult {
+        self.rewrite_with_missing_vue_policy(source, source_type, source_dir, true)
+    }
+
+    pub(crate) fn rewrite_with_missing_vue_policy(
+        &self,
+        source: &str,
+        source_type: SourceType,
+        source_dir: Option<&Path>,
+        preserve_missing_vue_diagnostics: bool,
+    ) -> RewriteResult {
         let relative_candidate =
             source_dir.is_some() && source_may_contain_relative_specifier(source);
         if !source.contains(".vue") && !relative_candidate {
@@ -61,8 +71,13 @@ impl ImportRewriter {
         }
 
         self.rewrite_with(source, source_type, |path, _| {
-            self.rewrite_module_specifier(path, source_dir)
-                .or_else(|| source_dir.and_then(|dir| rewrite_relative_vue_specifier(path, dir)))
+            self.rewrite_module_specifier_with_missing_vue_policy(
+                path,
+                source_dir,
+                preserve_missing_vue_diagnostics,
+                true,
+            )
+            .or_else(|| source_dir.and_then(|dir| rewrite_relative_vue_specifier(path, dir)))
         })
     }
 
@@ -251,25 +266,6 @@ impl ImportRewriter {
         collect_specifier_occurrences(source, source_type)
     }
 
-    pub(super) fn rewrite_module_specifier(
-        &self,
-        path: &str,
-        source_dir: Option<&Path>,
-    ) -> Option<String> {
-        if let Some(collision) = authored_vue_ts_collides_with_sfc(path, source_dir) {
-            let marker = match collision {
-                VueTsCollision::Unresolved => AUTHORED_VUE_TS_SENTINEL,
-                VueTsCollision::Authored => AUTHORED_VUE_TS_ALIAS_SENTINEL,
-            };
-            return Some(cstr!("{path}{marker}"));
-        }
-        if is_rewritable_vue_specifier(path) {
-            Some(cstr!("{path}.ts"))
-        } else {
-            None
-        }
-    }
-
     fn rewrite_virtual_project_specifier(
         &self,
         path: &str,
@@ -277,12 +273,10 @@ impl ImportRewriter {
         source_dir: Option<&std::path::Path>,
         preserve_relative_declarations: bool,
     ) -> Option<String> {
-        if let Some(collision) = authored_vue_ts_collides_with_sfc(path, source_dir) {
-            let marker = match collision {
-                VueTsCollision::Unresolved => AUTHORED_VUE_TS_SENTINEL,
-                VueTsCollision::Authored => AUTHORED_VUE_TS_ALIAS_SENTINEL,
-            };
-            return Some(cstr!("{path}{marker}"));
+        if let Some(rewritten) =
+            authored_vue_ts::rewrite_authored_or_missing_vue_import(path, source_dir, true, false)
+        {
+            return Some(rewritten);
         }
         if let Some(source_dir) = source_dir
             && let Some(rewritten) = (!preserve_relative_declarations)

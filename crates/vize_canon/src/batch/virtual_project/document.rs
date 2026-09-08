@@ -35,12 +35,25 @@ pub struct VueDocumentVirtualTs {
 }
 
 /// Vue single-document generation options used by editor/socket callers.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct VueDocumentVirtualTsOptions {
     pub options_api: bool,
     pub legacy_vue2: bool,
     pub preserve_event_navigation: bool,
     pub dialect: vize_carton::config::VueVersion,
+    pub preserve_missing_vue_diagnostics: bool,
+}
+
+impl Default for VueDocumentVirtualTsOptions {
+    fn default() -> Self {
+        Self {
+            options_api: false,
+            legacy_vue2: false,
+            preserve_event_navigation: false,
+            dialect: vize_carton::config::VueVersion::default(),
+            preserve_missing_vue_diagnostics: true,
+        }
+    }
 }
 
 /// Generate the rewritten virtual TypeScript for one in-memory `.vue` document.
@@ -128,6 +141,7 @@ pub(crate) fn generate_vue_document_virtual_ts_with_options_and_alias_resolver(
             experimental_in_tag_comments: false,
             hoist_shared_preamble,
             omit_vite_client_reference: false,
+            runtime_prop_resolve_cache: None,
         },
     )?;
     if use_tsx_virtual {
@@ -135,10 +149,19 @@ pub(crate) fn generate_vue_document_virtual_ts_with_options_and_alias_resolver(
     }
 
     let rewritten = match alias_resolver {
-        Some(resolver) => {
-            rewriter.rewrite_with_alias_resolver(&code, source_type, path.parent(), resolver)
-        }
-        None => rewriter.rewrite(&code, source_type, path.parent()),
+        Some(resolver) => rewriter.rewrite_with_alias_resolver_and_missing_vue_policy(
+            &code,
+            source_type,
+            path.parent(),
+            resolver,
+            document_options.preserve_missing_vue_diagnostics,
+        ),
+        None => rewriter.rewrite_with_missing_vue_policy(
+            &code,
+            source_type,
+            path.parent(),
+            document_options.preserve_missing_vue_diagnostics,
+        ),
     };
     Ok(VueDocumentVirtualTs {
         code: rewritten.code,

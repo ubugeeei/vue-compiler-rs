@@ -31,6 +31,24 @@ pub(super) fn versioned_open_typecheck_dependents<'a>(
         .collect()
 }
 
+pub(super) fn include_open_typecheck_documents(
+    state: &ServerState,
+    mut documents: Vec<(Url, i32)>,
+) -> Vec<(Url, i32)> {
+    if !state.is_lsp_typecheck_enabled() {
+        return documents;
+    }
+    documents.extend(state.documents.iter().filter_map(|document| {
+        let uri = document.key();
+        (uri.path().ends_with(".vue")
+            || (state.jsx_typecheck_enabled() && crate::utils::is_jsx_path(uri.path())))
+        .then(|| (uri.clone(), document.value().version))
+    }));
+    documents.sort();
+    documents.dedup();
+    documents
+}
+
 pub(super) fn affected_vue_source_paths<'a>(
     state: &ServerState,
     uris: impl Iterator<Item = &'a str>,
@@ -78,6 +96,9 @@ pub(super) fn invalidate_corsa_disk_state(state: &ServerState) {
 }
 
 pub(super) async fn forget_corsa_vue_files(state: &ServerState, deleted: &[PathBuf]) {
+    if deleted.is_empty() {
+        return;
+    }
     if !state.has_corsa_bridge() {
         return;
     }
@@ -87,7 +108,13 @@ pub(super) async fn forget_corsa_vue_files(state: &ServerState, deleted: &[PathB
     if let Err(error) = bridge.forget_vue_virtual_documents(deleted).await {
         tracing::warn!("failed to forget deleted Corsa Vue documents: {error}");
         state.retire_corsa_bridge(&bridge);
+        return;
     }
+    // Deleted Vue sources can leave generated files inside Corsa's private
+    // materialized mirror. Retire the bridge so the next diagnostics pass
+    // rebuilds that mirror from the current filesystem instead of resolving a
+    // stale dependency.
+    state.retire_corsa_bridge(&bridge);
 }
 
 fn file_path(uri: &str) -> Option<PathBuf> {
@@ -105,7 +132,10 @@ mod tests {
     use tower_lsp::lsp_types::Url;
     use vize_s0::cstr;
 
-    use super::{ServerState, affected_vue_source_paths, versioned_open_typecheck_dependents};
+    use super::{
+        ServerState, affected_vue_source_paths, include_open_typecheck_documents,
+        versioned_open_typecheck_dependents,
+    };
 
     #[test]
     fn package_manifest_event_reindexes_the_retargeted_vue_source() {
@@ -168,6 +198,32 @@ mod tests {
             affected_vue_source_paths(&state, [components_uri.as_str()].into_iter()),
             [child],
             "directory rename/delete events must retire old tracked Vue virtual documents"
+        );
+    }
+
+    #[test]
+    fn open_typecheck_document_fallback_preserves_same_lsp_versions() {
+        let root = tempfile::tempdir().unwrap();
+        let parent = root.path().join("Parent.vue");
+        let child = root.path().join("Child.vue");
+        std::fs::write(&parent, "<template />\n").unwrap();
+        std::fs::write(&child, "<template />\n").unwrap();
+        let parent_uri = Url::from_file_path(&parent).unwrap();
+        let child_uri = Url::from_file_path(&child).unwrap();
+        let state = ServerState::new();
+        let source = "<script setup lang=\"ts\">import Child from './Child.vue'</script>";
+        state
+            .documents
+            .open(parent_uri.clone(), source.to_owned(), 5, "vue".to_owned());
+
+        assert_eq!(
+            affected_vue_source_paths(&state, [child_uri.as_str()].into_iter()),
+            [child],
+        );
+        assert_eq!(
+            include_open_typecheck_documents(&state, Vec::new()),
+            [(parent_uri, 5)],
+            "delete events can re-publish open importers even when the reverse index missed the edge",
         );
     }
 

@@ -46,7 +46,7 @@ pub(crate) fn generate_template_context(
         ctx.push_str("    // Vue template context (delegates to ComponentPublicInstance)\n    // @ts-ignore TS2694/TS2307: a `vue` without `ComponentPublicInstance` must degrade template context extras to unchecked, never error.\n    type __Ctx = import('vue').ComponentPublicInstance;\n");
     }
     if needs_global_helper {
-        ctx.push_str("    type __Global<K extends string, F = unknown> = K extends keyof __Ctx ? __Ctx[K] : F;\n");
+        ctx.push_str("    type __VizeGlobalContextIsAny<T> = 0 extends (1 & T) ? true : false;\n    type __VizeGlobalContextProperty<T, F> = __VizeGlobalContextIsAny<T> extends true ? T : unknown extends T ? F : T;\n    type __Global<K extends string, F = unknown> = K extends keyof __Ctx ? __VizeGlobalContextProperty<__Ctx[K], F> : F;\n");
     }
     ctx.push_str("    const __ctx = undefined as unknown as __Ctx;\n");
     if options.strict_instance_globals {

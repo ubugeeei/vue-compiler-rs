@@ -6,6 +6,7 @@ use vize_carton::{String, ToCompactString, cstr};
 /// TypeScript cannot accidentally resolve the generated SFC mirror.
 pub const AUTHORED_VUE_TS_SENTINEL: &str = "/__vize_authored_vue_ts__";
 pub(crate) const AUTHORED_VUE_TS_ALIAS_SENTINEL: &str = ".__vize_authored_vue_ts_alias__";
+pub(crate) const MISSING_VUE_IMPORT_SENTINEL: &str = "/__vize_missing_vue_import__";
 
 /// The quote pairs a checker message may wrap a specifier in.
 pub(crate) const QUOTE_PAIRS: [(char, char); 3] =
@@ -40,6 +41,14 @@ pub fn restore_virtual_vue_specifiers(message: &str, authored_source: &str) -> S
 }
 
 fn authored_specifier(reported: &str) -> Option<&str> {
+    if let Some(authored) = reported.strip_suffix(MISSING_VUE_IMPORT_SENTINEL)
+        && let Some(authored) = authored
+            .strip_suffix(".ts")
+            .or_else(|| authored.strip_suffix(".tsx"))
+        && authored.ends_with(".vue")
+    {
+        return Some(authored);
+    }
     for marker in [AUTHORED_VUE_TS_SENTINEL, AUTHORED_VUE_TS_ALIAS_SENTINEL] {
         if let Some(authored) = reported.strip_suffix(marker)
             && (authored.ends_with(".vue.ts") || authored.ends_with(".vue.tsx"))
@@ -93,8 +102,8 @@ fn is_specifier_shaped(candidate: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        AUTHORED_VUE_TS_ALIAS_SENTINEL, AUTHORED_VUE_TS_SENTINEL, quoted_specifiers,
-        restore_virtual_vue_specifiers,
+        AUTHORED_VUE_TS_ALIAS_SENTINEL, AUTHORED_VUE_TS_SENTINEL, MISSING_VUE_IMPORT_SENTINEL,
+        quoted_specifiers, restore_virtual_vue_specifiers,
     };
 
     #[test]
@@ -120,6 +129,16 @@ mod tests {
         let message = format!("Cannot find module '{reported}'. Also './Authored.vue.ts'.");
         let source = format!("import '{reported}'; import './Authored.vue.ts';");
         assert_eq!(restore_virtual_vue_specifiers(&message, &source), message);
+    }
+
+    #[test]
+    fn restores_missing_generated_vue_imports_to_authored_sfc_specifiers() {
+        let marker = MISSING_VUE_IMPORT_SENTINEL;
+        let message = format!("Cannot find module './Missing.vue.ts{marker}'.");
+        assert_eq!(
+            restore_virtual_vue_specifiers(&message, "import './Missing.vue';"),
+            "Cannot find module './Missing.vue'."
+        );
     }
 
     #[test]

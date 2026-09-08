@@ -9,7 +9,8 @@ use super::super::helpers::to_safe_identifier_fragment;
 use super::super::scope::append_ignored_vif_guard_open;
 use super::super::types::{VizeMapping, VizeSubSpan};
 use super::prop_sources::{
-    append_prop_value, generated_prop_value, prop_name_source_range, prop_value_source_range,
+    append_prop_value, generated_prop_value, generated_prop_value_preserving_comments,
+    prop_name_source_range, prop_value_source_range,
 };
 use vize_carton::FxHashMap;
 use vize_carton::FxHashSet;
@@ -148,7 +149,8 @@ pub(crate) fn generate_component_prop_checks(
     );
     let mut name_occurrences: FxHashMap<String, u32> = FxHashMap::default();
     for prop in &usage.props {
-        if !is_checkable_prop(prop) {
+        if !is_checkable_prop(prop) && !crate::virtual_ts::scope::is_inline_ref_callback_prop(prop)
+        {
             continue;
         }
         // Static attribute values are checked exactly like dynamic bindings:
@@ -160,7 +162,12 @@ pub(crate) fn generate_component_prop_checks(
             let value_src_range = prop_value_source_range(source_context, prop);
             let generated_value = profile!(
                 "canon.virtual_ts.prop_check.value",
-                generated_prop_value(prop, template_prop_names).unwrap_or_default()
+                if crate::virtual_ts::scope::is_inline_ref_callback_prop(prop) {
+                    generated_prop_value_preserving_comments(prop, template_prop_names)
+                } else {
+                    generated_prop_value(prop, template_prop_names)
+                }
+                .unwrap_or_default()
             );
             append!(
                 *ts,

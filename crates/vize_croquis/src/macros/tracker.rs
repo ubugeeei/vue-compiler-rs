@@ -56,6 +56,20 @@ impl MacroTracker {
         self.prop_declarations.get(name).copied()
     }
 
+    /// Mark an already known prop as having a default value.
+    #[inline]
+    pub fn mark_prop_default_value(&mut self, name: &str, value: CompactString) -> bool {
+        let Some(prop) = self
+            .props
+            .iter_mut()
+            .find(|prop| prop.name.as_str() == name)
+        else {
+            return false;
+        };
+        prop.default_value = Some(value);
+        true
+    }
+
     /// Add an event together with the range of its written name.
     #[inline]
     pub fn add_emit_with_declaration(&mut self, emit: super::EmitDefinition, start: u32, end: u32) {
