@@ -33,6 +33,7 @@ export function processTreeRss(rootPid: number): { totalKiB: number; processes: 
       siblings.push(pid);
     }
   }
+  if (!rssByPid.has(rootPid)) return null;
   let totalKiB = 0;
   let processes = 0;
   const stack = [rootPid];
