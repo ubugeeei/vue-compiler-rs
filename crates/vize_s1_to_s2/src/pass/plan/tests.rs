@@ -2,8 +2,8 @@
 //! plan against the landed pipeline's order, and one case per decline.
 
 use super::{
-    IF_OPS, LEGACY_SUGAR, MODEL_BINDINGS, PLAN_COUNT, PLANS, SELECTABLE, SLOT_CARRIERS,
-    STATIC_ANALYSIS, mask_for, pipeline_for_profile, plan_for_mask,
+    LEGACY_SUGAR, MODEL_BINDINGS, PLAN_COUNT, PLANS, SELECTABLE, SLOT_CARRIERS, STATIC_ANALYSIS,
+    mask_for, pipeline_for_profile, plan_for_mask,
 };
 use crate::lower::{LegacyCaps, LoweringFeatures, OpFamily};
 use crate::pass::{TRANSFORM, TRANSFORM_PASSES, TransformProfile, hoist, legacy, vmodel};
@@ -105,11 +105,11 @@ fn a_plans_walk_count_is_its_pass_count() {
 }
 
 #[test]
-fn vue3_with_every_family_is_the_landed_four_pass_table() {
+fn vue3_with_every_family_is_the_landed_three_pass_table() {
     let pipeline = default_pipeline_for(LegacyCaps::VUE3, every_family());
     assert_eq!(pipeline, TRANSFORM);
-    assert_eq!(pipeline.passes.len(), 4);
-    assert_eq!(pipeline.group_count(), 4);
+    assert_eq!(pipeline.passes.len(), 3);
+    assert_eq!(pipeline.group_count(), 3);
 }
 
 #[test]
@@ -122,20 +122,21 @@ fn vue3_omits_the_model_pass_when_lowering_found_no_model_ops() {
             .observing(OpFamily::SlotCarrier),
     );
     assert!(features.has_model_bindings());
-    assert_names(&pipeline, &["v-if", "v-slot", hoist::NAME]);
+    assert_names(&pipeline, &["v-slot", hoist::NAME]);
     assert!(!pipeline.passes.iter().any(|pass| pass.name == vmodel::NAME));
 }
 
 #[test]
 fn vue3_keeps_the_model_pass_when_diagnostics_may_need_it() {
     let pipeline = default_pipeline_for(LegacyCaps::VUE3, every_family());
-    assert_eq!(pipeline.passes[2], vmodel::DESC);
+    assert_eq!(pipeline.passes[1], vmodel::DESC);
 }
 
 /// The headline of this installment: an artifact with none of the
-/// remaining structural families pays neither their walks nor the model
-/// pass's; `v-for` and compound text are already lowering-published, so
-/// the optional analysis is the only transform walk left.
+/// remaining transform-owned structural family pays neither its walk nor
+/// the model pass's; `v-if`, `v-for`, and compound text are already
+/// lowering-published, so the optional analysis is the only transform
+/// walk left.
 #[test]
 fn vue3_omits_every_structural_pass_when_no_family_was_lowered() {
     let pipeline = default_pipeline_for(LegacyCaps::VUE3, LoweringFeatures::EMPTY);
@@ -145,10 +146,7 @@ fn vue3_omits_every_structural_pass_when_no_family_was_lowered() {
 
 #[test]
 fn each_remaining_structural_family_buys_back_exactly_its_own_pass() {
-    let cases = [
-        (only(OpFamily::If), "v-if"),
-        (only(OpFamily::SlotCarrier), "v-slot"),
-    ];
+    let cases = [(only(OpFamily::SlotCarrier), "v-slot")];
     for (features, expected) in cases {
         let pipeline = default_pipeline_for(LegacyCaps::VUE3, features);
         assert_names(&pipeline, &[expected, hoist::NAME]);
@@ -157,7 +155,7 @@ fn each_remaining_structural_family_buys_back_exactly_its_own_pass() {
 
 #[test]
 fn vue3_does_not_plan_lowering_published_fact_walks() {
-    for family in [OpFamily::For, OpFamily::TextCompound] {
+    for family in [OpFamily::If, OpFamily::For, OpFamily::TextCompound] {
         let pipeline = default_pipeline_for(LegacyCaps::VUE3, only(family));
         assert_names(&pipeline, &[hoist::NAME]);
     }
@@ -167,9 +165,9 @@ fn vue3_does_not_plan_lowering_published_fact_walks() {
 fn vue3_omits_static_analysis_when_dom_emit_cannot_use_it() {
     let profile = TransformProfile::DEFAULT.without_static_analysis();
     let pipeline = pipeline_for_profile(LegacyCaps::VUE3, every_family(), profile);
-    assert_eq!(pipeline.passes.len(), 3);
+    assert_eq!(pipeline.passes.len(), 2);
     assert!(!pipeline.passes.iter().any(|pass| pass.name == hoist::NAME));
-    assert_eq!(pipeline.passes[2], vmodel::DESC);
+    assert_eq!(pipeline.passes[1], vmodel::DESC);
 
     let bare = pipeline_for_profile(LegacyCaps::VUE3, LoweringFeatures::EMPTY, profile);
     assert_names(&bare, &[]);
@@ -180,8 +178,8 @@ fn vue3_omits_static_analysis_when_dom_emit_cannot_use_it() {
 fn vue2_legacy_sugar_still_prepends_the_selected_vue3_shape() {
     let caps = LegacyCaps::for_version(VueVersion::V2);
     let full = default_pipeline_for(caps, every_family());
-    assert_eq!(full.passes.len(), 5);
-    assert_eq!(full.group_count(), 5);
+    assert_eq!(full.passes.len(), 4);
+    assert_eq!(full.group_count(), 4);
     assert_eq!(full.passes[0], legacy::DESC);
 
     let bare = default_pipeline_for(caps, LoweringFeatures::EMPTY);
@@ -194,7 +192,7 @@ fn vue2_legacy_sugar_preserves_the_dom_emit_static_analysis_choice() {
     let profile = TransformProfile::DEFAULT.without_static_analysis();
 
     let full = pipeline_for_profile(caps, every_family(), profile);
-    assert_eq!(full.passes.len(), 4);
+    assert_eq!(full.passes.len(), 3);
     assert!(!full.passes.iter().any(|pass| pass.name == hoist::NAME));
 
     let bare = pipeline_for_profile(caps, LoweringFeatures::EMPTY, profile);
@@ -203,15 +201,9 @@ fn vue2_legacy_sugar_preserves_the_dom_emit_static_analysis_choice() {
 
 #[test]
 fn the_mask_reads_one_bit_per_selectable_pass() {
-    assert_eq!(SELECTABLE.len(), 5);
-    assert_eq!(PLAN_COUNT, 32);
-    let bits = [
-        LEGACY_SUGAR,
-        IF_OPS,
-        SLOT_CARRIERS,
-        MODEL_BINDINGS,
-        STATIC_ANALYSIS,
-    ];
+    assert_eq!(SELECTABLE.len(), 4);
+    assert_eq!(PLAN_COUNT, 16);
+    let bits = [LEGACY_SUGAR, SLOT_CARRIERS, MODEL_BINDINGS, STATIC_ANALYSIS];
     for (index, (_, bit)) in SELECTABLE.iter().enumerate() {
         assert_eq!(*bit, bits[index], "SELECTABLE order must match the bits");
     }
@@ -221,7 +213,7 @@ fn the_mask_reads_one_bit_per_selectable_pass() {
             every_family(),
             TransformProfile::DEFAULT
         ),
-        u8::try_from(PLAN_COUNT - 1).expect("five bits"),
+        u8::try_from(PLAN_COUNT - 1).expect("four bits"),
     );
     assert_eq!(
         mask_for(

@@ -16,9 +16,10 @@ pub struct S2DomEmitCount {
 /// The transform column is per fixture because the S2 pass planner
 /// declines a mandatory pass whose op family the lowering never built
 /// (`vize_s1_to_s2::lower::features`): static analysis is the default
-/// floor, text facts are lowering-published, and each structural family
-/// adds one walk only when present. `medium` pays two for its kebab-case
-/// components, which are slot carriers even though it spells no `v-slot`.
+/// floor, text, `v-if`, and `v-for` facts are lowering-published, and
+/// each remaining structural family adds one walk only when present.
+/// `medium` pays two for its kebab-case components, which are slot
+/// carriers even though it spells no `v-slot`.
 const S2_DOM_EMIT_COUNTS: [(&str, S2DomEmitCount); 6] = [
     (
         "small",
@@ -41,7 +42,7 @@ const S2_DOM_EMIT_COUNTS: [(&str, S2DomEmitCount); 6] = [
         S2DomEmitCount {
             emit_walks: 1,
             emit_visits: 54,
-            transform_walks: 4,
+            transform_walks: 2,
         },
     ),
     (
@@ -49,7 +50,7 @@ const S2_DOM_EMIT_COUNTS: [(&str, S2DomEmitCount); 6] = [
         S2DomEmitCount {
             emit_walks: 1,
             emit_visits: 72,
-            transform_walks: 2,
+            transform_walks: 1,
         },
     ),
     (

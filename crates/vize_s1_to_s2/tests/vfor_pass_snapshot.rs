@@ -41,11 +41,11 @@ fn the_loops_fixture_snapshots_the_post_pass_folio() {
         // Supplements: the planned walk accounting through the budget
         // observer's own derived page. The fixture builds `v-if` and
         // `v-for` but no slot carrier, no compound text and no model.
-        // `v-for` facts are lowering-published, so the plan is `v-if`
-        // plus the analysis.
+        // Both fact families are lowering-published, so the plan is
+        // only the analysis.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=2\npasses=2\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=1\npasses=1\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         // Three loops, consumed in document order with fresh tags: the
         // keyed `li`, the destructuring `<template v-for>`, the

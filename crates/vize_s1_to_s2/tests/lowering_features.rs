@@ -256,13 +256,13 @@ fn declining_a_pass_changes_no_product() {
             planned_passes, *expected_planned_passes,
             "{name}: planned pass count",
         );
-        assert_eq!(forced_passes, 4, "{name}: the full table is four passes");
+        assert_eq!(forced_passes, 3, "{name}: the full table is three passes");
     }
 }
 
 /// The headline measurement, kept beside the claim it supports.
 #[test]
-fn a_family_free_template_plans_one_pass_not_four() {
+fn a_family_free_template_plans_one_pass_not_three() {
     let (_, passes) = run("<div class=\"a\"><span>b</span></div>", false);
     assert_eq!(passes, 1);
 }

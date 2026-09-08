@@ -9,12 +9,10 @@ mod support;
 
 use vize_davinci::diagnostic::{Severity, Stage};
 use vize_davinci::id::NodeId;
-use vize_davinci::pass::PassEvent;
 use vize_s0::Span;
-use vize_s1_to_s2::pass::{BranchKey, BranchKeyKind, TRANSFORM, vif};
-use vize_s2::verify::{Rigor, VerifyObserver};
+use vize_s1_to_s2::pass::{BranchKey, BranchKeyKind, vif};
 
-use support::{assert_transformed_sound, with_transformed};
+use support::{assert_transformed_sound, with_lowered, with_transformed};
 use vize_s2::folio::{DisegnoFolio, FolioAttribute, FolioElement, FolioOp};
 
 /// The single root element of branch `index` of the `chain`-th root op,
@@ -81,20 +79,22 @@ fn extraction_moves_the_key_from_the_attribute_surface_to_a_fact() {
         );
         // No collision, no diagnostics.
         assert_eq!(lowered.diagnostics, vec![]);
-        // Both extractions left records, in branch order; the series-6
-        // analysis pass records its per-owner facts behind them (both
-        // carriers fully static once their keys moved to facts).
+        // Both extractions left lowering records, in branch order; the
+        // series-6 analysis pass records its per-owner facts behind them
+        // (both carriers fully static once their keys moved to facts).
         let rules: Vec<(&str, &str)> = lowered
             .provenance
             .iter()
-            .filter(|record| record.rule.starts_with("pass."))
+            .filter(|record| {
+                record.rule.as_str() == "lower.if-branch-key" || record.rule.starts_with("pass.")
+            })
             .map(|record| (record.rule.as_str(), record.before.as_str()))
             .collect();
         assert_eq!(
             rules,
             vec![
-                ("pass.v-if.branch-key", "key=\"x\""),
-                ("pass.v-if.branch-key", "key=\"y\""),
+                ("lower.if-branch-key", "key=\"x\""),
+                ("lower.if-branch-key", "key=\"y\""),
                 ("pass.hoist-static.fact", "ui.element"),
                 ("pass.hoist-static.fact", "ui.element"),
             ]
@@ -194,9 +194,8 @@ fn an_unwrapped_single_child_keeps_its_own_key() {
 #[test]
 fn the_pipeline_reports_one_walk_per_barrier_pass() {
     // One walk per planned pass, still: the artifact builds a `ui.if`
-    // and nothing else, so the plan is the v-if barrier and the
-    // series-6 fusable singleton: two walks, and no group holds two
-    // passes.
+    // and nothing transform-owned, so the plan is only the series-6
+    // fusable singleton.
     with_transformed(r#"<div v-if="a">x</div>"#, |_, _, _, budget| {
         assert_eq!(
             vize_davinci::folio::Folio::print_to_string(
@@ -204,38 +203,37 @@ fn the_pipeline_reports_one_walk_per_barrier_pass() {
                 vize_davinci::folio::FolioMode::Full
             )
             .as_str(),
-            "[budget-observer]\nwalks=2\npasses=2\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=1\npasses=1\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
     });
 
-    // The law is walks == passes, not a fixed number: after text facts
-    // moved to lowering, an artifact with every remaining transform family
-    // pays five, and still one walk each.
+    // The law is walks == passes, not a fixed number: after text,
+    // v-for, and v-if facts moved to lowering, an artifact with every
+    // remaining transform family pays three, and still one walk each.
     with_transformed(
         r#"<Comp v-if="a"><template #s="p">hi {{ p }}</template></Comp><input v-else v-model="m" v-for="m in ms">"#,
         |_, _, _, budget| {
             assert_eq!(budget.walks, budget.passes);
-            assert_eq!(budget.walks, 5);
+            assert_eq!(budget.walks, 3);
         },
     );
 }
 
 #[test]
-fn the_vif_pass_is_the_canonicalizing_pass() {
-    // Rigor escalates to Canonical exactly when the v-if pass completes:
-    // the canonical `ui.if` invariant set (S2V004-S2V006) is this pass's
-    // to establish, which is the MandatoryLowering half of the review
-    // point's classification.
-    let mut verify = VerifyObserver::new();
-    assert_eq!(verify.rigor(), Rigor::Raw);
-    let event = PassEvent {
-        pipeline: &TRANSFORM,
-        group_index: 0,
-        group: TRANSFORM.group(0).expect("the plan has one group"),
-        pass_index: 0,
-    };
-    verify.note(&event);
-    assert_eq!(verify.rigor(), Rigor::Canonical);
+fn lowering_publishes_vif_facts_before_transform() {
+    let source = r#"<p v-if="a" key="x">1</p><p v-else>2</p>"#;
+    with_lowered(source, |lowered, folio| {
+        assert!(folio.ops.first().is_some(), "the chain lowered to an op");
+        let entries = lowered.if_facts.sorted_entries();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(
+            entries[0].1.branches[0]
+                .as_ref()
+                .expect("branch key was lowering-published")
+                .kind,
+            BranchKeyKind::Static(Some("x".into()))
+        );
+    });
 }
 
 #[test]
