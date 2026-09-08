@@ -242,26 +242,29 @@ fn derive_for_parts(tag: ScopeTag, binding: &ForBinding<'_>, recorded: &ScopeFac
     };
     let key = position(binding.key.as_ref());
     let index = position(binding.index.as_ref());
-    let expected: StdVec<ScopeBinding> = [
-        (&value, Some(&binding.value)),
-        (&key, binding.key.as_ref()),
-        (&index, binding.index.as_ref()),
-    ]
-    .into_iter()
-    .filter_map(|(name, expr)| match (name, expr) {
-        (ForName::Named(name), Some(expr)) => Some(ScopeBinding {
-            name: name.clone(),
-            origin: ScopeOrigin::Authored { span: expr.span() },
-        }),
-        _ => None,
-    })
-    .collect();
-    debug_assert!(
-        recorded.bindings == expected,
-        "hygiene law broken: ui.for recorded bindings {:?} but its binding surface derives {:?}",
-        recorded.bindings,
-        expected,
-    );
+    #[cfg(debug_assertions)]
+    {
+        let expected: StdVec<ScopeBinding> = [
+            (&value, Some(&binding.value)),
+            (&key, binding.key.as_ref()),
+            (&index, binding.index.as_ref()),
+        ]
+        .into_iter()
+        .filter_map(|(name, expr)| match (name, expr) {
+            (ForName::Named(name), Some(expr)) => Some(ScopeBinding {
+                name: name.clone(),
+                origin: ScopeOrigin::Authored { span: expr.span() },
+            }),
+            _ => None,
+        })
+        .collect();
+        debug_assert!(
+            recorded.bindings == expected,
+            "hygiene law broken: ui.for recorded bindings {:?} but its binding surface derives {:?}",
+            recorded.bindings,
+            expected,
+        );
+    }
     ForParts {
         tag,
         value,

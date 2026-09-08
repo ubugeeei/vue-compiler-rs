@@ -211,11 +211,11 @@ compiler	Compiler	test/dev	crates/vize_atelier_core/tests/legacy_event_modifiers
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/legacy_filters.rs	19	s0	S0	stage	vize_s0	preferred	2
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/legacy_template_sugar.rs	19	s0	S0	stage	vize_s0	preferred	2
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/checks.rs	155	s0	S0	stage	vize_s0	preferred	1
-compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	davinci	Davinci	stage	vize_davinci	preferred	2
+compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	davinci	Davinci	stage	vize_davinci	preferred	3
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	s0	S0	stage	vize_s0	preferred	4
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	s1	S1	stage	vize_s1	preferred	1
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	s2	S2	stage	vize_s2	preferred	1
-compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	3
+compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/compare.rs	10	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	4
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/hoist_old.rs	19	s0	S0	stage	vize_s0	preferred	5
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/hoist_old.rs	19	s2	S2	stage	vize_s2	preferred	1
 compiler	Compiler	test/dev	crates/vize_atelier_core/tests/s2_support/hoist_old.rs	19	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	1
