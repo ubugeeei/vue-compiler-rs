@@ -228,7 +228,7 @@ pub(crate) fn lower_text_run<'a>(
             ),
             span,
         );
-        cx.attach_texts(node, TextParts { parts });
+        cx.attach_texts(node, TextParts { parts }, span, rebuilt.as_str());
         out.push(Op::Interpolation(Box::new_in(
             InterpolationOp { expression, span },
             &cx.allocator,

@@ -66,8 +66,8 @@ pub(crate) use expr::simple_identifier;
 // keys, folded into branch-key facts by the v-if pass.
 pub use css::{lower_style_block, lower_style_block_in};
 pub use structural::{ForWrapper, WrapperAttr, WrapperClass, WrapperKey, WrapperKeys};
-// The one-rebuild rule (the same discipline): the text pass re-derives a
-// compound's source with exactly the spelling the lowering minted.
+// The one-rebuild rule (the same discipline): compound text facts and
+// their opaque display spelling share one construction rule.
 pub use text::{TextPart, TextParts, rebuild_source};
 pub(crate) use text::{legacy_slot_filler_needs_props_placeholder, legacy_slot_filler_text};
 
@@ -98,7 +98,7 @@ pub struct Lowered<'a> {
     pub scopes: SideTable<ScopeFacts>,
     /// The recorded parts of every merged text/interpolation run, keyed
     /// by its compound `ui.interpolation` op (P2-9 installment 4,
-    /// [`lower::text`](text)); validated and consumed by `pass::text`.
+    /// [`lower::text`](text)); validated and published by lowering.
     pub texts: SideTable<TextParts>,
     /// Captured `<template v-if>` wrapper keys, keyed by the `ui.if`
     /// op's page-order id (P2-9 series 5, [`WrapperKeys`]); folded into

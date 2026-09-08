@@ -1,6 +1,7 @@
-//! TS-17 for the text pass (P2-9 series 4): committed fixture in,
-//! pipeline out, **full normalized folio** snapshot — the P2-4 harness
-//! shape applied to the installment's surface.
+//! TS-17 for lowering-published text facts (P2-9 series 4, fused in
+//! P2-12b): committed fixture in, pipeline out, **full normalized
+//! folio** snapshot — the P2-4 harness shape applied to the
+//! installment's surface.
 //!
 //! The snapshot is the oracle; the walk accounting, the recorded parts
 //! and the provenance trail are the targeted structural supplements
@@ -36,24 +37,24 @@ fn the_merge_fixture_snapshots_the_post_pass_folio() {
         // comment is a run boundary.
         assert_folio_snapshot!(*folio);
 
-        // Supplements: the planned walk accounting. The fixture is text
-        // and comments only, so the plan is this pass plus the analysis.
+        // Supplements: the planned walk accounting. Text facts are
+        // lowering-published, so the fixture pays only the analysis
+        // transform walk.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=2\npasses=2\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=1\npasses=1\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
-        // Two compounds, five and two parts, all validated (the pass
-        // count-matches the recorded table).
+        // Two compounds, five and two parts, all validated and published.
         let entries = facts.text_facts.sorted_entries();
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].1.parts.len(), 5);
         assert_eq!(entries[1].1.parts.len(), 2);
         assert_eq!(lowered.texts.len(), 2);
-        // The consumption trail, in page order.
+        // The fact publication trail, in page order.
         let records: Vec<&str> = lowered
             .provenance
             .iter()
-            .filter(|record| record.rule.as_str() == "pass.text.compound")
+            .filter(|record| record.rule.as_str() == "lower.text-fact")
             .map(|record| record.after.as_str())
             .collect();
         assert_eq!(

@@ -208,13 +208,14 @@ fn the_pipeline_reports_one_walk_per_barrier_pass() {
         );
     });
 
-    // The law is walks == passes, not a fixed number: an artifact with
-    // every family pays six, and still one walk each.
+    // The law is walks == passes, not a fixed number: after text facts
+    // moved to lowering, an artifact with every remaining transform family
+    // pays five, and still one walk each.
     with_transformed(
         r#"<Comp v-if="a"><template #s="p">hi {{ p }}</template></Comp><input v-else v-model="m" v-for="m in ms">"#,
         |_, _, _, budget| {
             assert_eq!(budget.walks, budget.passes);
-            assert_eq!(budget.walks, 6);
+            assert_eq!(budget.walks, 5);
         },
     );
 }

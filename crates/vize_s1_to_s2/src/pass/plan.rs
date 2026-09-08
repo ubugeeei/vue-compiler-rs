@@ -10,9 +10,9 @@
 //! Each selectable pass is declined independently — its own op family is
 //! absent, or the DOM emit declared it cannot consume the pass's product —
 //! so the reachable plans are the *subsets* of [`SELECTABLE`], not a short
-//! list of shapes. Enumerating them as named `const` pipelines cost one
-//! item per combination and doubled with every pass that learned to
-//! decline; at seven selectable passes it is already 128 names for one
+//! list of shapes. Enumerating them as named `const` pipelines costs one
+//! item per combination and doubles with every pass that learns to
+//! decline; at six selectable passes it is already 64 names for one
 //! rule. [`plan_for_mask`] states the rule once instead, and [`PLANS`]
 //! holds its answer for every mask so a [`Pipeline`]'s
 //! `&'static [PassDesc]` still points at data nobody built at run time.
@@ -36,7 +36,7 @@ use vize_davinci::pass::{PassDesc, Pipeline};
 
 use crate::lower::{LegacyCaps, LoweringFeatures};
 
-use super::{S2_STAGE, hoist, legacy, text, vfor, vif, vmodel, vslot};
+use super::{S2_STAGE, hoist, legacy, vfor, vif, vmodel, vslot};
 
 /// Product-facing selection for optional S2 transform work.
 ///
@@ -75,12 +75,11 @@ impl TransformProfile {
 /// filtered — never reordered. The passes touch disjoint op families and
 /// carry no semantic dependency on one another (`super::TRANSFORM`'s
 /// docs), which is what makes an arbitrary subset a legal pipeline.
-const SELECTABLE: [(PassDesc, u8); 7] = [
+const SELECTABLE: [(PassDesc, u8); 6] = [
     (legacy::DESC, LEGACY_SUGAR),
     (vif::DESC, IF_OPS),
     (vfor::DESC, FOR_OPS),
     (vslot::DESC, SLOT_CARRIERS),
-    (text::DESC, TEXT_COMPOUNDS),
     (vmodel::DESC, MODEL_BINDINGS),
     (hoist::DESC, STATIC_ANALYSIS),
 ];
@@ -89,9 +88,8 @@ const LEGACY_SUGAR: u8 = 1 << 0;
 const IF_OPS: u8 = 1 << 1;
 const FOR_OPS: u8 = 1 << 2;
 const SLOT_CARRIERS: u8 = 1 << 3;
-const TEXT_COMPOUNDS: u8 = 1 << 4;
-const MODEL_BINDINGS: u8 = 1 << 5;
-const STATIC_ANALYSIS: u8 = 1 << 6;
+const MODEL_BINDINGS: u8 = 1 << 4;
+const STATIC_ANALYSIS: u8 = 1 << 5;
 
 /// Every mask, hence every plan.
 const PLAN_COUNT: usize = 1 << SELECTABLE.len();
@@ -109,7 +107,7 @@ struct Plan {
 
 impl Plan {
     const EMPTY: Self = Self {
-        passes: [text::DESC; SELECTABLE.len()],
+        passes: [hoist::DESC; SELECTABLE.len()],
         len: 0,
     };
 
@@ -151,7 +149,7 @@ static PLANS: [Plan; PLAN_COUNT] = all_plans();
 
 // The full plan is the landed selectable table, and the empty plan is now
 // truly empty: a plan-shape regression is a compile error, not a test failure.
-const _: () = assert!(plan_for_mask(u8::MAX).len == 7);
+const _: () = assert!(plan_for_mask(u8::MAX).len == 6);
 const _: () = assert!(plan_for_mask(0).len == 0);
 const _: () = assert!(plan_for_mask(STATIC_ANALYSIS).len == 1);
 
@@ -168,9 +166,6 @@ fn mask_for(caps: LegacyCaps, features: LoweringFeatures, profile: TransformProf
     }
     if features.has_slot_carriers() {
         mask |= SLOT_CARRIERS;
-    }
-    if features.has_text_compounds() {
-        mask |= TEXT_COMPOUNDS;
     }
     if features.has_model_bindings() {
         mask |= MODEL_BINDINGS;

@@ -5,7 +5,7 @@
 //! the pipeline already understands: `vue.sync` → `ui.bind` + `ui.on`,
 //! `vue.slot-scope` → `ui.slot-content` (1:1, same introduction site),
 //! `.native`/numeric keyCodes on `ui.on`, and `vue.filter` →
-//! `_filter_*(...)`. Vue 3 never enters ([`pipeline_for`]): the 6-pass
+//! `_filter_*(...)`. Vue 3 never enters ([`pipeline_for`]): the 5-pass
 //! table is unchanged, a single `needs_sugar()` read.
 
 use vize_davinci::pass::{Fusability, PassDesc, PassKind, Pipeline, Preserved};
@@ -42,7 +42,6 @@ pub const LEGACY_PASSES: &[PassDesc] = &[
     super::vif::DESC,
     super::vfor::DESC,
     super::vslot::DESC,
-    super::text::DESC,
     super::vmodel::DESC,
     super::hoist::DESC,
 ];
@@ -50,7 +49,7 @@ pub const LEGACY_PASSES: &[PassDesc] = &[
 /// The planned pipeline over [`LEGACY_PASSES`].
 pub const LEGACY: Pipeline = Pipeline::new(super::S2_STAGE, LEGACY_PASSES);
 
-const _: () = assert!(LEGACY.group_count() == 7);
+const _: () = assert!(LEGACY.group_count() == 6);
 const _: () = assert!(LEGACY.is_fully_serialized());
 
 /// Facts produced by the legacy-sugar pass.
@@ -64,7 +63,7 @@ pub struct LegacyFacts {
     pub filter_helper_precedes_components: bool,
 }
 
-/// Vue 3 is the 6-pass table; every legacy dialect prepends this pass.
+/// Vue 3 is the 5-pass table; every legacy dialect prepends this pass.
 #[must_use]
 pub const fn pipeline_for(caps: LegacyCaps) -> Pipeline {
     if caps.needs_sugar() {
@@ -109,21 +108,21 @@ mod tests {
     use vize_s0::config::VueVersion;
 
     #[test]
-    fn vue3_keeps_the_six_pass_table() {
+    fn vue3_keeps_the_five_pass_table() {
         assert_eq!(pipeline_for(LegacyCaps::VUE3), TRANSFORM);
-        assert_eq!(TRANSFORM_PASSES.len(), 6);
+        assert_eq!(TRANSFORM_PASSES.len(), 5);
     }
 
     #[test]
     fn vue2_prepends_the_legalizing_pass() {
         let caps = LegacyCaps::for_version(VueVersion::V2);
         assert_eq!(pipeline_for(caps), LEGACY);
-        assert_eq!(LEGACY_PASSES.len(), 7);
+        assert_eq!(LEGACY_PASSES.len(), 6);
         assert_eq!(LEGACY_PASSES[0], DESC);
         assert_eq!(DESC.name, "legacy-sugar");
         assert_eq!(DESC.kind, PassKind::MandatoryLowering);
         assert_eq!(DESC.fusability, Fusability::Barrier);
         assert_eq!(DESC.preserved, Preserved::NONE);
-        assert_eq!(LEGACY.group_count(), 7);
+        assert_eq!(LEGACY.group_count(), 6);
     }
 }

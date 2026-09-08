@@ -79,19 +79,17 @@ pub const TRANSFORM_LANE_FLAG: &str = "VIZE_DAVINCI_TRANSFORM";
 
 /// The S2 transform pipeline as the series has built it so far.
 ///
-/// Six passes ([`vif::DESC`], [`vfor::DESC`], [`vslot::DESC`],
-/// [`text::DESC`], [`vmodel::DESC`], then [`hoist::DESC`] — the
-/// series' landing order; the passes touch disjoint op families, the
-/// model pass preserves, and the analysis pass mutates nothing, so the
-/// order still carries no semantic dependency today). Later
-/// installments append here, and the `const` pins below are the
-/// grouping regression guard (the P2-2 convention: a fusion-plan change
-/// is a compile error, not a surprise).
+/// Five passes ([`vif::DESC`], [`vfor::DESC`], [`vslot::DESC`],
+/// [`vmodel::DESC`], then [`hoist::DESC`]). Text facts are now
+/// lowering-published (`pass::text` mirrors the table without an S2
+/// walk), so the transform table only contains passes that still need
+/// one. Later installments append here, and the `const` pins below are
+/// the grouping regression guard (the P2-2 convention: a fusion-plan
+/// change is a compile error, not a surprise).
 pub const TRANSFORM_PASSES: &[PassDesc] = &[
     vif::DESC,
     vfor::DESC,
     vslot::DESC,
-    text::DESC,
     vmodel::DESC,
     hoist::DESC,
 ];
@@ -99,25 +97,20 @@ pub const TRANSFORM_PASSES: &[PassDesc] = &[
 /// The planned pipeline over [`TRANSFORM_PASSES`].
 pub const TRANSFORM: Pipeline = Pipeline::new(S2_STAGE, TRANSFORM_PASSES);
 
-// The plan's fusion shape, pinned: five mandatory barriers plus the
+// The plan's fusion shape, pinned: four mandatory barriers plus the
 // series' first `Optional`/`Fusable` pass (installment 6, the
-// hoist-static analysis). What the fusion machinery actually does with
-// it, measured and pinned: the pass forms the pipeline's first
-// NON-BARRIER group — a singleton, because grouping starts fresh after
-// a barrier and no fusable neighbour exists yet — so `group_count()`
-// rises to 6 and `is_fully_serialized()` stays true in its literal
-// sense (fusion still buys nothing: six groups for six passes). The
-// door the P2-2 laws hold open is now real: the next fusable pass to
-// land adjacent joins this group and drops the walk count below the
-// pass count for the first time.
-const _: () = assert!(TRANSFORM.group_count() == 6);
+// hoist-static analysis). Text facts no longer cost a transform group.
+// The hoist pass forms the pipeline's first NON-BARRIER group — still a
+// singleton, because grouping starts fresh after a barrier and no
+// fusable neighbour exists yet.
+const _: () = assert!(TRANSFORM.group_count() == 5);
 const _: () = assert!(TRANSFORM.is_fully_serialized());
 const _: () = {
-    let group = match TRANSFORM.group(5) {
+    let group = match TRANSFORM.group(4) {
         Some(group) => group,
-        None => panic!("the sixth group exists"),
+        None => panic!("the fifth group exists"),
     };
-    assert!(group.start == 5 && group.len == 1 && !group.is_barrier);
+    assert!(group.start == 4 && group.len == 1 && !group.is_barrier);
 };
 
 /// The facts the S2 transform pipeline produces beside the tree.
@@ -175,7 +168,10 @@ pub fn run_transform_with_profile<'a, O: PassObserver>(
     observer: &mut O,
     profile: TransformProfile,
 ) -> S2Facts {
-    let mut facts = S2Facts::default();
+    let mut facts = S2Facts {
+        text_facts: text::facts_from_lowering(lowered),
+        ..S2Facts::default()
+    };
     #[cfg(debug_assertions)]
     let mut verify = vize_s2::verify::VerifyObserver::new();
 
@@ -184,14 +180,13 @@ pub fn run_transform_with_profile<'a, O: PassObserver>(
         let name = event.desc().name;
         if name == legacy::DESC.name {
             facts.legacy = legacy::run(lowered);
+            facts.text_facts = text::facts_from_lowering(lowered);
         } else if name == vif::DESC.name {
             facts.if_facts = vif::run(lowered);
         } else if name == vfor::DESC.name {
             facts.for_facts = vfor::run(lowered);
         } else if name == vslot::DESC.name {
             facts.slot_facts = vslot::run(lowered);
-        } else if name == text::DESC.name {
-            facts.text_facts = text::run(lowered);
         } else if name == vmodel::DESC.name {
             facts.model_faults = vmodel::run(lowered);
         } else if name == hoist::DESC.name {
@@ -232,21 +227,19 @@ pub fn run_transform_with_profile<'a, O: PassObserver>(
 #[cfg(test)]
 mod tests {
     use super::{
-        S2_STAGE, TRANSFORM, TRANSFORM_LANE_FLAG, TRANSFORM_PASSES, hoist, text, vfor, vif, vmodel,
-        vslot,
+        S2_STAGE, TRANSFORM, TRANSFORM_LANE_FLAG, TRANSFORM_PASSES, hoist, vfor, vif, vmodel, vslot,
     };
     use vize_davinci::pass::{Fusability, PassKind, Preserved};
 
     #[test]
     fn the_pipeline_holds_exactly_the_landed_passes() {
         assert_eq!(TRANSFORM.stage, S2_STAGE);
-        assert_eq!(TRANSFORM_PASSES.len(), 6);
+        assert_eq!(TRANSFORM_PASSES.len(), 5);
         assert_eq!(TRANSFORM_PASSES[0], vif::DESC);
         assert_eq!(TRANSFORM_PASSES[1], vfor::DESC);
         assert_eq!(TRANSFORM_PASSES[2], vslot::DESC);
-        assert_eq!(TRANSFORM_PASSES[3], text::DESC);
-        assert_eq!(TRANSFORM_PASSES[4], vmodel::DESC);
-        assert_eq!(TRANSFORM_PASSES[5], hoist::DESC);
+        assert_eq!(TRANSFORM_PASSES[3], vmodel::DESC);
+        assert_eq!(TRANSFORM_PASSES[4], hoist::DESC);
     }
 
     #[test]
@@ -281,17 +274,6 @@ mod tests {
     }
 
     #[test]
-    fn the_text_classification_is_pinned() {
-        // The review-point classification, pinned so a drive-by re-kind
-        // is a loud diff: see `text::DESC`'s docs for the reasoning
-        // (the vfor-shaped *preserving* mandatory pass — the recorded
-        // taxonomy tension, third occurrence).
-        assert_eq!(text::DESC.name, "text");
-        assert_eq!(text::DESC.kind, PassKind::MandatoryLowering);
-        assert_eq!(text::DESC.fusability, Fusability::Barrier);
-    }
-
-    #[test]
     fn the_vmodel_classification_is_pinned() {
         // The review-point classification, pinned so a drive-by re-kind
         // is a loud diff: see `vmodel::DESC`'s docs for the reasoning —
@@ -318,22 +300,21 @@ mod tests {
     }
 
     #[test]
-    fn the_fusion_plan_is_five_lone_barriers_plus_one_fusable_singleton() {
+    fn the_fusion_plan_is_four_lone_barriers_plus_one_fusable_singleton() {
         // The review point's fusion question, answered as data: the
-        // five mandatory passes fuse with nothing (law 1), and the
+        // four mandatory passes fuse with nothing (law 1), and the
         // series' first fusable pass lands in the first NON-barrier
         // group — a singleton, because its only neighbour is a barrier.
-        // Fusion still buys nothing (six groups, six passes), but the
-        // grouping machinery has now actually grouped a fusable pass.
-        for index in 0..5 {
+        // Text facts are no longer a transform pass at all.
+        for index in 0..4 {
             let group = TRANSFORM.group(index).expect("group exists");
             assert!(group.is_barrier && group.len == 1);
         }
-        let fusable = TRANSFORM.group(5).expect("the sixth group exists");
+        let fusable = TRANSFORM.group(4).expect("the fifth group exists");
         assert!(!fusable.is_barrier);
-        assert_eq!((fusable.start, fusable.len), (5, 1));
+        assert_eq!((fusable.start, fusable.len), (4, 1));
         assert!(fusable.preserved == Preserved::ALL);
-        assert_eq!(TRANSFORM.group(6), None);
+        assert_eq!(TRANSFORM.group(5), None);
     }
 
     #[test]

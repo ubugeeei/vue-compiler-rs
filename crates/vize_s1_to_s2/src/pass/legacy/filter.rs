@@ -18,8 +18,8 @@ mod compound;
 /// Rewrite every [`ExprRef::Filter`] in the tree into the Vue 2 wrap
 /// (`a | f` → `_filter_f(a)`, `a | f(b)` → `_filter_f(a,b)`). Mixed text
 /// runs carry their dynamic parts in the text side table, so the pass
-/// rewrites those part expressions and refreshes the compound spelling
-/// before the text pass validates the rebuild law.
+/// rewrites those part expressions, refreshes the compound spelling, and
+/// rechecks the lowering-published fact law.
 pub(super) fn rewrite<'a>(
     allocator: &'a Allocator,
     source: &'a str,

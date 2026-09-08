@@ -28,19 +28,19 @@ struct TraversalBudget {
 ///
 /// | fixture       | families present                      | S2 | build |
 /// | ------------- | ------------------------------------- | -- | ----- |
-/// | small         | compound text                         | 3  | 3     |
+/// | small         | compound text                         | 2  | 2     |
 /// | medium        | components                            | 3  | 3     |
 /// | large         | `v-if`, `v-for`, slot carriers        | 5  | 5     |
 /// | stress-deep   | `v-if`                                | 3  | 3     |
 /// | stress-wide   | none                                  | 2  | 2     |
-/// | stress-interp | compound text                         | 3  | 3     |
+/// | stress-interp | compound text                         | 2  | 2     |
 const CURRENT_WALKS: [(&str, u64, u64); 6] = [
-    ("small", 3, 3),
+    ("small", 2, 2),
     ("medium", 3, 3),
     ("large", 5, 5),
     ("stress-deep", 3, 3),
     ("stress-wide", 2, 2),
-    ("stress-interp", 3, 3),
+    ("stress-interp", 2, 2),
 ];
 
 fn current_walks(fixture: &str) -> (u64, u64) {

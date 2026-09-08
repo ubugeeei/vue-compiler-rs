@@ -109,6 +109,7 @@ fn lower_children_guarded<'a>(
         }
         i += 1;
     }
+    text::debug_assert_text_family_gaps(&out);
     out
 }
 

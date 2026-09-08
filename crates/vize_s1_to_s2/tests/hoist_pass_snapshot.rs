@@ -43,13 +43,13 @@ fn the_levels_fixture_snapshots_the_post_pass_folio() {
         // mutates nothing.
         assert_folio_snapshot!(*folio);
 
-        // Supplements: two walks. The fixture builds none of the
-        // structural families and no model, so the planner
-        // (`lower::features`) declines those four barriers and the run
-        // is the text pass plus the fusable analysis singleton.
+        // Supplements: one walk. The fixture builds none of the
+        // structural families and no model, and text facts are
+        // lowering-published, so the run is only the fusable analysis
+        // singleton.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=2\npasses=2\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=1\npasses=1\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         // The lattice, row by row: the section is dynamic (its children
         // are), the h1 subtree fully static with hoistable props, the

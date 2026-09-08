@@ -24,7 +24,10 @@ pub(super) fn rewrite<'a>(
     if opaque.reason != OpaqueReason::Compound {
         return;
     }
-    let Some(parts) = id.and_then(|id| texts.get_mut(id)) else {
+    let Some(id) = id else {
+        return;
+    };
+    let Some(parts) = texts.get_mut(id) else {
         return;
     };
     let mut changed = false;
@@ -48,6 +51,10 @@ pub(super) fn rewrite<'a>(
             span: opaque.span,
         }));
     }
+    let ExprRef::Opaque(opaque) = interp.expression else {
+        return;
+    };
+    parts.assert_compound_laws(id, interp.span, opaque.source);
 }
 
 fn dynamic_part_expression<'a>(source: &'a str, part: &TextPart) -> Option<(&'a str, Span)> {
