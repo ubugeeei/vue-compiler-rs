@@ -186,7 +186,7 @@ davinci_pipeline_no_observer = { wall_p50_ns = 0, allocs = 0, rss_peak_bytes = 0
 # within one day, PRs #4857/#4877), so the deterministic alloc and
 # per-platform peak gates carry these probes until a reference-runner
 # recording methodology lands.
-s1_to_s2_lower_vfor_three_aliases = { wall_p50_ns = 0, allocs = 14, rss_peak_bytes = 0, wall_tolerance = 0.10 }
+s1_to_s2_lower_vfor_three_aliases = { wall_p50_ns = 0, allocs = 13, rss_peak_bytes = 0, wall_tolerance = 0.10 }
 s1_to_s2_emit_von_two_per_bucket = { wall_p50_ns = 0, allocs = 18, rss_peak_bytes = 0, wall_tolerance = 0.10 }
 
 # P2-11 S2 DOM emit surface probe. Setup excludes parse/lower/transform; the
@@ -205,7 +205,7 @@ patina_jsx_markup_one_root = { wall_p50_ns = 0, allocs = 0, rss_peak_bytes = 0, 
 # the value deterministic on one platform, but allocator requests can differ
 # across target operating systems. Every gated platform is therefore explicit;
 # an unknown report platform or a missing platform entry fails closed.
-s1_to_s2_lower_vfor_three_aliases = { linux = 1671, macos = 1246 }
+s1_to_s2_lower_vfor_three_aliases = { linux = 1671, macos = 1655 }
 s1_to_s2_emit_von_two_per_bucket = { linux = 648, macos = 648 }
 
 [mutation]
