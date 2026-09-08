@@ -119,6 +119,21 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "component scoped named slot",
+            "const A = () => <List>{{ item: (row) => <li>{row}</li> }}</List>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "component scoped v-slots attribute",
+            "const A = () => <List v-slots={{ item: (row) => <li>{row}</li> }} />;",
+            JsxLang::Jsx,
+        ),
+        (
+            "component scoped render prop default slot",
+            "const A = () => <List>{(row) => <li>{row}</li>}</List>;",
+            JsxLang::Jsx,
+        ),
+        (
             "dynamic component",
             "const A = () => <Widget.Panel foo={1} />;",
             JsxLang::Jsx,

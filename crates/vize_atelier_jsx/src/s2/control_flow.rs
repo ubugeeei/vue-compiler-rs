@@ -8,7 +8,7 @@ use vize_s2::expr::ExprRef;
 use vize_s2::op::{ForBinding, ForOp, IfBranch, IfOp, Op, Region};
 use vize_s2::scope::{ScopeBinding, ScopeFacts, ScopeOrigin};
 
-use super::{ProjectCx, S2Refusal, lower_children, lower_expression};
+use super::{ProjectCx, S2Refusal, lower_children, lower_expression, simple_identifier};
 
 pub(super) fn lower_if<'a>(
     allocator: &'a Allocator,
@@ -108,14 +108,4 @@ fn attach_for_scope(cx: &mut ProjectCx, node: Option<NodeId>, binding: &ForBindi
         }
     }
     cx.attach_scope(node, ScopeFacts { tag, bindings });
-}
-
-fn simple_identifier<'a>(expr: &ExprRef<'a>) -> Option<&'a str> {
-    match expr {
-        ExprRef::Js(js) => match js.ast {
-            oxc_ast::ast::Expression::Identifier(_) => Some(js.source),
-            _ => None,
-        },
-        ExprRef::Foreign(_) | ExprRef::Filter(_) | ExprRef::Opaque(_) => None,
-    }
 }

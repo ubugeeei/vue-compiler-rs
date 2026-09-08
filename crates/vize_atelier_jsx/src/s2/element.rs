@@ -21,7 +21,6 @@ pub(super) fn lower_element<'a>(
         native_element_model_kind,
         cx,
     )?;
-    cx.skip_ops(props.binding_count);
     let children = Region {
         ops: lower_children(allocator, source, &element.children, cx)?,
     };
