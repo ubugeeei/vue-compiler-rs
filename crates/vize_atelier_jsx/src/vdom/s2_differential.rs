@@ -23,6 +23,21 @@ fn s2_vdom_admitted_cases_match_relief_codegen() {
             JsxLang::Jsx,
         ),
         (
+            "logical and child",
+            "const A = () => <ul>{ok && <li>{item}</li>}</ul>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "ternary child",
+            "const A = () => <div>{ok ? <a/> : <b/>}</div>;",
+            JsxLang::Jsx,
+        ),
+        (
+            "map child",
+            "const A = () => <ul>{items.map((item) => <li>{item}</li>)}</ul>;",
+            JsxLang::Jsx,
+        ),
+        (
             "fragment root",
             "const A = () => <><i/><b/></>;",
             JsxLang::Jsx,

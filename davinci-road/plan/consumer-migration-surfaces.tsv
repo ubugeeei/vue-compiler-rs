@@ -472,13 +472,27 @@ compiler	Compiler	source	crates/vize_atelier_jsx/src/parse.rs	7	s0	S0	stage	vize
 compiler	Compiler	source	crates/vize_atelier_jsx/src/parse.rs	7	raw_oxc	raw OXC	raw	oxc_allocator	raw	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/parse.rs	7	raw_oxc	raw OXC	raw	oxc_ast	raw	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/parse.rs	7	raw_oxc	raw OXC	raw	oxc_parser	raw	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	davinci	Davinci	stage	vize_davinci	preferred	2
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	s0	S0	stage	vize_s0	preferred	1
-compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	s2	S2	stage	vize_s2	preferred	2
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	s2	S2	stage	vize_s2	preferred	3
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	1
-compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	old_ast	old AST/parser	old	vize_relief	legacy	5
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2.rs	9	old_ast	old AST/parser	old	vize_relief	legacy	4
+compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/s2/control_flow_tests.rs	1	davinci	Davinci	stage	vize_davinci	preferred	1
+compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/s2/control_flow_tests.rs	1	s0	S0	stage	vize_s0	preferred	1
+compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/s2/control_flow_tests.rs	1	s2	S2	stage	vize_s2	preferred	2
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/control_flow.rs	3	davinci	Davinci	stage	vize_davinci	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/control_flow.rs	3	s0	S0	stage	vize_s0	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/control_flow.rs	3	s2	S2	stage	vize_s2	preferred	3
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/control_flow.rs	3	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/control_flow.rs	3	old_ast	old AST/parser	old	vize_relief	legacy	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/control_flow.rs	3	raw_oxc	raw OXC	raw	oxc_ast	raw	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/directives.rs	1	s0	S0	stage	vize_s0	preferred	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/directives.rs	1	s2	S2	stage	vize_s2	preferred	2
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/directives.rs	1	old_ast	old AST/parser	old	vize_relief	legacy	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/element.rs	1	s0	S0	stage	vize_s0	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/element.rs	1	s2	S2	stage	vize_s2	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/element.rs	1	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/element.rs	1	old_ast	old AST/parser	old	vize_relief	legacy	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/model.rs	1	s0	S0	stage	vize_s0	preferred	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/model.rs	1	s2	S2	stage	vize_s2	preferred	1
 compiler	Compiler	source	crates/vize_atelier_jsx/src/s2/model.rs	1	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	1
@@ -506,6 +520,7 @@ compiler	Compiler	source	crates/vize_atelier_jsx/src/vdom/s2_emit.rs	3	s0	S0	sta
 compiler	Compiler	source	crates/vize_atelier_jsx/src/vdom/s2_emit.rs	3	s2	S2	stage	vize_s2	preferred	2
 compiler	Compiler	source	crates/vize_atelier_jsx/src/vdom/s2_emit.rs	3	s1_to_s2	S1->S2	stage	vize_s1_to_s2	preferred	2
 compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/vdom/s2_emit/compat_tests.rs	1	s0	S0	stage	vize_s0	preferred	1
+compiler	Compiler	source	crates/vize_atelier_jsx/src/vdom/s2_emit/control_flow.rs	1	s2	S2	stage	vize_s2	preferred	2
 compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/vdom/s2_emit/events_tests.rs	1	s0	S0	stage	vize_s0	preferred	1
 compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/vdom/s2_emit/events_tests.rs	1	croquis	Croquis analysis	old	vize_croquis	legacy	1
 compiler	Compiler	test/dev	crates/vize_atelier_jsx/src/vdom/s2_emit/model_tests.rs	1	s0	S0	stage	vize_s0	preferred	1
