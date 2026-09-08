@@ -198,7 +198,7 @@ fn the_battery_aggregates_are_pinned() {
     // each retired `defer.*` record was replaced by exactly one
     // `lower.bind`/`lower.on` record, then fact fusion added four
     // `lower.text-fact` provenance records for battery text-bearing nodes and
-    // one `lower.if-fact` record for the battery's branch root.
+    // one `lower.if` record for the battery's branch root.
     // (Series-4 history: condense/merge re-pinned 89 -> 78 ops,
     // 107 -> 101 records.)
     assert_eq!(
