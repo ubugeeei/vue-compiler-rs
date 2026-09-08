@@ -12,14 +12,11 @@ use std::{env, process::ExitCode};
 
 #[path = "../../support/artifacts.rs"]
 mod artifact_command;
-#[path = "../../support/common.rs"]
-mod common;
 
 fn main() -> ExitCode {
-    common::main_result(artifact_command::run_single(
+    artifact_command::run_node_generator(
         env::args().nth(1).as_deref(),
-        "davinci-road/plan/croquis-consumption.md",
+        "legacy-tools/davinci/croquis-consumers.mjs",
         "usage: rust-script tools/commands/davinci/croquis-consumers.rs --write | --check",
-        "rust-script tools/commands/davinci/croquis-consumers.rs --write",
-    ))
+    )
 }

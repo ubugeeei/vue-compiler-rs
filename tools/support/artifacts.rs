@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::Path,
+    process::{Command, ExitCode},
+};
 
 #[path = "./common.rs"]
 mod common;
@@ -61,6 +65,49 @@ pub fn run_many(
         }
         _ => Err(usage.to_string()),
     }
+}
+
+pub fn run_node_generator(mode: Option<&str>, generator_rel_path: &str, usage: &str) -> ExitCode {
+    match run_node_generator_result(mode, generator_rel_path, usage) {
+        Ok(code) => ExitCode::from(code),
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn run_node_generator_result(
+    mode: Option<&str>,
+    generator_rel_path: &str,
+    usage: &str,
+) -> Result<u8, String> {
+    let mode = mode.ok_or_else(|| usage.to_string())?;
+    if mode != "--write" && mode != "--check" {
+        return Err(usage.to_string());
+    }
+
+    let root = common::repo_root()?;
+    let generator = root.join(generator_rel_path);
+    if !generator.is_file() {
+        return Err(format!(
+            "cannot find Davinci artifact generator: {}",
+            generator.display()
+        ));
+    }
+    if mode == "--write" {
+        fs::create_dir_all(root.join("davinci-road/plan"))
+            .map_err(|error| format!("cannot create davinci-road/plan: {error}"))?;
+    }
+
+    let status = Command::new("node")
+        .arg(&generator)
+        .arg(mode)
+        .current_dir(&root)
+        .status()
+        .map_err(|error| format!("failed to run node {} {mode}: {error}", generator.display()))?;
+
+    Ok(status.code().unwrap_or(1).try_into().unwrap_or(1))
 }
 
 pub fn copy_artifact(from: &Path, to: &Path) -> Result<(), String> {

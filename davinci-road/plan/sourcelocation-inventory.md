@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not edit by hand.
      Regenerate: rust-script tools/commands/davinci/sourcelocation-inventory.rs --write
      Verify:     rust-script tools/commands/davinci/sourcelocation-inventory.rs --check
-     Generator:  tools/commands/davinci/sourcelocation-inventory.rs -->
+     Generator:  tools/davinci/sourcelocation-inventory.mjs -->
 
 # `SourceLocation` consumer inventory
 
@@ -21,14 +21,14 @@ any read — or any deleted carrier — comes back.
 ## Resolution method (and its limits)
 
 - Comments and string literals are stripped first
-  (`tools/commands/davinci/sourcelocation-inventory.rs`); member paths are then counted
+  (`tools/davinci/lib/rust-source.mjs`); member paths are then counted
   **textually** on loc-shaped receivers only: chained `.loc.<member>`,
   `.loc().<member>`, `.location.<member>` accesses, and bare locals named
   `loc` / `location` / `*_loc` / `*_location`.
 - Reads of `span.start` / `span.end` are **not** inventoried: they are
   the surviving offset representation — the pre-migration
   `start.offset` / `end.offset` reads moved to them verbatim
-  (295 loc-shaped span-read sites across
+  (292 loc-shaped span-read sites across
   8 crates at generation time).
 - `#[cfg(test)]` code inside `src/` is included and reported in the
   "in test code" column: a site counts as test code when its file is a test
