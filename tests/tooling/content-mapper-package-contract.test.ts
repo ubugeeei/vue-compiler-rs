@@ -3,8 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
-import { assertInstalledMapperContract } from "../../legacy-tools/npm/smoke-release-runtime.mjs";
+import {
+  assertInstalledMapperContract,
+  runInstalledContentMapperChecks,
+} from "../../legacy-tools/npm/smoke-release-runtime.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 function withInstalledMapper(run: (installDir: string, packageRoot: string) => void): void {
   const installDir = fs.mkdtempSync(path.join(os.tmpdir(), "vize-mapper-contract-"));
@@ -106,5 +112,63 @@ test("installed Content Mapper contract rejects a missing executable", () => {
   withInstalledMapper((installDir, packageRoot) => {
     fs.rmSync(path.join(packageRoot, "bin", "vize"));
     assert.throws(() => assertInstalledMapperContract(installDir), /bin[/\\]vize must exist/);
+  });
+});
+
+test("installed Content Mapper release smoke compares declarations with TypeScript 7 tsc", () => {
+  withInstalledMapper((installDir) => {
+    const tsgo = path.join(installDir, "tsgo-stub.mjs");
+    fs.writeFileSync(
+      tsgo,
+      [
+        "#!/usr/bin/env node",
+        "if (process.argv.includes('-p') && process.argv.includes('tsconfig.error.json')) {",
+        "  process.stdout.write('errors/Broken.vue TS2322\\n');",
+        "  process.stdout.write('errors/JavaScriptConsumer.js TS2322\\n');",
+        "  process.stdout.write('errors/JsxConsumer.jsx TS2322\\n');",
+        "  process.stdout.write('src/Unused.vue TS6133\\n');",
+        "  process.exit(1);",
+        "}",
+        "process.exit(0);",
+        "",
+      ].join("\n"),
+    );
+    fs.chmodSync(tsgo, 0o755);
+
+    const tscBin = path.join(installDir, "node_modules", "typescript", "bin", "tsc");
+    fs.mkdirSync(path.dirname(tscBin), { recursive: true });
+    fs.writeFileSync(tscBin, "#!/usr/bin/env node\n");
+    fs.chmodSync(tscBin, 0o755);
+
+    const calls: { args: string[]; command: string; cwd?: string }[] = [];
+    const before = process.env.VIZE_TEST_CONTENT_MAPPER_TSGO;
+    process.env.VIZE_TEST_CONTENT_MAPPER_TSGO = tsgo;
+    try {
+      runInstalledContentMapperChecks(installDir, root, (command, args, options) => {
+        calls.push({ args, command, cwd: options.cwd });
+        if (args.includes("tsconfig.emit.json")) {
+          const dist = path.join(options.cwd, "dist");
+          fs.mkdirSync(dist, { recursive: true });
+          fs.writeFileSync(path.join(dist, "App.vue.d.ts"), "export {}\n");
+          fs.writeFileSync(path.join(dist, "main.d.ts"), "export {}\n");
+        }
+      });
+    } finally {
+      if (before == null) {
+        delete process.env.VIZE_TEST_CONTENT_MAPPER_TSGO;
+      } else {
+        process.env.VIZE_TEST_CONTENT_MAPPER_TSGO = before;
+      }
+    }
+
+    assert.ok(
+      calls.some(
+        (call) =>
+          call.command === process.execPath &&
+          call.args[0] === tscBin &&
+          call.args.includes("dist/verify.ts"),
+      ),
+      "declaration consumer smoke must compare against the installed TypeScript 7 bin/tsc launcher",
+    );
   });
 });
