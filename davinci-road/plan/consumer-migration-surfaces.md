@@ -45,12 +45,12 @@ observational guard for planning only. It does not change rollout state.
 
 | consumer                   | stage/Davinci | preferred stage names | compat code names | old AST/Croquis | raw OXC | source/manifest | test/dev | surface files | scanned files |
 | -------------------------- | ------------: | --------------------: | ----------------: | --------------: | ------: | --------------: | -------: | ------------: | ------------: |
-| Compiler                   |           929 |                   488 |               441 |             140 |     372 |             941 |      500 |           489 |           611 |
-| Linter                     |           331 |                   331 |                 0 |             290 |     287 |             671 |      237 |           375 |           539 |
-| Typechecker                |           880 |                   238 |               642 |             396 |     187 |             808 |      655 |           468 |           666 |
+| Compiler                   |          1101 |                   759 |               342 |             156 |     372 |             984 |      645 |           551 |           691 |
+| Linter                     |           339 |                   339 |                 0 |             295 |     297 |             694 |      237 |           383 |           558 |
+| Typechecker                |           898 |                   250 |               648 |             399 |     187 |             812 |      672 |           479 |           689 |
 | Typechecker content-mapper |             9 |                     9 |                 0 |               0 |       0 |               9 |        0 |             8 |            20 |
-| Formatter                  |            38 |                    38 |                 0 |               0 |      21 |              40 |       19 |            30 |            65 |
-| LSP                        |           272 |                   272 |                 0 |             115 |      44 |             326 |      105 |           167 |           388 |
+| Formatter                  |            40 |                    40 |                 0 |               0 |      21 |              42 |       19 |            32 |            69 |
+| LSP                        |           288 |                   288 |                 0 |             115 |      47 |             336 |      114 |           174 |           410 |
 
 ## Consumer details
 
@@ -60,13 +60,13 @@ Scope: build command plus atelier compiler crates. This is a lexical inventory, 
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| Davinci          |          21 |               4 |       17 |
-| S0               |         848 |             479 |      369 |
+| Davinci          |          23 |               6 |       17 |
+| S0               |         939 |             493 |      446 |
 | S1               |           5 |               1 |        4 |
-| S2               |          15 |               1 |       14 |
-| S1->S2           |          40 |               2 |       38 |
-| old AST/parser   |          75 |              55 |       20 |
-| Croquis analysis |          65 |              56 |        9 |
+| S2               |          27 |              10 |       17 |
+| S1->S2           |         107 |              10 |       97 |
+| old AST/parser   |          84 |              64 |       20 |
+| Croquis analysis |          72 |              57 |       15 |
 | raw OXC          |         372 |             343 |       29 |
 
 #### Top source and manifest files
@@ -79,7 +79,7 @@ Scope: build command plus atelier compiler crates. This is a lexical inventory, 
 | `crates/vize_atelier_sfc/src/script/define_props_destructure/collector.rs:6` | source   | S0 2<br>raw OXC 15                                                                                   |    17 |
 | `crates/vize_atelier_core/src/steps/expression/prefix.rs:6`                  | source   | S0 1<br>Croquis analysis 1<br>raw OXC 14                                                             |    16 |
 
-Additional source/manifest rows are in the TSV: 309 omitted.
+Additional source/manifest rows are in the TSV: 320 omitted.
 
 #### Top test/dev files
 
@@ -91,7 +91,7 @@ Additional source/manifest rows are in the TSV: 309 omitted.
 | `crates/vize_atelier_sfc/src/compile_script/props/tests.rs:4` | test/dev | S0 15                                         |    15 |
 | `crates/vize_atelier_core/tests/s2_support/compare.rs:10`     | test/dev | Davinci 2<br>S0 4<br>S1 1<br>S2 1<br>S1->S2 3 |    11 |
 
-Additional test/dev rows are in the TSV: 207 omitted.
+Additional test/dev rows are in the TSV: 259 omitted.
 
 ### Linter
 
@@ -99,34 +99,34 @@ Scope: lint command plus Patina rule engine. This is a lexical inventory, not a 
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| S0               |         331 |             224 |      107 |
-| old AST/parser   |         248 |             208 |       40 |
-| Croquis analysis |          42 |              38 |        4 |
-| raw OXC          |         287 |             201 |       86 |
+| S0               |         339 |             231 |      108 |
+| old AST/parser   |         253 |             213 |       40 |
+| Croquis analysis |          42 |              37 |        5 |
+| raw OXC          |         297 |             213 |       84 |
 
 #### Top source and manifest files
 
 | file                                                                                | class    | surfaces                                                    | sites |
 | ----------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------- | ----: |
-| `crates/vize_patina/src/linter/engine.rs:25`                                        | source   | S0 5<br>old AST/parser 2<br>Croquis analysis 1<br>raw OXC 5 |    13 |
+| `crates/vize_patina/src/linter/engine.rs:26`                                        | source   | S0 5<br>old AST/parser 2<br>Croquis analysis 1<br>raw OXC 5 |    13 |
 | `crates/vize_patina/Cargo.toml:13`                                                  | manifest | S0 1<br>old AST/parser 2<br>Croquis analysis 1<br>raw OXC 6 |    10 |
 | `crates/vize_patina/src/rules/script/no_ref_as_operand.rs:29`                       | source   | S0 1<br>raw OXC 9                                           |    10 |
 | `crates/vize_patina/src/rules/opinionated/vue/require_component_registration.rs:46` | source   | S0 2<br>old AST/parser 4<br>Croquis analysis 3              |     9 |
-| `crates/vize_patina/src/linter/native_type_aware/template_queries/calls.rs:1`       | source   | S0 1<br>raw OXC 6                                           |     7 |
+| `crates/vize_patina/src/rules/vue/valid_v_model.rs:29`                              | source   | S0 1<br>old AST/parser 2<br>raw OXC 6                       |     9 |
 
-Additional source/manifest rows are in the TSV: 311 omitted.
+Additional source/manifest rows are in the TSV: 317 omitted.
 
 #### Top test/dev files
 
-| file                                                                             | class    | surfaces                                                    | sites |
-| -------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------- | ----: |
-| `crates/vize_patina/src/output/tests.rs:4`                                       | test/dev | S0 23                                                       |    23 |
-| `crates/vize_patina/src/rules/vue/no_unused_components.rs:39`                    | test/dev | S0 1<br>old AST/parser 2<br>Croquis analysis 3<br>raw OXC 7 |    13 |
-| `crates/vize_patina/src/markup/tests.rs:49`                                      | test/dev | S0 1<br>old AST/parser 3<br>raw OXC 6                       |    10 |
-| `crates/vize_patina/src/rules/script/no_use_computed_property_like_method.rs:36` | test/dev | S0 1<br>raw OXC 5                                           |     6 |
-| `crates/vize_patina/src/rules/vue/no_mutating_props.rs:62`                       | test/dev | S0 3<br>old AST/parser 2<br>Croquis analysis 1              |     6 |
+| file                                                                             | class    | surfaces                                       | sites |
+| -------------------------------------------------------------------------------- | -------- | ---------------------------------------------- | ----: |
+| `crates/vize_patina/src/output/tests.rs:4`                                       | test/dev | S0 23                                          |    23 |
+| `crates/vize_patina/src/markup/tests.rs:49`                                      | test/dev | S0 1<br>old AST/parser 3<br>raw OXC 6          |    10 |
+| `crates/vize_patina/src/rules/script/no_use_computed_property_like_method.rs:36` | test/dev | S0 1<br>raw OXC 5                              |     6 |
+| `crates/vize_patina/src/rules/vue/no_mutating_props.rs:62`                       | test/dev | S0 3<br>old AST/parser 2<br>Croquis analysis 1 |     6 |
+| `crates/vize_patina/src/rules/vue/no_unused_components.rs:41`                    | test/dev | S0 1<br>old AST/parser 2<br>Croquis analysis 3 |     6 |
 
-Additional test/dev rows are in the TSV: 67 omitted.
+Additional test/dev rows are in the TSV: 69 omitted.
 
 ### Typechecker
 
@@ -134,9 +134,9 @@ Scope: check command plus Canon, excluding dedicated content-mapper files. This 
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| S0               |         880 |             504 |      376 |
-| old AST/parser   |         160 |              35 |      125 |
-| Croquis analysis |         236 |             118 |      118 |
+| S0               |         898 |             508 |      390 |
+| old AST/parser   |         161 |              35 |      126 |
+| Croquis analysis |         238 |             118 |      120 |
 | raw OXC          |         187 |             151 |       36 |
 
 #### Top source and manifest files
@@ -149,19 +149,19 @@ Scope: check command plus Canon, excluding dedicated content-mapper files. This 
 | `crates/vize_canon/src/corsa_bridge/vue_dependencies_alias/context/cache.rs:7` | source   | S0 10                                                       |    10 |
 | `crates/vize_canon/src/virtual_ts/expressions/statements.rs:15`                | source   | S0 6<br>Croquis analysis 3                                  |     9 |
 
-Additional source/manifest rows are in the TSV: 310 omitted.
+Additional source/manifest rows are in the TSV: 314 omitted.
 
 #### Top test/dev files
 
 | file                                                                                         | class    | surfaces                                          | sites |
 | -------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------- | ----: |
 | `crates/vize_canon/src/virtual_ts/tests.rs:8`                                                | test/dev | S0 37<br>old AST/parser 36<br>Croquis analysis 50 |   123 |
-| `crates/vize_canon/src/virtual_ts/tests/options_api_instance.rs:30`                          | test/dev | S0 7<br>old AST/parser 7<br>Croquis analysis 18   |    32 |
+| `crates/vize_canon/src/virtual_ts/tests/options_api_instance.rs:32`                          | test/dev | S0 7<br>old AST/parser 7<br>Croquis analysis 18   |    32 |
 | `crates/vize_canon/src/virtual_ts/expressions/component_props_tests.rs:1`                    | test/dev | S0 8<br>old AST/parser 8<br>Croquis analysis 1    |    17 |
 | `crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_handler_ts7006.rs:41` | test/dev | S0 16                                             |    16 |
 | `crates/vize_canon/src/virtual_ts/strict_template_globals_tests.rs:3`                        | test/dev | S0 8<br>old AST/parser 7<br>Croquis analysis 1    |    16 |
 
-Additional test/dev rows are in the TSV: 185 omitted.
+Additional test/dev rows are in the TSV: 193 omitted.
 
 ### Typechecker content-mapper
 
@@ -193,7 +193,7 @@ Scope: fmt command, Glyph formatter crate, and LSP format handler. This is a lex
 
 | surface | total sites | source/manifest | test/dev |
 | ------- | ----------: | --------------: | -------: |
-| S0      |          38 |              26 |       12 |
+| S0      |          40 |              28 |       12 |
 | raw OXC |          21 |              14 |        7 |
 
 #### Top source and manifest files
@@ -206,7 +206,7 @@ Scope: fmt command, Glyph formatter crate, and LSP format handler. This is a lex
 | `crates/vize_glyph/src/script.rs:10`               | source   | S0 1<br>raw OXC 2 |     3 |
 | `crates/vize_glyph/src/lib.rs:53`                  | source   | S0 2              |     2 |
 
-Additional source/manifest rows are in the TSV: 20 omitted.
+Additional source/manifest rows are in the TSV: 22 omitted.
 
 #### Top test/dev files
 
@@ -226,10 +226,10 @@ Scope: lsp/ide commands plus Maestro editor/server crate. This is a lexical inve
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| S0               |         272 |             188 |       84 |
+| S0               |         288 |             197 |       91 |
 | old AST/parser   |          61 |              48 |       13 |
-| Croquis analysis |          54 |              46 |        8 |
-| raw OXC          |          44 |              44 |        0 |
+| Croquis analysis |          54 |              44 |       10 |
+| raw OXC          |          47 |              47 |        0 |
 
 #### Top source and manifest files
 
@@ -239,9 +239,9 @@ Scope: lsp/ide commands plus Maestro editor/server crate. This is a lexical inve
 | `crates/vize_maestro/src/ide/type_service/type_context.rs:229`  | source   | S0 14                                                       |    14 |
 | `crates/vize_maestro/src/ide/corsa_support/html_attribute.rs:2` | source   | S0 10                                                       |    10 |
 | `crates/vize_maestro/Cargo.toml:44`                             | manifest | S0 1<br>old AST/parser 2<br>Croquis analysis 1<br>raw OXC 5 |     9 |
-| `crates/vize_maestro/src/ide/hover/declaration_keyword.rs:19`   | source   | S0 1<br>old AST/parser 1<br>Croquis analysis 3<br>raw OXC 3 |     8 |
+| `crates/vize_maestro/src/ide/diagnostics/linter_options.rs:6`   | source   | S0 8                                                        |     8 |
 
-Additional source/manifest rows are in the TSV: 116 omitted.
+Additional source/manifest rows are in the TSV: 119 omitted.
 
 #### Top test/dev files
 
@@ -253,7 +253,7 @@ Additional source/manifest rows are in the TSV: 116 omitted.
 | `crates/vize_maestro/src/server/state.rs:37`                     | test/dev | S0 7                       |     7 |
 | `crates/vize_maestro/src/server/state/config_tests.rs:1`         | test/dev | S0 5                       |     5 |
 
-Additional test/dev rows are in the TSV: 50 omitted.
+Additional test/dev rows are in the TSV: 54 omitted.
 
 ## Independently mergeable no-rollout slices
 
