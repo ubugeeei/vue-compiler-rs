@@ -1,5 +1,10 @@
 /**
- * Type Check Benchmark: Vize (Corsa) vs vue-tsc
+ * Type Check Benchmark: Vize check and vue-tsc timings
+ *
+ * This legacy local harness reports timings only. Use compare-tools.mjs or
+ * check-gate.mjs when a publishable type-check ratio is needed: those harnesses
+ * rank vue-tsc separately from same-native-engine rows such as verter-tsc and
+ * Golar.
  *
  * Usage:
  *   1. Generate test files: node generate.mjs [count]
@@ -97,7 +102,7 @@ function runCommand(cmd: string, cwd: string = BENCH_INPUT_DIR): number {
   try {
     execSync(cmd, { stdio: "ignore", cwd });
   } catch {
-    // vue-tsc may exit non-zero on type errors; still measure time
+    // Type checkers may exit non-zero on type errors; still measure time.
   }
   return performance.now() - start;
 }
@@ -150,7 +155,7 @@ function runVizeCheckMultiThread(): number {
 // Main
 console.log();
 console.log("=".repeat(65));
-console.log(" Type Check Benchmark: Corsa vs vue-tsc");
+console.log(" Type Check Benchmark: Vize check and vue-tsc timings");
 console.log("=".repeat(65));
 console.log();
 console.log(` Files     : ${vueFiles.length.toLocaleString()} SFC files`);
@@ -175,16 +180,9 @@ if (vueTscSingle >= 0) {
 let vizeSingle = 0;
 if (existsSync(VIZE_BIN)) {
   vizeSingle = runVizeCheckSingleThread();
-  if (vueTscSingle >= 0) {
-    const speedup = (vueTscSingle / vizeSingle).toFixed(1);
-    console.log(
-      `   Vize (Corsa)  : ${formatTime(vizeSingle).padStart(8)}  (${formatThroughput(vueFiles.length, vizeSingle)})  ${speedup}x faster`,
-    );
-  } else {
-    console.log(
-      `   Vize (Corsa)  : ${formatTime(vizeSingle).padStart(8)}  (${formatThroughput(vueFiles.length, vizeSingle)})`,
-    );
-  }
+  console.log(
+    `   Vize (Corsa)  : ${formatTime(vizeSingle).padStart(8)}  (${formatThroughput(vueFiles.length, vizeSingle)})`,
+  );
 } else {
   console.log("   Vize (Corsa)  : SKIPPED (vize CLI not found)");
 }
@@ -206,33 +204,23 @@ if (vueTscMulti >= 0) {
 let vizeMulti = 0;
 if (existsSync(VIZE_BIN)) {
   vizeMulti = runVizeCheckMultiThread();
-  if (vueTscMulti >= 0) {
-    const speedup = (vueTscMulti / vizeMulti).toFixed(1);
-    console.log(
-      `   Vize (Corsa)  : ${formatTime(vizeMulti).padStart(8)}  (${formatThroughput(vueFiles.length, vizeMulti)})  ${speedup}x faster`,
-    );
-  } else {
-    console.log(
-      `   Vize (Corsa)  : ${formatTime(vizeMulti).padStart(8)}  (${formatThroughput(vueFiles.length, vizeMulti)})`,
-    );
-  }
+  console.log(
+    `   Vize (Corsa)  : ${formatTime(vizeMulti).padStart(8)}  (${formatThroughput(vueFiles.length, vizeMulti)})`,
+  );
 } else {
   console.log("   Vize (Corsa)  : SKIPPED (vize CLI not found)");
 }
 
-// Summary
-if (vueTscSingle >= 0 && vizeSingle > 0 && vizeMulti > 0) {
+if (vueTscSingle >= 0 || vueTscMulti >= 0) {
   console.log();
   console.log("-".repeat(65));
   console.log();
-  console.log(" Summary:");
+  console.log(" Note:");
   console.log();
-  const stSpeedup = (vueTscSingle / vizeSingle).toFixed(1);
-  const mtSpeedup = (vueTscMulti / vizeMulti).toFixed(1);
-  const crossSpeedup = (vueTscSingle / vizeMulti).toFixed(1);
-  console.log(`   vue-tsc ST vs Vize ST : ${stSpeedup}x`);
-  console.log(`   vue-tsc MT vs Vize MT : ${mtSpeedup}x`);
-  console.log(`   vue-tsc ST vs Vize MT : ${crossSpeedup}x  (user-facing speedup)`);
+  console.log("   vue-tsc runs the JavaScript TypeScript engine.");
+  console.log("   Vize check runs native tsgo/Corsa.");
+  console.log("   This legacy helper reports timings only.");
+  console.log("   Use compare-tools.mjs or check-gate.mjs for same-engine ratios.");
 }
 
 console.log();
