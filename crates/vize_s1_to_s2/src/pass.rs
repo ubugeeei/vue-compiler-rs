@@ -79,32 +79,32 @@ pub const TRANSFORM_LANE_FLAG: &str = "VIZE_DAVINCI_TRANSFORM";
 
 /// The S2 transform pipeline as the series has built it so far.
 ///
-/// Four passes ([`vif::DESC`], [`vslot::DESC`], [`vmodel::DESC`],
-/// then [`hoist::DESC`]). Text and `v-for` facts are now
+/// Three passes ([`vslot::DESC`], [`vmodel::DESC`], then
+/// [`hoist::DESC`]). Text, `v-for`, and `v-if` facts are now
 /// lowering-published (`pass::text`/`pass::vfor` mirror their tables
 /// without an S2 walk), so the transform table only contains passes
 /// that still need one. Later installments append here, and the `const`
 /// pins below are the grouping regression guard (the P2-2 convention: a
 /// fusion-plan change is a compile error, not a surprise).
-pub const TRANSFORM_PASSES: &[PassDesc] = &[vif::DESC, vslot::DESC, vmodel::DESC, hoist::DESC];
+pub const TRANSFORM_PASSES: &[PassDesc] = &[vslot::DESC, vmodel::DESC, hoist::DESC];
 
 /// The planned pipeline over [`TRANSFORM_PASSES`].
 pub const TRANSFORM: Pipeline = Pipeline::new(S2_STAGE, TRANSFORM_PASSES);
 
-// The plan's fusion shape, pinned: three mandatory barriers plus the
+// The plan's fusion shape, pinned: two mandatory barriers plus the
 // series' first `Optional`/`Fusable` pass (installment 6, the
-// hoist-static analysis). Text and `v-for` facts no longer cost a
-// transform group. The hoist pass forms the pipeline's first
+// hoist-static analysis). Text, `v-for`, and `v-if` facts no longer
+// cost a transform group. The hoist pass forms the pipeline's first
 // NON-BARRIER group — still a singleton, because grouping starts fresh
 // after a barrier and no fusable neighbour exists yet.
-const _: () = assert!(TRANSFORM.group_count() == 4);
+const _: () = assert!(TRANSFORM.group_count() == 3);
 const _: () = assert!(TRANSFORM.is_fully_serialized());
 const _: () = {
-    let group = match TRANSFORM.group(3) {
+    let group = match TRANSFORM.group(2) {
         Some(group) => group,
-        None => panic!("the fourth group exists"),
+        None => panic!("the third group exists"),
     };
-    assert!(group.start == 3 && group.len == 1 && !group.is_barrier);
+    assert!(group.start == 2 && group.len == 1 && !group.is_barrier);
 };
 
 /// The facts the S2 transform pipeline produces beside the tree.
@@ -163,6 +163,7 @@ pub fn run_transform_with_profile<'a, O: PassObserver>(
     profile: TransformProfile,
 ) -> S2Facts {
     let mut facts = S2Facts {
+        if_facts: vif::facts_from_lowering(lowered),
         for_facts: vfor::facts_from_lowering(lowered),
         text_facts: text::facts_from_lowering(lowered),
         ..S2Facts::default()
@@ -175,10 +176,9 @@ pub fn run_transform_with_profile<'a, O: PassObserver>(
         let name = event.desc().name;
         if name == legacy::DESC.name {
             facts.legacy = legacy::run(lowered);
+            facts.if_facts = vif::facts_from_lowering(lowered);
             facts.for_facts = vfor::facts_from_lowering(lowered);
             facts.text_facts = text::facts_from_lowering(lowered);
-        } else if name == vif::DESC.name {
-            facts.if_facts = vif::run(lowered);
         } else if name == vslot::DESC.name {
             facts.slot_facts = vslot::run(lowered);
         } else if name == vmodel::DESC.name {
@@ -199,6 +199,7 @@ pub fn run_transform_with_profile<'a, O: PassObserver>(
             verify.check(event, &folio);
             verify.check_table(event, &folio, &lowered.scopes);
             verify.check_table(event, &folio, &lowered.texts);
+            verify.check_table(event, &folio, &lowered.if_facts);
             verify.check_table(event, &folio, &lowered.for_facts);
             verify.check_table(event, &folio, &lowered.wrappers);
             verify.check_table(event, &folio, &lowered.for_wrappers);
@@ -229,20 +230,15 @@ mod tests {
     #[test]
     fn the_pipeline_holds_exactly_the_landed_passes() {
         assert_eq!(TRANSFORM.stage, S2_STAGE);
-        assert_eq!(TRANSFORM_PASSES.len(), 4);
-        assert_eq!(TRANSFORM_PASSES[0], vif::DESC);
-        assert_eq!(TRANSFORM_PASSES[1], vslot::DESC);
-        assert_eq!(TRANSFORM_PASSES[2], vmodel::DESC);
-        assert_eq!(TRANSFORM_PASSES[3], hoist::DESC);
+        assert_eq!(TRANSFORM_PASSES.len(), 3);
+        assert_eq!(TRANSFORM_PASSES[0], vslot::DESC);
+        assert_eq!(TRANSFORM_PASSES[1], vmodel::DESC);
+        assert_eq!(TRANSFORM_PASSES[2], hoist::DESC);
     }
 
     #[test]
-    fn the_vif_classification_is_pinned() {
-        // The review-point classification, pinned so a drive-by re-kind
-        // is a loud diff: see `vif::DESC`'s docs for the reasoning.
-        assert_eq!(vif::DESC.name, "v-if");
-        assert_eq!(vif::DESC.kind, PassKind::MandatoryLowering);
-        assert_eq!(vif::DESC.fusability, Fusability::Barrier);
+    fn the_vif_mirror_keeps_the_recorded_name() {
+        assert_eq!(vif::NAME, "v-if");
     }
 
     #[test]
@@ -283,21 +279,22 @@ mod tests {
     }
 
     #[test]
-    fn the_fusion_plan_is_three_lone_barriers_plus_one_fusable_singleton() {
+    fn the_fusion_plan_is_two_lone_barriers_plus_one_fusable_singleton() {
         // The review point's fusion question, answered as data: the
-        // three mandatory passes fuse with nothing (law 1), and the
+        // two mandatory passes fuse with nothing (law 1), and the
         // series' first fusable pass lands in the first NON-barrier
         // group — a singleton, because its only neighbour is a barrier.
-        // Text and `v-for` facts are no longer transform passes at all.
-        for index in 0..3 {
+        // Text, `v-for`, and `v-if` facts are no longer transform passes
+        // at all.
+        for index in 0..2 {
             let group = TRANSFORM.group(index).expect("group exists");
             assert!(group.is_barrier && group.len == 1);
         }
-        let fusable = TRANSFORM.group(3).expect("the fourth group exists");
+        let fusable = TRANSFORM.group(2).expect("the third group exists");
         assert!(!fusable.is_barrier);
-        assert_eq!((fusable.start, fusable.len), (3, 1));
+        assert_eq!((fusable.start, fusable.len), (2, 1));
         assert!(fusable.preserved == Preserved::ALL);
-        assert_eq!(TRANSFORM.group(4), None);
+        assert_eq!(TRANSFORM.group(3), None);
     }
 
     #[test]

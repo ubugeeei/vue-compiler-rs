@@ -45,6 +45,7 @@ mod expr;
 mod features;
 mod forop;
 mod html;
+mod if_keys;
 mod leaf;
 mod once_memo;
 mod show;
@@ -58,13 +59,12 @@ mod vtext;
 
 pub use caps::LegacyCaps;
 pub use features::{LoweringFeatures, OpFamily};
+pub use if_keys::{BranchKey, BranchKeyKind, IfFacts, SAME_KEY_MESSAGE};
 
 // The one-scanner rule (#4365): the S2 passes re-derive binding names
 // with exactly the enumeration the lowering used, never a second one.
-pub(crate) use expr::simple_identifier;
-// The wrapper-key channel (P2-9 series 5): captured `<template v-if>`
-// keys, folded into branch-key facts by the v-if pass.
 pub use css::{lower_style_block, lower_style_block_in};
+pub(crate) use expr::simple_identifier;
 pub use forop::{ForName, ForParts};
 pub use structural::{ForWrapper, WrapperAttr, WrapperClass, WrapperKey, WrapperKeys};
 // The one-rebuild rule (the same discipline): compound text facts and
@@ -104,10 +104,13 @@ pub struct Lowered<'a> {
     /// Consumed `ui.for` scope views, keyed by the `ui.for` op's
     /// page-order id; validated and published by lowering.
     pub for_facts: SideTable<ForParts>,
+    /// Per-`ui.if` branch-key facts, keyed by the `ui.if` op's
+    /// page-order id; validated and published by lowering.
+    pub if_facts: SideTable<IfFacts>,
     /// Captured `<template v-if>` wrapper keys, keyed by the `ui.if`
-    /// op's page-order id (P2-9 series 5, [`WrapperKeys`]); folded into
-    /// branch-key facts by `pass::vif`. `from_template` is the P2-11
-    /// emit signal for template-fragment vs branch-root blocks.
+    /// op's page-order id (P2-9 series 5, [`WrapperKeys`]).
+    /// `from_template` is the P2-11 emit signal for template-fragment
+    /// vs branch-root blocks.
     pub wrappers: SideTable<WrapperKeys>,
     /// Captured `<template v-for>` unwrap facts, keyed by the `ui.for`
     /// op's page-order id. Presence means the carrier was a template.
@@ -253,6 +256,7 @@ fn lower_source_block_with_caps_and_comment_policy<'a>(
         scopes: cx.scopes,
         texts: cx.texts,
         for_facts: cx.for_facts,
+        if_facts: cx.if_facts,
         wrappers: cx.wrappers,
         for_wrappers: cx.for_wrappers,
         features: cx.features,
@@ -282,6 +286,7 @@ impl fmt::Debug for Lowered<'_> {
             .field("scopes", &self.scopes)
             .field("texts", &self.texts)
             .field("for_facts", &self.for_facts)
+            .field("if_facts", &self.if_facts)
             .field("wrappers", &self.wrappers)
             .field("for_wrappers", &self.for_wrappers)
             .field("features", &self.features)
