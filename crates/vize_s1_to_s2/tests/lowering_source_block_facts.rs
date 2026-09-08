@@ -134,6 +134,13 @@ fn source_block_side_tables_use_file_absolute_spans() {
                 span: span_of(source, "(item, i) in items"),
             },
             ProvenanceRecord {
+                rule: String::from("lower.for-fact"),
+                node: NodeId::from_index(2),
+                before: String::from("scope #0 bindings=2"),
+                after: String::from("fact value=item key=i index=-"),
+                span: span_of(source, "(item, i) in items"),
+            },
+            ProvenanceRecord {
                 rule: String::from("lower.element"),
                 node: NodeId::from_index(3),
                 before: String::from(li_open),
