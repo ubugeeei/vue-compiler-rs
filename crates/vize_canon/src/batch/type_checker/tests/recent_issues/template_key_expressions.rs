@@ -2,20 +2,17 @@
 //!
 //! `template` is an HTML tag, so a `<template v-for="x in xs" :key="…">`
 //! resolved its `key` through Vue's element table, where `ReservedProps`
-//! declares `key?: PropertyKey | undefined`. Voicevox's `ToolBar.vue`
-//! (`:key="button.text"` over a `string | null`) and Elk's `CommonTabs.vue`
-//! (`:key="option"` over an object) were `TS2322` in vize and silent in
-//! `vue-tsc`.
+//! declares `key?: PropertyKey | undefined`.
 //!
-//! `vue-tsc` type-checks a `<template>`'s props only where it treats the tag as
-//! an element. A `<template>` carrying `v-for`, `v-if` or `v-slot` compiles to a
-//! fragment or a slot body, whose props reach no element type — so neither the
-//! key nor any other prop meets a contract there, while a bare `<template>` and
-//! every real element keep theirs.
+//! Current `vue-tsc` checks that reserved `key` on fragment-hosting templates,
+//! including Voicevox's `ToolBar.vue` shape (`:key="button.text"` over a
+//! `string | null`) and Elk's `CommonTabs.vue` shape (`:key="option"` over an
+//! object). Other fragment-hosted bindings, such as `:id`, still avoid the HTML
+//! `<template>` element prop table. A bare `<template>` and every real element
+//! keep their normal native prop checks.
 //!
-//! Every expectation below is the output of `vue-tsc 3.3.4` (`@vue/language-core`
-//! 3.3.4, `typescript` 6.0.3, `vue` 3.6.0-beta.10) on the byte-identical
-//! sources, quoted per test. `vue-tsc 3.2.9` reports the same rows.
+//! Every expectation below follows the repo's current `vue-tsc 3.3.11`
+//! (`typescript` 6.0.3, `vue` 3.6.0-beta.10) parity baseline.
 
 use super::super::{
     create_project_case_without_node_modules, resolve_test_tsgo_binary,
@@ -62,7 +59,7 @@ fn create_key_project(name: &str, files: &[(&str, &str)]) -> PathBuf {
 }
 
 /// The two real-corpus shapes, plus the key kinds `PropertyKey` does admit and
-/// the other fragment hosts. `vue-tsc 3.3.4` reports nothing on this file.
+/// the other fragment hosts. Fragment `:id` remains silent.
 #[test]
 fn template_fragment_keys_match_the_dialect_key_contract() {
     if resolve_test_tsgo_binary().is_none() {
@@ -109,7 +106,46 @@ const flag = true
     let _ = std::fs::remove_dir_all(&project_root);
     let snapshot = snapshot.expect("type-check the template fragment key project");
 
-    assert_eq!(snapshot, vec![]);
+    assert_eq!(
+        snapshot,
+        vec![
+            (
+                String::from("src/App.vue"),
+                Some(2322),
+                String::from(
+                    "14:40:error Type 'string | null' is not assignable to type 'PropertyKey | undefined'.\nType 'null' is not assignable to type 'PropertyKey | undefined'."
+                ),
+            ),
+            (
+                String::from("src/App.vue"),
+                Some(2322),
+                String::from(
+                    "17:37:error Type '{ id: number; }' is not assignable to type 'PropertyKey | undefined'."
+                ),
+            ),
+            (
+                String::from("src/App.vue"),
+                Some(2322),
+                String::from(
+                    "23:35:error Type '{ id: number; } | null' is not assignable to type 'PropertyKey | undefined'.\nType 'null' is not assignable to type 'PropertyKey | undefined'."
+                ),
+            ),
+            (
+                String::from("src/App.vue"),
+                Some(2322),
+                String::from(
+                    "24:35:error Type '{ id: number; } | null' is not assignable to type 'PropertyKey | undefined'.\nType 'null' is not assignable to type 'PropertyKey | undefined'."
+                ),
+            ),
+            (
+                String::from("src/App.vue"),
+                Some(2322),
+                String::from(
+                    "28:26:error Type '{ id: number; }[]' is not assignable to type 'PropertyKey | undefined'."
+                ),
+            ),
+        ]
+    );
 }
 
 /// The contract the dialect *does* impose, which the fix must not weaken.

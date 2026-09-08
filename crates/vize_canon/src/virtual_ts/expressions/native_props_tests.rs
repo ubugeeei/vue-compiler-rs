@@ -205,7 +205,8 @@ fn legacy_vue2_does_not_require_vue_native_elements() {
 
 /// The `<template>` shapes #4149 is about — one per `renders_as_fragment` arm,
 /// `v-else-if` and `v-else` included — alongside the element and bare
-/// `<template>` shapes that must keep their checks.
+/// `<template>` shapes that must keep their checks. Fragment-hosted `key` now
+/// follows Vue's reserved-prop contract; other fragment props stay unchecked.
 const FRAGMENT_TEMPLATE: &str = concat!(
     r#"<div v-for="row in rows" :key="row.text" />"#,
     r#"<template v-for="row in rows" :key="row.text" :id="row.text"><span :id="row.text" /></template>"#,
@@ -218,31 +219,37 @@ const FRAGMENT_TEMPLATE: &str = concat!(
 
 const FRAGMENT_SCRIPT: &str = "const rows: { text: string | null }[] = []\nconst flag = true";
 
-/// A `<template>` that stands for a fragment or a slot body carries no element
-/// prop check, so its `:key` never meets `ReservedProps['key']` — the
-/// `PropertyKey | undefined` that made Voicevox's `<template v-for :key>` over a
-/// `string | null` and Elk's over an object into Vize-only `TS2322` (#4149).
+/// A `<template>` that stands for a fragment or a slot body still checks
+/// reserved `key` against `ReservedProps['key']`. That `PropertyKey |
+/// undefined` contract catches Voicevox's `<template v-for :key>` over a
+/// `string | null` and Elk's over an object. Non-key fragment props do not meet
+/// the HTML `<template>` element table.
 ///
 /// The element and the bare `<template>` keep theirs: `vue-tsc` reports both,
 /// and dropping them would trade a false positive for a false negative.
 #[test]
-fn template_fragments_carry_no_element_prop_check() {
+fn template_fragments_check_key_but_skip_element_attrs() {
     let allocator = vize_carton::Allocator::new();
     let (root, summary) = analyze(&allocator, FRAGMENT_SCRIPT, FRAGMENT_TEMPLATE, false);
     let output = generate_virtual_ts(&summary, Some(FRAGMENT_SCRIPT), Some(&root), 0);
 
     assert_eq!(
         native_prop_checks(&output.code),
-        vec![("template", "id"), ("div", "key"), ("span", "id")],
-        "only the element and the bare `<template>` may reach the element table:\n{}",
+        vec![
+            ("template", "key"),
+            ("template", "key"),
+            ("template", "id"),
+            ("div", "key"),
+            ("template", "key"),
+            ("span", "id")
+        ],
+        "fragment keys, real elements, and bare `<template>` may reach the element table:\n{}",
         output.code
     );
-    // Every fragment-hosted binding is still emitted, so an invalid member
-    // inside a key expression stays a diagnostic at its authored range.
     assert_eq!(
         unchecked_v_bind_expressions(&output.code),
-        vec!["rows", "rows", "rows", "rows", "row.text", "row.text"],
-        "fragment props must stay checked as ordinary expressions:\n{}",
+        vec!["rows", "rows", "row.text"],
+        "non-key fragment props must stay checked as ordinary expressions:\n{}",
         output.code
     );
 }

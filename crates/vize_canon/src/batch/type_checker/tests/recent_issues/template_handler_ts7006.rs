@@ -1,6 +1,6 @@
 //! TS7006 parity for template callback parameters and handler references (#3756).
 //!
-//! The fixture shapes were reduced from `vue-tsc 3.3.4` with TypeScript 6.0.3
+//! The fixture shapes were reduced from `vue-tsc 3.3.11` with TypeScript 6.0.3
 //! on byte-identical sources. Assertions pin Vize's code/anchor behavior and
 //! keep negative rows so the fix cannot pass by filtering diagnostics.
 
@@ -77,12 +77,12 @@ fn untyped_slot_outlet_callbacks_remain_implicit_any() {
 }
 
 #[test]
-fn external_member_update_model_handlers_match_vue_tsc_variance() {
+fn external_member_update_model_handlers_match_vue_tsc_listener_contract() {
     if resolve_test_tsgo_binary().is_none() {
         return;
     }
     let project_root = create_project_case(
-        "external-member-update-model-handler-variance",
+        "external-member-update-model-handler-listener-contract",
         &[
             (
                 "src/global-components.d.ts",
@@ -101,7 +101,7 @@ declare module "vue" {
 const props = {
   qSliderProps: {
     modelValue: 1 as number | null,
-    "onUpdate:modelValue": (value: number) => value.toFixed(),
+    "onUpdate:modelValue": (value: number) => { value.toFixed() },
     stringOnly: (value: string) => value.toUpperCase(),
   }
 }
@@ -120,16 +120,28 @@ const props = {
 
     assert_eq!(
         snapshot,
-        Some(vec![(
-            vize_s0::String::from("src/App.vue"),
-            Some(2322),
-            vize_s0::String::from(
-                "12:57:error Type '(value: string) => string' is not assignable to type '(value: number | null) => any'.\n\
-                 Types of parameters 'value' and '<target>' are incompatible.\n\
-                 Type 'number | null' is not assignable to type 'string'.\n\
-                 Type 'null' is not assignable to type 'string'.",
+        Some(vec![
+            (
+                vize_s0::String::from("src/App.vue"),
+                Some(2322),
+                vize_s0::String::from(
+                    "11:57:error Type '(value: number) => void' is not assignable to type '(value: number | null) => any'.\n\
+                     Types of parameters 'value' and '<target>' are incompatible.\n\
+                     Type 'number | null' is not assignable to type 'number'.\n\
+                     Type 'null' is not assignable to type 'number'.",
+                ),
             ),
-        )]),
+            (
+                vize_s0::String::from("src/App.vue"),
+                Some(2322),
+                vize_s0::String::from(
+                    "12:57:error Type '(value: string) => string' is not assignable to type '(value: number | null) => any'.\n\
+                     Types of parameters 'value' and '<target>' are incompatible.\n\
+                     Type 'number | null' is not assignable to type 'string'.\n\
+                     Type 'null' is not assignable to type 'string'.",
+                ),
+            ),
+        ]),
     );
 }
 

@@ -12,17 +12,6 @@ pub(super) fn needs_typed_handler_assignment(data: &EventHandlerScopeData) -> bo
     })
 }
 
-pub(super) fn allows_bivariant_handler_assignment(data: &EventHandlerScopeData) -> bool {
-    data.handler_expression.as_ref().is_some_and(|content| {
-        data.has_implicit_event && is_member_handler_reference(content.as_str())
-    })
-}
-
-fn is_member_handler_reference(content: &str) -> bool {
-    let trimmed = content.trim();
-    is_callable_handler_reference(trimmed) && (trimmed.contains('.') || trimmed.contains('['))
-}
-
 pub(super) fn transition_hook_signature(
     template_source: Option<&str>,
     template_ast: Option<&RootNode<'_>>,

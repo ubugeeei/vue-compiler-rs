@@ -47,7 +47,7 @@ observational guard for planning only. It does not change rollout state.
 | -------------------------- | ------------: | --------------------: | ----------------: | --------------: | ------: | --------------: | -------: | ------------: | ------------: |
 | Compiler                   |          1129 |                   787 |               342 |             157 |     373 |            1006 |      653 |           556 |           696 |
 | Linter                     |           339 |                   339 |                 0 |             295 |     297 |             694 |      237 |           383 |           558 |
-| Typechecker                |           898 |                   250 |               648 |             399 |     187 |             812 |      672 |           479 |           690 |
+| Typechecker                |           900 |                   252 |               648 |             399 |     187 |             812 |      674 |           479 |           690 |
 | Typechecker content-mapper |             9 |                     9 |                 0 |               0 |       0 |               9 |        0 |             8 |            20 |
 | Formatter                  |            40 |                    40 |                 0 |               0 |      21 |              42 |       19 |            32 |            69 |
 | LSP                        |           288 |                   288 |                 0 |             115 |      47 |             336 |      114 |           174 |           410 |
@@ -134,7 +134,7 @@ Scope: check command plus Canon, excluding dedicated content-mapper files. This 
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| S0               |         898 |             508 |      390 |
+| S0               |         900 |             508 |      392 |
 | old AST/parser   |         161 |              35 |      126 |
 | Croquis analysis |         238 |             118 |      120 |
 | raw OXC          |         187 |             151 |       36 |
@@ -157,8 +157,8 @@ Additional source/manifest rows are in the TSV: 314 omitted.
 | -------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------- | ----: |
 | `crates/vize_canon/src/virtual_ts/tests.rs:8`                                                | test/dev | S0 37<br>old AST/parser 36<br>Croquis analysis 50 |   123 |
 | `crates/vize_canon/src/virtual_ts/tests/options_api_instance.rs:32`                          | test/dev | S0 7<br>old AST/parser 7<br>Croquis analysis 18   |    32 |
+| `crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_handler_ts7006.rs:41` | test/dev | S0 18                                             |    18 |
 | `crates/vize_canon/src/virtual_ts/expressions/component_props_tests.rs:1`                    | test/dev | S0 8<br>old AST/parser 8<br>Croquis analysis 1    |    17 |
-| `crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_handler_ts7006.rs:41` | test/dev | S0 16                                             |    16 |
 | `crates/vize_canon/src/virtual_ts/strict_template_globals_tests.rs:3`                        | test/dev | S0 8<br>old AST/parser 7<br>Croquis analysis 1    |    16 |
 
 Additional test/dev rows are in the TSV: 193 omitted.

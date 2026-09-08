@@ -1840,11 +1840,11 @@ typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/single_required_camel_prop.rs	4	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/split_script_diagnostic_anchors.rs	8	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/strict_route_instance_global.rs	14	s0	S0	stage	vize_s0	preferred	1
-typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_handler_ts7006.rs	41	s0	S0	stage	vize_s0	preferred	16
+typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_handler_ts7006.rs	41	s0	S0	stage	vize_s0	preferred	18
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_instance_props.rs	24	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_instance_props/options_api.rs	14	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_instance_props/type_only.rs	9	s0	S0	stage	vize_s0	preferred	1
-typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_key_expressions.rs	26	s0	S0	stage	vize_s0	preferred	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_key_expressions.rs	23	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_key_expressions/dialect_baselines.rs	12	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/ts_extension_substitution.rs	4	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/batch/type_checker/tests/recent_issues/unmapped_template_fallback.rs	7	s0	S0	stage	vize_s0	preferred	1
@@ -2350,9 +2350,9 @@ typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/event_scop
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/event_scope.rs	17	croquis	Croquis analysis	old	vize_croquis	legacy	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	1	old_ast	old AST/parser	old	vize_relief	legacy	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	1	croquis	Croquis analysis	old	vize_croquis	legacy	1
-typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	197	s0	S0	stage	vize_carton	compat	1
-typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	197	old_ast	old AST/parser	old	vize_relief	legacy	1
-typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	197	old_ast	old AST/parser	old	vize_armature	legacy	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	186	s0	S0	stage	vize_carton	compat	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	186	old_ast	old AST/parser	old	vize_relief	legacy	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/scope/event_scope/event_targets.rs	186	old_ast	old AST/parser	old	vize_armature	legacy	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/globals.rs	3	s0	S0	stage	vize_carton	compat	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/globals.rs	3	croquis	Croquis analysis	old	vize_croquis	legacy	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/globals.rs	3	raw_oxc	raw OXC	raw	oxc_allocator	raw	1

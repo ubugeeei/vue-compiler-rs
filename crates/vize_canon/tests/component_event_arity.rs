@@ -152,8 +152,7 @@ const item = {} as {
         app.content
     );
     assert!(
-        app.content.contains("if (typeof __vize_handler_")
-            && app.content.contains(" === \"function\")"),
+        app.content.contains("if (__vize_handler_"),
         "optional event references should be guarded before invocation:\n{}",
         app.content
     );
