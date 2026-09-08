@@ -47,10 +47,11 @@
 //! reconciliation, no entity decoding). The comparator therefore
 //! compares exactly the domain both lanes claim to model — templates
 //! neither lane **rejects** — and **counts** everything it declines:
-//! legacy hard parse errors, S2 error diagnostics (evaluated pre-pass,
-//! so a pass's own diagnostics never mask a comparison; a malformed or
-//! expressionless `v-for` skips here, matching the legacy transform's
-//! refusal to build a `ForNode` from it), the legacy dynamic-argument
+//! legacy hard parse errors, S2 structural error diagnostics (evaluated
+//! pre-pass, with lowering-published transform-equivalent diagnostics
+//! admitted by the comparator; a malformed or expressionless `v-for`
+//! skips here, matching the legacy transform's refusal to build a
+//! `ForNode` from it), the legacy dynamic-argument
 //! `:[key]` quirk, compound rebuilds of any expression position, the
 //! slot projection's counted classes — conditional carriers, the
 //! `v-slots` spread, filler-only implicit defaults ([`slots`] module

@@ -39,11 +39,12 @@ fn the_chain_fixture_snapshots_the_post_pass_folio() {
 
         // Supplements: the planned walk accounting through the budget
         // observer's own derived page. The fixture builds `ui.if` ops and
-        // slot carriers but no `ui.for`, no compound text and no model,
-        // so those passes are the ones the plan declines.
+        // slot carriers but no `ui.for`, no compound text and no model.
+        // `v-if` facts are lowering-published, so the plan is only slot
+        // grouping.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=3\npasses=3\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=1\npasses=1\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         // One fact entry (the chain's `ui.if`), keys on branches 0 and 2.
         let entries = facts.if_facts.sorted_entries();

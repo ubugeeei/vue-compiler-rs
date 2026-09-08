@@ -2,16 +2,15 @@
 //!
 //! # Why the bits exist
 //!
-//! Most mandatory S2 passes are the consumer of one op family:
+//! Most remaining mandatory S2 passes are the consumer of one op family:
 //! [`pass::vif`](crate::pass::vif) reads `ui.if`,
-//! [`pass::vfor`](crate::pass::vfor) reads `ui.for`,
 //! [`pass::vslot`](crate::pass::vslot) reads the slot carriers, and
 //! [`pass::vmodel`](crate::pass::vmodel) reads `ui.model`. Run against an
 //! artifact whose family the lowering never built, such a pass walks the
 //! whole tree to publish an empty fact table and raise no diagnostic — a
 //! walk the build path can decline without declining any product.
-//! Compound text remains observed here, but P2-12b publishes its facts at
-//! lowering time, so it no longer selects a transform pass.
+//! Compound text and `ui.for` remain observed here, but P2-12b publishes
+//! their facts at lowering time, so neither selects a transform pass.
 //!
 //! # Why the bit is set at the op, not read off provenance
 //!
@@ -23,7 +22,7 @@
 //! `error.v-for-malformed` instead of `lower.for` — and still leaves a
 //! `ui.for` op in the tree. Provenance records *decisions*; the planner
 //! is asking about *ops*, and a failed decision is exactly the case where
-//! the two diverge and the pass is still owed its walk.
+//! the two diverge.
 //!
 //! So [`Cx::observe`](super::cx::Cx::observe) sets the bit where the op is
 //! minted. There is no second scan and no name to keep in sync: the type
@@ -35,9 +34,9 @@
 //! too. `crates/vize_s1_to_s2/tests/lowering_features.rs` is the pin: it
 //! lowers a template per family — malformed spellings included — and
 //! fails if the bit is missing, then proves the planned run and the full
-//! five-pass table agree on every product an artifact has.
+//! four-pass table agree on every product an artifact has.
 
-/// An op family whose presence keeps a mandatory pass in the plan.
+/// An op family whose presence can select a pass or publish facts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpFamily {
     /// A `ui.if`, however malformed its branches.

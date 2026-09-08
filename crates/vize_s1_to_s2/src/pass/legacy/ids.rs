@@ -62,6 +62,8 @@ pub(super) fn rekey(lowered: &mut Lowered<'_>, sync_ids: &[NodeId]) {
     }
     rekey_table(&mut lowered.scopes, sync_ids);
     rekey_table(&mut lowered.texts, sync_ids);
+    rekey_table(&mut lowered.if_facts, sync_ids);
+    rekey_table(&mut lowered.for_facts, sync_ids);
     rekey_table(&mut lowered.wrappers, sync_ids);
     rekey_table(&mut lowered.for_wrappers, sync_ids);
     for record in &mut lowered.provenance {

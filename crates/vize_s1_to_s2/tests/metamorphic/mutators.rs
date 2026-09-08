@@ -44,9 +44,11 @@
 //! Vue renders it as a real template element — which is why this mutator
 //! only ever creates a wrapper that carries the moved branch directive.
 //! **Exclusions** (`sites::wrap_skip`): `<template>` targets (the
-//! directive would leave a bare template behind), elements carrying
-//! `v-slot`/`#…` and direct children of components or slot templates
-//! (slot targeting and slot-content assignment are position-sensitive),
+//! directive would leave a bare template behind), elements carrying a
+//! branch-carrier `key` (the move would turn the branch key into a child
+//! key), elements carrying `v-slot`/`#…` and direct children of
+//! components or slot templates (slot targeting and slot-content
+//! assignment are position-sensitive),
 //! a second branch directive on the element (the leftover would form a
 //! new chain), missing expressions, unterminated tags, `v-pre`/rawtext.
 //! **Normalization:** none beyond span elision — the folios must match

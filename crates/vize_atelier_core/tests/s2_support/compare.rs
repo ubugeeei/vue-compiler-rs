@@ -139,11 +139,7 @@ pub fn compare_with(name: &str, source: &str, counters: &mut Counters, dialect: 
         &surface_errors,
         LegacyCaps::for_version(dialect),
     );
-    if lowered
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == Severity::Error)
-    {
+    if lowered.diagnostics.iter().any(blocks_s2_comparison) {
         counters.skipped_s2_errors += 1;
         return;
     }
@@ -269,4 +265,9 @@ fn transform_options(dialect: VueVersion, hoist_static: bool) -> TransformOption
         hoist_static,
         ..TransformOptions::default()
     }
+}
+
+fn blocks_s2_comparison(diagnostic: &vize_davinci::diagnostic::Diagnostic) -> bool {
+    diagnostic.severity == Severity::Error
+        && diagnostic.message.as_str() != vize_s1_to_s2::pass::vif::SAME_KEY_MESSAGE
 }

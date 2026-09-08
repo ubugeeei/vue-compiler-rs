@@ -10,7 +10,7 @@ use vize_s1::Element;
 
 use vize_s2::expr::{ExprRef, OpaqueReason};
 use vize_s2::op::{ForBinding, ForOp, Namespace, Op, Region};
-use vize_s2::scope::{ScopeBinding, ScopeFacts, ScopeOrigin};
+use vize_s2::scope::{ScopeBinding, ScopeFacts, ScopeOrigin, ScopeTag};
 
 use super::cx::{Cx, attr_slice, attr_span, element_span};
 use super::element::{Analyzed, attr_value_text, element_core};
@@ -20,6 +20,42 @@ use super::structural::{
     record_template_drops_except,
 };
 use super::vfor::{split_aliases, split_for};
+
+/// One `ui.for`'s consumed scope view, positions in grammar order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ForParts {
+    /// The introduction-site tag the lowering minted.
+    pub tag: ScopeTag,
+    /// The value position.
+    pub value: ForName,
+    /// The second position (object key).
+    pub key: ForName,
+    /// The third position (index).
+    pub index: ForName,
+}
+
+/// One binding position's consumed name status.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ForName {
+    /// The position's one enumerated simple-identifier name.
+    Named(String),
+    /// The position is authored but enumerates no name yet: a
+    /// destructuring pattern, a foreign dialect, or the classified escape.
+    Pending,
+    /// The position was not authored.
+    Absent,
+}
+
+impl ForName {
+    /// The provenance spelling: the name, `?` for pending, `-` for absent.
+    pub(crate) fn spell(&self) -> &str {
+        match self {
+            ForName::Named(name) => name.as_str(),
+            ForName::Pending => "?",
+            ForName::Absent => "-",
+        }
+    }
+}
 
 /// Build the `ui.for` for an element's `v-for` — or, when the directive
 /// carries no expression at all, the kept fragment without it.
@@ -73,19 +109,20 @@ pub(crate) fn lower_for<'a>(
                 String::from("ui.for source=opaque(for-value) value=opaque(for-value)"),
                 text_span,
             );
-            cx.attach_scope(
-                node,
-                ScopeFacts {
-                    tag,
-                    bindings: StdVec::new(),
-                },
-            );
-            ForBinding {
+            let binding = ForBinding {
                 source,
                 value,
                 key: None,
                 index: None,
-            }
+            };
+            let scope = ScopeFacts {
+                tag,
+                bindings: StdVec::new(),
+            };
+            let parts = derive_for_parts(tag, &binding, &scope);
+            cx.attach_scope(node, scope);
+            cx.attach_for_parts(node, parts, 0, text_span);
+            binding
         }
         Some((split, aliases)) => {
             let source = expr_at(cx, &raw[split.source_start..]);
@@ -110,7 +147,6 @@ pub(crate) fn lower_for<'a>(
                     });
                 }
             }
-            cx.attach_scope(node, ScopeFacts { tag, bindings });
             cx.record(
                 "lower.for",
                 node,
@@ -118,12 +154,18 @@ pub(crate) fn lower_for<'a>(
                 cstr!("ui.for source={} value={}", desc(&source), desc(&value)),
                 text_span,
             );
-            ForBinding {
+            let binding = ForBinding {
                 source,
                 value,
                 key,
                 index,
-            }
+            };
+            let scope = ScopeFacts { tag, bindings };
+            let parts = derive_for_parts(tag, &binding, &scope);
+            let binding_count = scope.bindings.len();
+            cx.attach_scope(node, scope);
+            cx.attach_for_parts(node, parts, binding_count, text_span);
+            binding
         }
     };
 
@@ -179,4 +221,68 @@ fn alias_position<'a>(cx: &mut Cx<'a>, slice: Option<&&'a str>) -> Option<ExprRe
         Some(slice) if !slice.is_empty() => Some(expr_at(cx, slice)),
         _ => None,
     }
+}
+
+/// Re-derive the consumed scope view from the just-built `ForBinding`, then
+/// assert it byte-equals the `ScopeFacts` the lowering recorded.
+fn derive_for_parts(tag: ScopeTag, binding: &ForBinding<'_>, recorded: &ScopeFacts) -> ForParts {
+    debug_assert!(
+        recorded.tag == tag,
+        "hygiene law broken: ui.for scope recorded tag {} but lowering minted {tag}",
+        recorded.tag,
+    );
+    let undecomposable = matches!(
+        &binding.source,
+        ExprRef::Opaque(opaque) if matches!(opaque.reason, OpaqueReason::ForValue)
+    );
+    let value = if undecomposable {
+        ForName::Pending
+    } else {
+        position(Some(&binding.value))
+    };
+    let key = position(binding.key.as_ref());
+    let index = position(binding.index.as_ref());
+    #[cfg(debug_assertions)]
+    {
+        let expected: StdVec<ScopeBinding> = [
+            (&value, Some(&binding.value)),
+            (&key, binding.key.as_ref()),
+            (&index, binding.index.as_ref()),
+        ]
+        .into_iter()
+        .filter_map(|(name, expr)| match (name, expr) {
+            (ForName::Named(name), Some(expr)) => Some(ScopeBinding {
+                name: name.clone(),
+                origin: ScopeOrigin::Authored { span: expr.span() },
+            }),
+            _ => None,
+        })
+        .collect();
+        debug_assert!(
+            recorded.bindings == expected,
+            "hygiene law broken: ui.for recorded bindings {:?} but its binding surface derives {:?}",
+            recorded.bindings,
+            expected,
+        );
+    }
+    ForParts {
+        tag,
+        value,
+        key,
+        index,
+    }
+}
+
+/// Classify one binding position.
+fn position(expr: Option<&ExprRef<'_>>) -> ForName {
+    let Some(expr) = expr else {
+        return ForName::Absent;
+    };
+    if let Some(name) = simple_identifier(expr) {
+        return ForName::Named(String::from(name));
+    }
+    if expr.source().is_empty() {
+        return ForName::Absent;
+    }
+    ForName::Pending
 }

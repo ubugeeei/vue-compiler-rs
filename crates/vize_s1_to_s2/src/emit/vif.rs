@@ -11,7 +11,7 @@ use super::UnsupportedReason as Reason;
 use super::buf::Buf;
 use super::js::escape_js_string;
 use super::prefix::Site;
-use crate::pass::{BranchKeyKind, IfFacts};
+use crate::lower::{BranchKeyKind, IfFacts};
 
 pub(super) fn emit_if(
     cx: &mut EmitCx<'_>,

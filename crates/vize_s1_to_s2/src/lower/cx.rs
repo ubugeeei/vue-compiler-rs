@@ -29,6 +29,7 @@ use vize_s2::provenance::ProvenanceRecord;
 use vize_s2::scope::{ScopeFacts, ScopeTag};
 
 mod custom_element;
+mod for_parts;
 mod span;
 
 pub(crate) struct Cx<'a> {
@@ -51,6 +52,8 @@ pub(crate) struct Cx<'a> {
     pub provenance: Vec<ProvenanceRecord>,
     pub scopes: SideTable<ScopeFacts>,
     pub texts: SideTable<super::text::TextParts>,
+    pub for_facts: SideTable<super::forop::ForParts>,
+    pub if_facts: SideTable<super::if_keys::IfFacts>,
     pub wrappers: SideTable<super::structural::WrapperKeys>,
     pub for_wrappers: SideTable<super::structural::ForWrapper>,
     pub caps: super::caps::LegacyCaps,
@@ -84,6 +87,8 @@ impl<'a> Cx<'a> {
             provenance: Vec::new(),
             scopes: SideTable::new(),
             texts: SideTable::new(),
+            for_facts: SideTable::new(),
+            if_facts: SideTable::new(),
             wrappers: SideTable::new(),
             for_wrappers: SideTable::new(),
             caps,

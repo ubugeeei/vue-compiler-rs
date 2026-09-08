@@ -25,6 +25,7 @@ use super::cx::{Cx, attr_slice, attr_span, element_span};
 use super::element::{Analyzed, BranchKind, analyze, attr_value_text, element_core};
 use super::expr::expr_at;
 use super::forop::lower_for;
+use super::if_keys;
 use super::leaf::lower_leaf;
 use super::text;
 
@@ -181,6 +182,7 @@ fn lower_if_group<'a>(
 
     let mut lowered: Vec<'a, IfBranch<'a>> = Vec::new_in(&cx.allocator);
     let mut wrapper_keys: StdVec<Option<WrapperKey>> = StdVec::new();
+    let mut branch_keys: StdVec<Option<if_keys::BranchKey>> = StdVec::new();
     let mut from_template: StdVec<bool> = StdVec::new();
     let mut preserved_gaps: StdVec<usize> = StdVec::new();
     for (element, analyzed, attr_idx, gaps) in branches {
@@ -231,7 +233,8 @@ fn lower_if_group<'a>(
                 Some(expr_at(cx, slice))
             }
         };
-        let (ops, wrapper_key, is_template) = branch_body(cx, element, &analyzed, ns);
+        let branch_span = element_span(cx, element);
+        let (mut ops, wrapper_key, is_template) = branch_body(cx, element, &analyzed, ns);
         if let Some(key) = &wrapper_key {
             let (key_span, spelling) = match key {
                 WrapperKey::Static { span, .. } | WrapperKey::Dynamic { span, .. } => (
@@ -249,14 +252,20 @@ fn lower_if_group<'a>(
                 key_span,
             );
         }
+        let branch_key = wrapper_key
+            .as_ref()
+            .map(if_keys::from_wrapper_key)
+            .or_else(|| if_keys::take_carrier_key(branch_span, &mut ops));
+        branch_keys.push(branch_key);
         wrapper_keys.push(wrapper_key);
         from_template.push(is_template);
         lowered.push(IfBranch {
             condition,
             region: Region { ops },
-            span: element_span(cx, element),
+            span: branch_span,
         });
     }
+    if_keys::attach_if_facts(cx, node, branch_keys);
     if wrapper_keys.iter().any(Option::is_some) || from_template.iter().any(|flag| *flag) {
         cx.attach_wrappers(
             node,

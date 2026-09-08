@@ -12,8 +12,10 @@
 //! so the reachable plans are the *subsets* of [`SELECTABLE`], not a short
 //! list of shapes. Enumerating them as named `const` pipelines costs one
 //! item per combination and doubles with every pass that learns to
-//! decline; at six selectable passes it is already 64 names for one
-//! rule. [`plan_for_mask`] states the rule once instead, and [`PLANS`]
+//! decline; at four selectable passes it is already 16 names for one
+//! rule. `v-for`, like compound text, is lowering-published and no
+//! longer participates in this mask. [`plan_for_mask`] states the rule
+//! once instead, and [`PLANS`]
 //! holds its answer for every mask so a [`Pipeline`]'s
 //! `&'static [PassDesc]` still points at data nobody built at run time.
 //!
@@ -26,17 +28,19 @@
 //!
 //! Nothing the artifact can observe. A declined pass is one whose op
 //! family the lowering never built, so its walk would publish an empty
-//! fact table and raise no diagnostic — see each pass's `run` for the
-//! `if let Op::…` that is its whole body, and
-//! `tests/lowering_features.rs` for the behavioural pin. `hoist` is the
-//! one decline made for a different reason: it is `Optional`, and the DOM
-//! emit declines its product outright under `hoist_static: false`.
+//! fact table and raise no diagnostic — see each remaining pass's
+//! `run` for the `if let Op::…` that is its whole body, and
+//! `tests/lowering_features.rs` for the behavioural pin. `v-if` joins
+//! the lowering-published families, so its op bit is ignored like
+//! `v-for` and compound text. `hoist` is the one decline made for a
+//! different reason: it is `Optional`, and the DOM emit declines its
+//! product outright under `hoist_static: false`.
 
 use vize_davinci::pass::{PassDesc, Pipeline};
 
 use crate::lower::{LegacyCaps, LoweringFeatures};
 
-use super::{S2_STAGE, hoist, legacy, vfor, vif, vmodel, vslot};
+use super::{S2_STAGE, hoist, legacy, vmodel, vslot};
 
 /// Product-facing selection for optional S2 transform work.
 ///
@@ -75,21 +79,17 @@ impl TransformProfile {
 /// filtered — never reordered. The passes touch disjoint op families and
 /// carry no semantic dependency on one another (`super::TRANSFORM`'s
 /// docs), which is what makes an arbitrary subset a legal pipeline.
-const SELECTABLE: [(PassDesc, u8); 6] = [
+const SELECTABLE: [(PassDesc, u8); 4] = [
     (legacy::DESC, LEGACY_SUGAR),
-    (vif::DESC, IF_OPS),
-    (vfor::DESC, FOR_OPS),
     (vslot::DESC, SLOT_CARRIERS),
     (vmodel::DESC, MODEL_BINDINGS),
     (hoist::DESC, STATIC_ANALYSIS),
 ];
 
 const LEGACY_SUGAR: u8 = 1 << 0;
-const IF_OPS: u8 = 1 << 1;
-const FOR_OPS: u8 = 1 << 2;
-const SLOT_CARRIERS: u8 = 1 << 3;
-const MODEL_BINDINGS: u8 = 1 << 4;
-const STATIC_ANALYSIS: u8 = 1 << 5;
+const SLOT_CARRIERS: u8 = 1 << 1;
+const MODEL_BINDINGS: u8 = 1 << 2;
+const STATIC_ANALYSIS: u8 = 1 << 3;
 
 /// Every mask, hence every plan.
 const PLAN_COUNT: usize = 1 << SELECTABLE.len();
@@ -135,7 +135,7 @@ const fn all_plans() -> [Plan; PLAN_COUNT] {
     let mut plans = [Plan::EMPTY; PLAN_COUNT];
     let mut mask = 0;
     while mask < PLAN_COUNT {
-        // `mask` is bounded by `PLAN_COUNT`, which is `1 << 7`.
+        // `mask` is bounded by `PLAN_COUNT`, which is `1 << 4`.
         #[expect(clippy::cast_possible_truncation)]
         let bits = mask as u8;
         plans[mask] = plan_for_mask(bits);
@@ -149,7 +149,7 @@ static PLANS: [Plan; PLAN_COUNT] = all_plans();
 
 // The full plan is the landed selectable table, and the empty plan is now
 // truly empty: a plan-shape regression is a compile error, not a test failure.
-const _: () = assert!(plan_for_mask(u8::MAX).len == 6);
+const _: () = assert!(plan_for_mask(u8::MAX).len == 4);
 const _: () = assert!(plan_for_mask(0).len == 0);
 const _: () = assert!(plan_for_mask(STATIC_ANALYSIS).len == 1);
 
@@ -158,12 +158,8 @@ fn mask_for(caps: LegacyCaps, features: LoweringFeatures, profile: TransformProf
     if caps.needs_sugar() {
         mask |= LEGACY_SUGAR;
     }
-    if features.has_if_ops() {
-        mask |= IF_OPS;
-    }
-    if features.has_for_ops() {
-        mask |= FOR_OPS;
-    }
+    let _if_facts_are_lowering_published = features.has_if_ops();
+    let _for_facts_are_lowering_published = features.has_for_ops();
     if features.has_slot_carriers() {
         mask |= SLOT_CARRIERS;
     }

@@ -196,13 +196,14 @@ fn the_battery_aggregates_are_pinned() {
     // 33 -> 28 diagnostics — five retired deferrals across the battery).
     // Scopes are unchanged on purpose. Records first kept parity because
     // each retired `defer.*` record was replaced by exactly one
-    // `lower.bind`/`lower.on` record, then text fact fusion added four
-    // `lower.text-fact` provenance records for battery text-bearing nodes.
+    // `lower.bind`/`lower.on` record, then fact fusion added four
+    // `lower.text-fact` provenance records for battery text-bearing nodes and
+    // one `lower.if` record for the battery's branch root.
     // (Series-4 history: condense/merge re-pinned 89 -> 78 ops,
     // 107 -> 101 records.)
     assert_eq!(
         (ops, diagnostics, provenance, scopes),
-        (83, 28, 105, 1),
+        (83, 28, 106, 1),
         "battery census moved: re-pin deliberately"
     );
 }
