@@ -112,7 +112,7 @@ catalogs:
     "@types/node": "25.9.2"
     tsx: "4.23.12"
     typescript: "6.0.3"
-    vue-tsc: "3.3.4"
+    vue-tsc: "3.3.11"
 
   # Corsa runtime shipped by the Vize CLI. Keep separate from the workspace
   # TypeScript toolchain so consumers and repo packages can stay on TS 6.

@@ -10,7 +10,7 @@ explicitly documents a narrower behavior.
 | ----------------- | -------------------------------------------------------------------------------- | ----------------------------------------------- |
 | Vue runtime       | `vue@3.5.34` for published runtime smoke, `vue@3.6.0-beta.10` for fixture parity | `fresh-install-smoke`, `vue-parity`             |
 | Vue compiler      | `@vue/compiler-sfc@3.6.0-beta.10`                                                | `vp run --filter './tests' test:check:fixtures` |
-| Vue type checking | `vue-tsc@3.3.4` with `typescript@6.0.3`                                          | `vp run --filter './tests' test:check:fixtures` |
+| Vue type checking | `vue-tsc@3.3.11` with `typescript@6.0.3`                                         | `vp run --filter './tests' test:check:fixtures` |
 | Vite              | `vite@npm:@voidzero-dev/vite-plus-core@0.1.21`                                   | `fresh-install-smoke`, app e2e                  |
 | Node.js           | `22` and `24`                                                                    | `node-engine-compat`, `fresh-install-smoke`     |
 

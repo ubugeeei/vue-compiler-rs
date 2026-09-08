@@ -1,7 +1,7 @@
 {
   "schema": "vize.compatBaseline",
   "version": 1,
-  "vueTsc": "3.3.4",
+  "vueTsc": "3.3.11",
   "projects": {
     "create-vue": {
       "revision": "3ee62adffdcdfa4a37b2ed4e9c30636655d5fcd1",
