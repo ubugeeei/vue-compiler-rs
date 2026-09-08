@@ -211,29 +211,29 @@ catalogs:
       version: 1.78.0
   native-binaries:
     '@vizejs/native-darwin-arm64':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-darwin-x64':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-linux-arm64-gnu':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-linux-arm64-musl':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-linux-x64-gnu':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-linux-x64-musl':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-win32-arm64-msvc':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
     '@vizejs/native-win32-x64-msvc':
-      specifier: 0.404.3
-      version: 0.404.3
+      specifier: 0.404.4
+      version: 0.404.4
   nuxt-eslint-oracle:
     '@nuxt/eslint':
       specifier: 1.16.0

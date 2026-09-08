@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/musea-mcp-server",
-  "version": "0.404.3",
+  "version": "0.404.4",
   "description": "MCP server for building Vue.js design systems - component analysis, documentation, variant generation, and design tokens",
   "keywords": [
     "ai",

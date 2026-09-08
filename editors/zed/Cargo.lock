@@ -570,7 +570,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "vize-zed-extension"
-version = "0.404.3"
+version = "0.404.4"
 dependencies = [
  "zed_extension_api",
 ]
