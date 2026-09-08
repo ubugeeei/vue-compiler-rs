@@ -1998,14 +1998,18 @@ fn reject_stale_documented_differences(
     if stale.is_empty() {
         return Ok(());
     }
-    let examples = stale
+    let locations = stale
         .iter()
-        .take(3)
-        .map(|difference| format!("{}:{}:{}", difference.file, difference.line, difference.column))
+        .map(|difference| {
+            format!(
+                "{}:{}:{}",
+                difference.file, difference.line, difference.column
+            )
+        })
         .collect::<Vec<_>>()
-        .join(", ");
+        .join("\n- ");
     Err(format!(
-        "Documented typecheck difference ledger is stale for {project_id}: {} of {} entries did not reproduce; remove converged rows from tests/_fixtures/compat-documented-differences.json ({examples})",
+        "Documented typecheck difference ledger is stale for {project_id}: {} of {} entries did not reproduce; remove converged rows from tests/_fixtures/compat-documented-differences.json:\n- {locations}",
         stale.len(),
         expected.len(),
     ))

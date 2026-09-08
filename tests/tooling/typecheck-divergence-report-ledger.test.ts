@@ -28,12 +28,15 @@ const duplicateListenerDifference = {
     "Vize intentionally keeps listener directives out of the props literal.",
 };
 
-function writeDocumentedDifferences(fixture: ReturnType<typeof setup>) {
+function writeDocumentedDifferences(
+  fixture: ReturnType<typeof setup>,
+  differences = [duplicateListenerDifference],
+) {
   const ledgerPath = path.join(fixture.fixtureRoot, "documented-differences.json");
   writeJson(ledgerPath, {
     schema: "vize.compatDocumentedDifferences",
     version: 1,
-    differences: [duplicateListenerDifference],
+    differences,
   });
   return ledgerPath;
 }
@@ -61,13 +64,20 @@ test("typecheck divergence report accepts a reproducing documented difference", 
 test("typecheck divergence report rejects a stale documented difference", () => {
   const fixture = setup();
   try {
+    const secondStaleDifference = {
+      ...duplicateListenerDifference,
+      file: "src/Second.vue",
+      line: 4,
+      column: 2,
+    };
     const result = run(fixture, {}, [
       "--documented-differences",
-      writeDocumentedDifferences(fixture),
+      writeDocumentedDifferences(fixture, [duplicateListenerDifference, secondStaleDifference]),
     ]);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Documented typecheck difference ledger is stale for fixture/);
     assert.match(result.stderr, /src\/App\.vue:3:1/);
+    assert.match(result.stderr, /src\/Second\.vue:4:2/);
     assert.equal(
       fs.existsSync(path.join(fixture.reportDir, "fixture-typecheck-divergence.json")),
       false,
