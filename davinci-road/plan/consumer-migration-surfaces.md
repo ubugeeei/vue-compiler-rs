@@ -45,7 +45,7 @@ observational guard for planning only. It does not change rollout state.
 
 | consumer                   | stage/Davinci | preferred stage names | compat code names | old AST/Croquis | raw OXC | source/manifest | test/dev | surface files | scanned files |
 | -------------------------- | ------------: | --------------------: | ----------------: | --------------: | ------: | --------------: | -------: | ------------: | ------------: |
-| Compiler                   |          1101 |                   759 |               342 |             156 |     372 |             984 |      645 |           551 |           691 |
+| Compiler                   |          1119 |                   777 |               342 |             157 |     373 |            1000 |      649 |           555 |           695 |
 | Linter                     |           339 |                   339 |                 0 |             295 |     297 |             694 |      237 |           383 |           558 |
 | Typechecker                |           898 |                   250 |               648 |             399 |     187 |             812 |      672 |           479 |           689 |
 | Typechecker content-mapper |             9 |                     9 |                 0 |               0 |       0 |               9 |        0 |             8 |            20 |
@@ -60,14 +60,14 @@ Scope: build command plus atelier compiler crates. This is a lexical inventory, 
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| Davinci          |          23 |               6 |       17 |
-| S0               |         939 |             493 |      446 |
+| Davinci          |          27 |               9 |       18 |
+| S0               |         942 |             495 |      447 |
 | S1               |           5 |               1 |        4 |
-| S2               |          27 |              10 |       17 |
-| S1->S2           |         107 |              10 |       97 |
-| old AST/parser   |          84 |              64 |       20 |
+| S2               |          36 |              17 |       19 |
+| S1->S2           |         109 |              12 |       97 |
+| old AST/parser   |          85 |              65 |       20 |
 | Croquis analysis |          72 |              57 |       15 |
-| raw OXC          |         372 |             343 |       29 |
+| raw OXC          |         373 |             344 |       29 |
 
 #### Top source and manifest files
 
@@ -79,7 +79,7 @@ Scope: build command plus atelier compiler crates. This is a lexical inventory, 
 | `crates/vize_atelier_sfc/src/script/define_props_destructure/collector.rs:6` | source   | S0 2<br>raw OXC 15                                                                                   |    17 |
 | `crates/vize_atelier_core/src/steps/expression/prefix.rs:6`                  | source   | S0 1<br>Croquis analysis 1<br>raw OXC 14                                                             |    16 |
 
-Additional source/manifest rows are in the TSV: 320 omitted.
+Additional source/manifest rows are in the TSV: 323 omitted.
 
 #### Top test/dev files
 
@@ -91,7 +91,7 @@ Additional source/manifest rows are in the TSV: 320 omitted.
 | `crates/vize_atelier_sfc/src/compile_script/props/tests.rs:4` | test/dev | S0 15                                         |    15 |
 | `crates/vize_atelier_core/tests/s2_support/compare.rs:10`     | test/dev | Davinci 2<br>S0 4<br>S1 1<br>S2 1<br>S1->S2 3 |    11 |
 
-Additional test/dev rows are in the TSV: 259 omitted.
+Additional test/dev rows are in the TSV: 260 omitted.
 
 ### Linter
 

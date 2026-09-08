@@ -49,7 +49,7 @@ pub(super) fn try_emit_s2_vdom<'a>(
         op_count: s2.op_count,
         diagnostics: Default::default(),
         provenance: Default::default(),
-        scopes: Default::default(),
+        scopes: s2.scopes,
         texts: Default::default(),
         wrappers: Default::default(),
         for_wrappers: Default::default(),
@@ -121,7 +121,9 @@ fn op_is_supported(op: &Op<'_>) -> bool {
             element_bindings_are_supported(element) && region_is_supported(&element.children)
         }
         Op::Component(component) => component_is_supported(component),
-        Op::Comment(_) | Op::If(_) | Op::For(_) | Op::Slot(_) => false,
+        Op::If(if_op) => control_flow::if_is_supported(if_op),
+        Op::For(for_op) => control_flow::for_is_supported(for_op),
+        Op::Comment(_) | Op::Slot(_) => false,
     }
 }
 
@@ -329,6 +331,7 @@ fn event_option_modifiers_are_supported(modifiers: &[&str]) -> bool {
 
 #[cfg(test)]
 mod compat_tests;
+mod control_flow;
 #[cfg(test)]
 mod events_tests;
 #[cfg(test)]

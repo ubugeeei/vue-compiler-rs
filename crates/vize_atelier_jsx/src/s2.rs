@@ -6,22 +6,22 @@
 //! realization have not landed yet. P2-16 expands the admitted family until
 //! this is the authoritative JSX lowering.
 
-use vize_relief::{
-    ElementType, ExpressionNode, Namespace as ReliefNamespace, PropNode, RootNode,
-    TemplateChildNode,
-};
+use vize_davinci::id::NodeId;
+use vize_davinci::side_table::SideTable;
+use vize_relief::{ElementType, ExpressionNode, PropNode, RootNode, TemplateChildNode};
 use vize_s0::{Allocator, Box, Vec};
 use vize_s1_to_s2::lower::{LoweringFeatures, OpFamily};
 use vize_s2::expr::ExprRef;
 use vize_s2::op::{
-    Attribute, BindOp, BindingOp, ComponentOp, DynamicName, ElementOp, InterpolationOp, Namespace,
-    OnOp, Op, Region, TextOp,
+    Attribute, BindOp, BindingOp, DynamicName, InterpolationOp, OnOp, Op, Region, TextOp,
 };
+use vize_s2::scope::{ScopeFacts, ScopeTag};
 
+use self::control_flow::{lower_for, lower_if};
 use self::directives::lower_vue_directive;
+use self::element::lower_element;
 use self::model::lower_model;
-use self::native_model::native_model_kind;
-use self::slots::{has_slot_content, lower_slot_content, slot_template_span};
+use self::slots::lower_slot_content;
 
 /// A JSX render root represented as S2 operations.
 #[derive(Debug)]
@@ -32,6 +32,8 @@ pub struct JsxS2Root<'a> {
     pub root: Region<'a>,
     /// Number of operations, including attached bindings when they land.
     pub op_count: u32,
+    /// Hygiene scope facts keyed by S2 page-order ids.
+    pub scopes: SideTable<ScopeFacts>,
     /// S2 operation families observed while projecting this JSX root.
     pub features: LoweringFeatures,
 }
@@ -52,6 +54,50 @@ pub enum S2Refusal {
     CompoundExpression,
 }
 
+struct ProjectCx {
+    op_count: u32,
+    next_scope: u32,
+    scopes: SideTable<ScopeFacts>,
+    features: LoweringFeatures,
+}
+
+impl ProjectCx {
+    fn new() -> Self {
+        Self {
+            op_count: 0,
+            next_scope: 0,
+            scopes: SideTable::new(),
+            features: LoweringFeatures::EMPTY,
+        }
+    }
+
+    fn mint_op(&mut self) -> Option<NodeId> {
+        let id = NodeId::from_index(self.op_count);
+        self.op_count = self.op_count.saturating_add(1);
+        id
+    }
+
+    fn skip_ops(&mut self, count: u32) {
+        self.op_count = self.op_count.saturating_add(count);
+    }
+
+    fn observe(&mut self, family: OpFamily) {
+        self.features = self.features.observing(family);
+    }
+
+    fn mint_scope(&mut self) -> ScopeTag {
+        let tag = ScopeTag::from_index(self.next_scope);
+        self.next_scope = self.next_scope.saturating_add(1);
+        tag
+    }
+
+    fn attach_scope(&mut self, node: Option<NodeId>, facts: ScopeFacts) {
+        if let Some(id) = node {
+            self.scopes.insert(id, facts);
+        }
+    }
+}
+
 /// Project the already-lowered JSX root into the initial, lossless S2 subset.
 ///
 /// The projection keeps absolute source spans and parses interpolation text via
@@ -62,37 +108,37 @@ pub fn try_lower_root<'a>(
     source: &'a str,
     root: &RootNode<'a>,
 ) -> Result<JsxS2Root<'a>, S2Refusal> {
-    let mut op_count = 0;
-    let mut features = LoweringFeatures::EMPTY;
-    let ops = lower_children(allocator, &root.children, &mut op_count, &mut features)?;
+    let mut cx = ProjectCx::new();
+    let ops = lower_children(allocator, source, &root.children, &mut cx)?;
     Ok(JsxS2Root {
         source,
         root: Region { ops },
-        op_count,
-        features,
+        op_count: cx.op_count,
+        scopes: cx.scopes,
+        features: cx.features,
     })
 }
 
 fn lower_children<'a>(
     allocator: &'a Allocator,
+    source: &'a str,
     children: &[TemplateChildNode<'a>],
-    op_count: &mut u32,
-    features: &mut LoweringFeatures,
+    cx: &mut ProjectCx,
 ) -> Result<Vec<'a, Op<'a>>, S2Refusal> {
     let mut ops = Vec::new_in(&allocator);
     for child in children {
-        ops.push(lower_child(allocator, child, op_count, features)?);
+        ops.push(lower_child(allocator, source, child, cx)?);
     }
     Ok(ops)
 }
 
 fn lower_child<'a>(
     allocator: &'a Allocator,
+    source: &'a str,
     child: &TemplateChildNode<'a>,
-    op_count: &mut u32,
-    features: &mut LoweringFeatures,
+    cx: &mut ProjectCx,
 ) -> Result<Op<'a>, S2Refusal> {
-    *op_count = op_count.saturating_add(1);
+    let node = cx.mint_op();
     match child {
         TemplateChildNode::Text(text) => Ok(Op::Text(Box::new_in(
             TextOp {
@@ -111,78 +157,14 @@ fn lower_child<'a>(
                 &allocator,
             )))
         }
-        TemplateChildNode::Element(element) => {
-            lower_element(allocator, element, op_count, features)
-        }
-        TemplateChildNode::If(_)
-        | TemplateChildNode::IfBranch(_)
-        | TemplateChildNode::For(_)
+        TemplateChildNode::Element(element) => lower_element(allocator, source, element, cx),
+        TemplateChildNode::If(if_node) => lower_if(allocator, source, if_node, cx),
+        TemplateChildNode::For(for_node) => lower_for(allocator, source, for_node, node, cx),
+        TemplateChildNode::IfBranch(_)
         | TemplateChildNode::TextCall(_)
         | TemplateChildNode::CompoundExpression(_)
         | TemplateChildNode::Hoisted(_) => Err(S2Refusal::TransformedChild),
         TemplateChildNode::Comment(_) => Err(S2Refusal::UnsupportedChild),
-    }
-}
-
-fn lower_element<'a>(
-    allocator: &'a Allocator,
-    element: &vize_relief::ElementNode<'a>,
-    op_count: &mut u32,
-    features: &mut LoweringFeatures,
-) -> Result<Op<'a>, S2Refusal> {
-    let native_element_model_kind = native_model_kind(element);
-    let props = lower_props(
-        allocator,
-        &element.props,
-        element.tag_type,
-        native_element_model_kind,
-        features,
-    )?;
-    *op_count = op_count.saturating_add(props.binding_count);
-    let children = Region {
-        ops: lower_children(allocator, &element.children, op_count, features)?,
-    };
-    match element.tag_type {
-        ElementType::Element => Ok(Op::Element(Box::new_in(
-            ElementOp {
-                tag: element.tag,
-                namespace: namespace(element.ns),
-                attributes: props.attributes,
-                bindings: props.bindings,
-                children,
-                span: element.loc.span,
-            },
-            &allocator,
-        ))),
-        ElementType::Component => {
-            *features = features.observing(OpFamily::SlotCarrier);
-            Ok(Op::Component(Box::new_in(
-                ComponentOp {
-                    name: element.tag,
-                    attributes: props.attributes,
-                    bindings: props.bindings,
-                    children,
-                    span: element.loc.span,
-                },
-                &allocator,
-            )))
-        }
-        ElementType::Template if has_slot_content(&props.bindings) => {
-            *features = features.observing(OpFamily::SlotCarrier);
-            let span = slot_template_span(element.loc.span, &props.bindings);
-            Ok(Op::Element(Box::new_in(
-                ElementOp {
-                    tag: element.tag,
-                    namespace: namespace(element.ns),
-                    attributes: props.attributes,
-                    bindings: props.bindings,
-                    children,
-                    span,
-                },
-                &allocator,
-            )))
-        }
-        ElementType::Slot | ElementType::Template => Err(S2Refusal::UnsupportedElement),
     }
 }
 
@@ -197,7 +179,7 @@ fn lower_props<'a>(
     props: &[PropNode<'a>],
     element_type: ElementType,
     native_model_kind: Option<&'a str>,
-    features: &mut LoweringFeatures,
+    cx: &mut ProjectCx,
 ) -> Result<LoweredProps<'a>, S2Refusal> {
     let mut attributes = Vec::new_in(&allocator);
     let mut bindings = Vec::new_in(&allocator);
@@ -214,7 +196,7 @@ fn lower_props<'a>(
                     directive,
                     element_type,
                     native_model_kind,
-                    features,
+                    &mut cx.features,
                 )?);
             }
         }
@@ -329,20 +311,16 @@ pub(super) fn lower_expression<'a>(
     }
 }
 
-const fn namespace(namespace: ReliefNamespace) -> Namespace {
-    match namespace {
-        ReliefNamespace::Html => Namespace::Html,
-        ReliefNamespace::Svg => Namespace::Svg,
-        ReliefNamespace::MathMl => Namespace::MathMl,
-    }
-}
-
+#[cfg(test)]
+mod control_flow_tests;
 #[cfg(test)]
 mod native_model_tests;
 #[cfg(test)]
 mod tests;
 
+mod control_flow;
 mod directives;
+mod element;
 mod model;
 mod native_model;
 mod slots;
