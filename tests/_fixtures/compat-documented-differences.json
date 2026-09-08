@@ -91,20 +91,6 @@
     },
     {
       "project": "reka-ui",
-      "file": "packages/core/src/Editable/EditableInput.vue",
-      "severity": "error",
-      "line": 69,
-      "column": 6,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
       "file": "packages/core/src/Editable/story/EditableChromatic.story.vue",
       "severity": "error",
       "line": 12,
@@ -116,48 +102,6 @@
       },
       "issue": 5722,
       "reason": "vue-tsc applies the Histoire Story layout prop surface differently for this story file; the exact baseline-only row is tracked for follow-up under issue 5722."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/Listbox/ListboxContent.vue",
-      "severity": "error",
-      "line": 56,
-      "column": 8,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/Listbox/ListboxContent.vue",
-      "severity": "error",
-      "line": 57,
-      "column": 8,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/Listbox/ListboxFilter.vue",
-      "severity": "error",
-      "line": 110,
-      "column": 6,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
     },
     {
       "project": "reka-ui",
@@ -200,34 +144,6 @@
       },
       "issue": 5722,
       "reason": "vue-tsc applies the Histoire Story layout prop surface differently for this story file; the exact baseline-only row is tracked for follow-up under issue 5722."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/PinInput/PinInputInput.vue",
-      "severity": "error",
-      "line": 262,
-      "column": 6,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/PinInput/PinInputInput.vue",
-      "severity": "error",
-      "line": 263,
-      "column": 6,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
     },
     {
       "project": "reka-ui",
@@ -368,76 +284,6 @@
       },
       "issue": 5722,
       "reason": "vue-tsc reports this baseline-only real-project diagnostic while Vize accepts the same source; the exact row is tracked for follow-up under issue 5722."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/TagsInput/TagsInputInput.vue",
-      "severity": "error",
-      "line": 163,
-      "column": 6,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/TagsInput/TagsInputInput.vue",
-      "severity": "error",
-      "line": 165,
-      "column": 6,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/Tree/TreeItem.vue",
-      "severity": "error",
-      "line": 198,
-      "column": 8,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/Tree/TreeItem.vue",
-      "severity": "error",
-      "line": 199,
-      "column": 8,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
-      "project": "reka-ui",
-      "file": "packages/core/src/Tree/TreeRoot.vue",
-      "severity": "error",
-      "line": 288,
-      "column": 8,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
     }
   ]
 }
