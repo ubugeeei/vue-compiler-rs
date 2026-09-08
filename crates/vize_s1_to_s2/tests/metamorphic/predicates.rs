@@ -32,6 +32,15 @@ pub fn has_slot_attr(element: &Element<'_>) -> bool {
     })
 }
 
+fn is_branch_key_candidate(name: &str) -> bool {
+    matches!(name, "key" | ":key" | ".key")
+        || name.starts_with(":key.")
+        || name == "v-bind:key"
+        || name.starts_with("v-bind:key.")
+        || name.starts_with(":[")
+        || name.starts_with("v-bind:[")
+}
+
 /// A directive-shaped attribute name (any form the S1→S2 classifier
 /// treats as non-static, plus the `.prop` shorthand).
 fn is_directive_name(name: &str) -> bool {
@@ -113,6 +122,15 @@ pub fn wrap_skip(
     }
     if element.tag() == "template" {
         return Some("template-tag");
+    }
+    if element
+        .open
+        .attrs
+        .iter()
+        .enumerate()
+        .any(|(attr_index, attr)| attr_index != index && is_branch_key_candidate(attr.name.text))
+    {
+        return Some("branch-key-carrier");
     }
     if parent.component || parent.slot_template {
         return Some("slot-content");

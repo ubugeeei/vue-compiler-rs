@@ -247,8 +247,8 @@ fn both_lanes_flag_the_scoped_model() {
 #[test]
 fn both_lanes_flag_the_duplicate_key() {
     // End-to-end wording check on the battery's collision template: the
-    // legacy transform reports `VIfSameKey`, the S2 pass appends the
-    // same text to the unified channel.
+    // legacy transform reports `VIfSameKey`, the S2 lowering appends
+    // the same text to the unified channel.
     let (_, source) = BATTERY
         .iter()
         .find(|(name, _)| *name == "duplicate-keys")
@@ -281,7 +281,7 @@ fn both_lanes_flag_the_duplicate_key() {
             .iter()
             .any(|diagnostic| diagnostic.message.as_str()
                 == vize_s1_to_s2::pass::vif::SAME_KEY_MESSAGE),
-        "the S2 pass must flag the collision: {:?}",
+        "the S2 lowering must flag the collision: {:?}",
         lowered.diagnostics
     );
 }

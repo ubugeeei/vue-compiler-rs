@@ -277,12 +277,21 @@ fn the_exclusion_predicates_refuse_the_documented_unsafe_sites() {
             .collect::<Vec<_>>()
     };
     use sites::Kind;
-    // A template target refuses the wrap; a slot child refuses it too.
+    // A template target refuses the wrap; a keyed branch carrier and a
+    // slot child refuse it too.
     assert_eq!(
         skips("<template><template v-if=\"c\">x</template></template>"),
         vec![
             (Kind::Wrap, "template-tag"),
             (Kind::Split, "no-split-point")
+        ]
+    );
+    assert_eq!(
+        skips("<template><a v-if=\"prev\" key=\"prev\">p</a></template>"),
+        vec![
+            (Kind::Reorder, "directive-attr"),
+            (Kind::Wrap, "branch-key-carrier"),
+            (Kind::Split, "no-split-point"),
         ]
     );
     assert_eq!(
