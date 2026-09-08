@@ -28,6 +28,6 @@
     "vite-plus": "catalog:vite-stack",
     "vue": "catalog:vue-beta",
     "vue-eslint-parser": "10.4.1",
-    "vue-tsc": "3.3.4"
+    "vue-tsc": "3.3.11"
   }
 }

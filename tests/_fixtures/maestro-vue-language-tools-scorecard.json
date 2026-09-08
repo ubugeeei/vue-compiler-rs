@@ -8,7 +8,7 @@
     "versionEvidence": [
       {
         "file": "pnpm-workspace.yaml",
-        "contains": ["vue-tsc: \"3.3.4\"", "typescript: \"6.0.3\""]
+        "contains": ["vue-tsc: \"3.3.11\"", "typescript: \"6.0.3\""]
       },
       {
         "file": "tests/package.json",
