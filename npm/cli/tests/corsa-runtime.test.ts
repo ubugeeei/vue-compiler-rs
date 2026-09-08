@@ -66,6 +66,49 @@ test("packed CLI prefers its compatible runtime over an older project runtime", 
   }
 });
 
+test("content mapper package wrapper reaches the native CLI bridge", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vize-cli-content-mapper-"));
+  try {
+    const packageRoot = path.join(root, "node_modules", "vize");
+    writeJson(path.join(packageRoot, "package.json"), {
+      name: "vize",
+      type: "module",
+    });
+    writeNativeStub(
+      packageRoot,
+      `exports.runCli = (args) => {
+  process.stdout.write(JSON.stringify({
+    args,
+    corsaPath: process.env.CORSA_PATH || null
+  }));
+};
+`,
+    );
+
+    const packageDir = path.dirname(fileURLToPath(import.meta.url));
+    const builtCli = path.join(packageDir, "../dist/cli.mjs");
+    const installedCli = path.join(packageRoot, "dist", "cli.mjs");
+    fs.mkdirSync(path.dirname(installedCli), { recursive: true });
+    fs.copyFileSync(builtCli, installedCli);
+
+    const environment = { ...process.env };
+    for (const name of publicCorsaEnvironmentVariables) delete environment[name];
+    const run = spawnSync(process.execPath, [installedCli, "content-mapper"], {
+      cwd: root,
+      encoding: "utf8",
+      env: environment,
+    });
+
+    assert.equal(run.status, 0, run.stderr);
+    assert.deepEqual(JSON.parse(run.stdout), {
+      args: ["content-mapper"],
+      corsaPath: null,
+    });
+  } finally {
+    fs.rmSync(root, { force: true, recursive: true });
+  }
+});
+
 test("all public runtime overrides retain precedence", () => {
   const fixture = createRuntimeFixture();
   try {
@@ -226,7 +269,7 @@ function writeTypeScriptRuntime(
   return runtime;
 }
 
-function writeNativeStub(packageRoot: string): void {
+function writeNativeStub(packageRoot: string, source?: string): void {
   const nativeRoot = path.join(packageRoot, "node_modules", "@vizejs", "native");
   writeJson(path.join(nativeRoot, "package.json"), {
     main: "index.cjs",
@@ -234,7 +277,8 @@ function writeNativeStub(packageRoot: string): void {
   });
   fs.writeFileSync(
     path.join(nativeRoot, "index.cjs"),
-    `const { spawnSync } = require("node:child_process");
+    source ??
+      `const { spawnSync } = require("node:child_process");
 exports.runCli = (args) => {
   const selectedRuntime = process.env.CORSA_PATH || process.env.PROJECT_LOCAL_TSGO;
   const probe = spawnSync(process.execPath, [selectedRuntime, "--api", "--async"], {

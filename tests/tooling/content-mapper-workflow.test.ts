@@ -72,6 +72,7 @@ const REQUIRED_TRIGGER_PATHS = [
   "npm/cli/bin/vize",
   "npm/cli/package.json",
   "npm/cli/src/**",
+  "npm/cli/tests/**",
   "npm/native/**",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
