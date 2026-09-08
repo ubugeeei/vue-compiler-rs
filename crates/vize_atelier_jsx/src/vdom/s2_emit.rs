@@ -207,8 +207,16 @@ fn model_is_bare_native_element(element: &ElementOp<'_>, model: &ModelOp<'_>) ->
         .iter()
         .any(|attribute| attribute.name == "element-kind" && attribute.value == Some(element.tag))
         && model.attributes.iter().all(|attribute| {
-            attribute.name == "element-kind" && attribute.value == Some(element.tag)
+            if attribute.name == "element-kind" {
+                attribute.value == Some(element.tag)
+            } else {
+                attribute.value.is_none() && native_model_modifier_is_supported(attribute.name)
+            }
         })
+}
+
+fn native_model_modifier_is_supported(modifier: &str) -> bool {
+    matches!(modifier, "lazy" | "number" | "trim")
 }
 
 fn bind_may_set_type(binding: &BindingOp<'_>) -> bool {

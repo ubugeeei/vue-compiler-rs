@@ -42,6 +42,25 @@ fn text_input_v_model_emits_from_s2() {
 }
 
 #[test]
+fn input_v_model_modifiers_emit_from_s2() {
+    let source = "const A = () => <input v-model_number_lazy={value} />;";
+    let component = compile_native_model_from_s2(source);
+    assert_eq!(
+        component.preamble.as_str(),
+        "import { vModelText as _vModelText, withDirectives as _withDirectives, \
+         openBlock as _openBlock, createElementBlock as _createElementBlock } from \"vue\"\n"
+    );
+    assert_eq!(
+        component.code.as_str(),
+        "export function render(_ctx, _cache) {\n  return _withDirectives((_openBlock(), \
+         _createElementBlock(\"input\", {\n    \"onUpdate:modelValue\": $event => ((value) = \
+         $event)\n  }, null, 8 /* PROPS */, [\"onUpdate:modelValue\"])), [\n    [\n      \
+         _vModelText,\n      value,\n      void 0,\n      {\n        number: true,\n        lazy: \
+         true\n      }\n    ]\n  ])\n}"
+    );
+}
+
+#[test]
 fn checkbox_input_v_model_emits_from_s2() {
     let source = "const A = () => <input type=\"checkbox\" v-model={checked} />;";
     let component = compile_native_model_from_s2(source);
