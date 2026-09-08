@@ -59,6 +59,25 @@ export const IN_CLASS_BASELINES_BY_SURFACE = {
   "large-check": ["verter-tsc", "golar-typecheck"],
 };
 
+function assertRequiredEngineVariants(surface) {
+  const expected = ENGINE_CLASSES_BY_SURFACE[surface.id];
+  if (expected == null && !surface.requireEngineVariants) {
+    return;
+  }
+  if (expected == null) {
+    throw new Error(
+      `compare-tools: ${surface.id} requested engine-variant coverage but has no engine class map`,
+    );
+  }
+  const actualIds = new Set(surface.variants.map((variant) => variant.id));
+  const missing = Object.keys(expected).filter((id) => !actualIds.has(id));
+  if (missing.length > 0) {
+    throw new Error(
+      `compare-tools: ${surface.id} is missing required engine-class variants: ${missing.join(", ")}`,
+    );
+  }
+}
+
 export function formatSpeedup(value) {
   if (!Number.isFinite(value)) {
     return "n/a";
@@ -144,6 +163,8 @@ export function rankWithinEngineClasses(surface) {
  * Attach the primary speedup, refusing to compute one across engine classes.
  */
 export function createSurface(surface) {
+  assertRequiredEngineVariants(surface);
+  const { requireEngineVariants: _requireEngineVariants, ...outputSurface } = surface;
   const vizeMax = getVariant(surface, surface.vizeMaxId);
   const comparable = vizeMax != null && vizeMax.medianMs > 0;
   const { crossEngine, inClass, baseline } = resolveSpeedupBaseline(surface);
@@ -156,7 +177,7 @@ export function createSurface(surface) {
   }
 
   return {
-    ...surface,
+    ...outputSurface,
     // `null`, not NaN: NaN serialises to `null` in the JSON artifact anyway, so
     // the in-memory value must say the same thing the artifact says.
     primarySpeedup: ranked ? baseline.medianMs / vizeMax.medianMs : null,
