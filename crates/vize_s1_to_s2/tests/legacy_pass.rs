@@ -1,7 +1,6 @@
 //! Vue 2 sugar legalization (P2-9 installment 7): the pass rewrites
 //! dialect payloads into the Vue 3 surface. Vue 3 model-free artifacts
-//! skip the `v-model` diagnostic pass, and compound-free artifacts skip
-//! the text pass.
+//! skip the `v-model` diagnostic pass; text facts are lowering-published.
 
 mod support;
 
@@ -34,7 +33,7 @@ fn vue3_model_free_legacy_spellings_skip_the_model_pass() {
         assert_eq!(lowered.caps, LegacyCaps::VUE3);
         // `Comp` is a slot carrier, so the slot pass is planned; the
         // `.sync` spelling lowers to no `ui.model`, so the model pass is
-        // not. Compound text is absent too. Two walks: slot, analysis.
+        // not. Two walks: slot, analysis.
         assert_eq!(
             Folio::print_to_string(budget, FolioMode::Full).as_str(),
             "[budget-observer]\nwalks=2\npasses=2\nanalyses=0\npipelines=1\nfailures=0\n\n"

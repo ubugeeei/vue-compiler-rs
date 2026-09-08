@@ -30,13 +30,14 @@ use vize_s2::folio::DisegnoFolio;
 /// Controls whose absent families the planner is supposed to save walks on.
 ///
 /// `planned_passes` includes the optional static analysis pass because DOM
-/// emission consumes it when `hoist_static` is left enabled. A compound text
-/// run buys back the text pass; a lone interpolation does not.
+/// emission consumes it when `hoist_static` is left enabled. Compound text
+/// facts are lowering-published, so a compound run no longer buys a
+/// transform pass.
 const DECLINED_PASS_CASES: &[(&str, &str, u32)] = &[
     ("plain element", "<div class=\"a\">text</div>", 1),
     ("nested elements", "<section><p>a</p><p>b</p></section>", 1),
     ("lone interpolation", "<p>{{ msg }}</p>", 1),
-    ("compound interpolation", "<p>{{ msg }} tail</p>", 2),
+    ("compound interpolation", "<p>{{ msg }} tail</p>", 1),
     (
         "bind and on",
         "<button :id=\"id\" @click=\"go\">x</button>",
@@ -152,21 +153,23 @@ fn an_erroring_spelling_that_mints_no_op_leaves_the_bit_clear() {
 fn a_family_free_template_sets_no_bit() {
     for (name, source, expected_passes) in DECLINED_PASS_CASES {
         let features = features_of(source);
-        if *expected_passes == 1 {
+        if *name == "compound interpolation" {
+            assert!(
+                features.has_text_compounds(),
+                "{name} should observe compound text facts"
+            );
+            assert!(!features.has_if_ops());
+            assert!(!features.has_for_ops());
+            assert!(!features.has_slot_carriers());
+            assert!(!features.has_model_bindings());
+        } else if *expected_passes == 1 {
             assert_eq!(
                 features,
                 LoweringFeatures::EMPTY,
                 "{name} should reach the planner with no family claimed",
             );
         } else {
-            assert!(
-                features.has_text_compounds(),
-                "{name} should claim the text pass and no structural family"
-            );
-            assert!(!features.has_if_ops());
-            assert!(!features.has_for_ops());
-            assert!(!features.has_slot_carriers());
-            assert!(!features.has_model_bindings());
+            unreachable!("{name} has no non-structural planned pass case");
         }
     }
 }
@@ -253,13 +256,13 @@ fn declining_a_pass_changes_no_product() {
             planned_passes, *expected_planned_passes,
             "{name}: planned pass count",
         );
-        assert_eq!(forced_passes, 6, "{name}: the full table is six passes");
+        assert_eq!(forced_passes, 5, "{name}: the full table is five passes");
     }
 }
 
 /// The headline measurement, kept beside the claim it supports.
 #[test]
-fn a_family_free_template_plans_one_pass_not_six() {
+fn a_family_free_template_plans_one_pass_not_five() {
     let (_, passes) = run("<div class=\"a\"><span>b</span></div>", false);
     assert_eq!(passes, 1);
 }

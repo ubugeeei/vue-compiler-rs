@@ -72,19 +72,20 @@
 //! equal to nothing, and emittable only byte-verbatim-or-refusal — so
 //! the rebuilt [`OpaqueExpr::source`] is a *display* form, and DOM
 //! realization (P2-11) compiles from the recorded parts instead
-//! ([`TextParts`], validated and published by `pass::text`). The rebuild
-//! spelling is canonical template syntax — static parts verbatim,
-//! dynamic parts as `{{ <trimmed> }}` — shared verbatim with the pass's
-//! re-derivation ([`rebuild_source`], the one-rule-two-sides
-//! discipline). Merging never crosses a comment, a dropped node, or any
-//! source gap: runs extend only over span-contiguous children, so the
-//! merged span is the authored bytes exactly.
+//! ([`TextParts`], validated when attached to the lowered compound). The
+//! rebuild spelling is canonical template syntax — static parts
+//! verbatim, dynamic parts as `{{ <trimmed> }}` — with one shared rule
+//! ([`rebuild_source`]). Merging never crosses a comment, a dropped node,
+//! or any source gap: runs extend only over span-contiguous children, so
+//! the merged span is the authored bytes exactly.
 //!
 //! [`OpaqueExpr::source`]: vize_s2::expr::OpaqueExpr::source
 
 use alloc::vec::Vec as StdVec;
 
+use vize_davinci::id::NodeId;
 use vize_s0::{Span, String};
+use vize_s2::op::Op;
 
 mod condense;
 mod run;
@@ -108,13 +109,62 @@ pub struct TextPart {
 }
 
 /// The recorded parts of one merged mixed run, keyed by the compound
-/// `ui.interpolation` op's id ([`crate::lower::Lowered::texts`]). The
-/// `pass::text` consumption validates every entry against the op it
-/// keys and publishes the consumed view.
+/// `ui.interpolation` op's id ([`crate::lower::Lowered::texts`]). These
+/// are already the consumed view: lowering validates every entry against
+/// the op span when it attaches the fact.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextParts {
     /// The parts, in document order.
     pub parts: StdVec<TextPart>,
+}
+
+impl TextParts {
+    /// Number of dynamic expression parts.
+    #[must_use]
+    pub(crate) fn dynamic_count(&self) -> usize {
+        self.parts.iter().filter(|part| part.dynamic).count()
+    }
+
+    /// Validate the compound laws while the owning op span is available.
+    ///
+    /// A failure here is a compiler bug, not a user diagnostic: every
+    /// mixed run must hold at least two parts with one dynamic member,
+    /// static neighbours are fused, parts tile the owning op span, and
+    /// the canonical rebuild is the spellable compound source.
+    pub(crate) fn assert_compound_laws(&self, id: NodeId, span: Span, source: &str) {
+        let dynamic = self.dynamic_count();
+        assert!(
+            self.parts.len() >= 2 && dynamic >= 1,
+            "compound law broken: op {id} records {} parts ({dynamic} dynamic) — a lone node never merges",
+            self.parts.len(),
+        );
+        assert!(
+            self.parts
+                .windows(2)
+                .all(|pair| pair[0].dynamic || pair[1].dynamic),
+            "compound law broken: op {id} holds adjacent static parts — the lowering fuses them",
+        );
+        let mut cursor = span.start;
+        for part in &self.parts {
+            assert!(
+                part.span.start == cursor,
+                "compound law broken: op {id}'s parts do not tile its span (gap at {cursor})",
+            );
+            cursor = part.span.end;
+        }
+        assert!(
+            cursor == span.end,
+            "compound law broken: op {id}'s parts end at {cursor}, its span at {}",
+            span.end,
+        );
+        let rebuilt = rebuild_source(&self.parts);
+        assert!(
+            rebuilt.as_str() == source,
+            "compound law broken: op {id}'s source {:?} does not rebuild from its parts {:?}",
+            source,
+            rebuilt,
+        );
+    }
 }
 
 const _: () = {
@@ -151,6 +201,32 @@ pub fn rebuild_source(parts: &[TextPart]) -> String {
     }
     out
 }
+
+#[cfg(debug_assertions)]
+pub(crate) fn debug_assert_text_family_gaps(ops: &[Op<'_>]) {
+    for pair in ops.windows(2) {
+        let [prev, next] = pair else {
+            continue;
+        };
+        let prev_end = match prev {
+            Op::Text(text) => text.span.end,
+            Op::Interpolation(interpolation) => interpolation.span.end,
+            _ => continue,
+        };
+        let next_start = match next {
+            Op::Text(text) => text.span.start,
+            Op::Interpolation(interpolation) => interpolation.span.start,
+            _ => continue,
+        };
+        debug_assert!(
+            prev_end < next_start,
+            "compound law broken: adjacent text-family ops touch at offset {prev_end} — mergeable adjacency must not survive the lowering",
+        );
+    }
+}
+
+#[cfg(not(debug_assertions))]
+pub(crate) fn debug_assert_text_family_gaps(_: &[Op<'_>]) {}
 
 pub(crate) fn legacy_slot_filler_text(text: &str) -> bool {
     if text.trim().is_empty() {

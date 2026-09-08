@@ -3,10 +3,10 @@
 
 use super::{
     FOR_OPS, IF_OPS, LEGACY_SUGAR, MODEL_BINDINGS, PLAN_COUNT, PLANS, SELECTABLE, SLOT_CARRIERS,
-    STATIC_ANALYSIS, TEXT_COMPOUNDS, mask_for, pipeline_for_profile, plan_for_mask,
+    STATIC_ANALYSIS, mask_for, pipeline_for_profile, plan_for_mask,
 };
 use crate::lower::{LegacyCaps, LoweringFeatures, OpFamily};
-use crate::pass::{TRANSFORM, TRANSFORM_PASSES, TransformProfile, hoist, legacy, text, vmodel};
+use crate::pass::{TRANSFORM, TRANSFORM_PASSES, TransformProfile, hoist, legacy, vmodel};
 use vize_s0::config::VueVersion;
 
 const EVERY: [OpFamily; 5] = [
@@ -105,11 +105,11 @@ fn a_plans_walk_count_is_its_pass_count() {
 }
 
 #[test]
-fn vue3_with_every_family_is_the_landed_six_pass_table() {
+fn vue3_with_every_family_is_the_landed_five_pass_table() {
     let pipeline = default_pipeline_for(LegacyCaps::VUE3, every_family());
     assert_eq!(pipeline, TRANSFORM);
-    assert_eq!(pipeline.passes.len(), 6);
-    assert_eq!(pipeline.group_count(), 6);
+    assert_eq!(pipeline.passes.len(), 5);
+    assert_eq!(pipeline.group_count(), 5);
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn vue3_omits_the_model_pass_when_lowering_found_no_model_ops() {
 #[test]
 fn vue3_keeps_the_model_pass_when_diagnostics_may_need_it() {
     let pipeline = default_pipeline_for(LegacyCaps::VUE3, every_family());
-    assert_eq!(pipeline.passes[4], vmodel::DESC);
+    assert_eq!(pipeline.passes[3], vmodel::DESC);
 }
 
 /// The headline of this installment: an artifact with none of the
@@ -157,18 +157,18 @@ fn each_structural_family_buys_back_exactly_its_own_pass() {
 }
 
 #[test]
-fn vue3_keeps_the_text_pass_when_compounds_need_it() {
+fn vue3_does_not_plan_a_text_walk_when_compounds_need_facts() {
     let pipeline = default_pipeline_for(LegacyCaps::VUE3, only(OpFamily::TextCompound));
-    assert_names(&pipeline, &[text::NAME, hoist::NAME]);
+    assert_names(&pipeline, &[hoist::NAME]);
 }
 
 #[test]
 fn vue3_omits_static_analysis_when_dom_emit_cannot_use_it() {
     let profile = TransformProfile::DEFAULT.without_static_analysis();
     let pipeline = pipeline_for_profile(LegacyCaps::VUE3, every_family(), profile);
-    assert_eq!(pipeline.passes.len(), 5);
+    assert_eq!(pipeline.passes.len(), 4);
     assert!(!pipeline.passes.iter().any(|pass| pass.name == hoist::NAME));
-    assert_eq!(pipeline.passes[4], vmodel::DESC);
+    assert_eq!(pipeline.passes[3], vmodel::DESC);
 
     let bare = pipeline_for_profile(LegacyCaps::VUE3, LoweringFeatures::EMPTY, profile);
     assert_names(&bare, &[]);
@@ -179,8 +179,8 @@ fn vue3_omits_static_analysis_when_dom_emit_cannot_use_it() {
 fn vue2_legacy_sugar_still_prepends_the_selected_vue3_shape() {
     let caps = LegacyCaps::for_version(VueVersion::V2);
     let full = default_pipeline_for(caps, every_family());
-    assert_eq!(full.passes.len(), 7);
-    assert_eq!(full.group_count(), 7);
+    assert_eq!(full.passes.len(), 6);
+    assert_eq!(full.group_count(), 6);
     assert_eq!(full.passes[0], legacy::DESC);
 
     let bare = default_pipeline_for(caps, LoweringFeatures::EMPTY);
@@ -193,7 +193,7 @@ fn vue2_legacy_sugar_preserves_the_dom_emit_static_analysis_choice() {
     let profile = TransformProfile::DEFAULT.without_static_analysis();
 
     let full = pipeline_for_profile(caps, every_family(), profile);
-    assert_eq!(full.passes.len(), 6);
+    assert_eq!(full.passes.len(), 5);
     assert!(!full.passes.iter().any(|pass| pass.name == hoist::NAME));
 
     let bare = pipeline_for_profile(caps, LoweringFeatures::EMPTY, profile);
@@ -202,14 +202,13 @@ fn vue2_legacy_sugar_preserves_the_dom_emit_static_analysis_choice() {
 
 #[test]
 fn the_mask_reads_one_bit_per_selectable_pass() {
-    assert_eq!(SELECTABLE.len(), 7);
-    assert_eq!(PLAN_COUNT, 128);
+    assert_eq!(SELECTABLE.len(), 6);
+    assert_eq!(PLAN_COUNT, 64);
     let bits = [
         LEGACY_SUGAR,
         IF_OPS,
         FOR_OPS,
         SLOT_CARRIERS,
-        TEXT_COMPOUNDS,
         MODEL_BINDINGS,
         STATIC_ANALYSIS,
     ];
@@ -222,7 +221,7 @@ fn the_mask_reads_one_bit_per_selectable_pass() {
             every_family(),
             TransformProfile::DEFAULT
         ),
-        u8::try_from(PLAN_COUNT - 1).expect("seven bits"),
+        u8::try_from(PLAN_COUNT - 1).expect("six bits"),
     );
     assert_eq!(
         mask_for(

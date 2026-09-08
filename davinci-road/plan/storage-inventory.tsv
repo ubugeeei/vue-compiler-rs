@@ -134,7 +134,7 @@ s1_to_s2	-	crates/vize_s1_to_s2/src/pass/legacy/on.rs	0	0	0	0	1	2	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/pass/legacy/slot.rs	0	0	0	0	1	2	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/pass/legacy/sync.rs	0	0	1	2	1	5	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/pass/legacy/tree.rs	0	0	0	0	1	1	0	0
-s1_to_s2	pass	crates/vize_s1_to_s2/src/pass/text.rs	1	4	1	1	0	0	0	0
+s1_to_s2	pass	crates/vize_s1_to_s2/src/pass/text.rs	1	1	0	0	0	0	0	0
 s1_to_s2	pass	crates/vize_s1_to_s2/src/pass/vfor.rs	1	5	1	3	0	0	0	0
 s1_to_s2	pass	crates/vize_s1_to_s2/src/pass/vif.rs	1	5	1	6	0	0	0	0
 s1_to_s2	-	crates/vize_s1_to_s2/src/pass/vif/keys.rs	0	0	1	4	1	3	0	0

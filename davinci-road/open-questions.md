@@ -69,7 +69,7 @@ stress-wide 5 -> 2, stress-interp 5 -> 2; the profiled build path falls
 from 7 walks to 4/5/7/5/4/4. Four corpus lanes (default, prefixed,
 bindings over 12,062 hydrated templates; the lowering lane over 12,215
 files) stay at zero divergence, and `tests/lowering_features.rs` pins the
-stronger claim per artifact: the planned run and the forced six-pass table
+stronger claim per artifact: the planned run and the forced five-pass table
 agree on the artifact, its diagnostics, its provenance and every fact
 table.
 
@@ -80,15 +80,15 @@ parse-to-S2 removes, and (b) the passes an artifact genuinely owes —
 task contract already names as region-local, so those are the ones real
 fusion has to earn. **Skipping is not fusing**, and the walk counts above
 should not be read as evidence that fusion is unnecessary: an artifact
-that uses every family still pays six.
+that uses every transform family still pays five.
 
 Prototype note (2026-09-07, third): source-map-free DOM compiles now skip the
 legacy pre-S2 transform when S2 emission succeeds. The profiled build counter
-therefore matches the S2 observer total on the ladder set. After the text pass
-became demand-gated by compound text records, the current counts are: small,
-medium, stress-deep and stress-interp at 3 walks; stress-wide at 2 walks; and
-large at 5 walks. P2-12b's remaining work is S2 transform fusion for the
-genuinely required passes above the one-walk emit floor, plus the direct
+therefore matches the S2 observer total on the ladder set. After compound text
+facts became lowering-published, the current counts are: small and
+stress-interp at 2 walks; medium and stress-deep at 3 walks; stress-wide at 2
+walks; and large at 5 walks. P2-12b's remaining work is S2 transform fusion for
+the genuinely required passes above the one-walk emit floor, plus the direct
 parse-to-S2 path and exact traversal gate; source-map requests still use the
 compatibility path.
 

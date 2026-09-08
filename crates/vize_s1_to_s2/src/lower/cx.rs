@@ -136,9 +136,28 @@ impl<'a> Cx<'a> {
 
     /// Attach a merged run's recorded parts to its compound op, when the
     /// op has an id (the `attach_scope` exhaustion rule).
-    pub(crate) fn attach_texts(&mut self, node: Option<NodeId>, parts: super::text::TextParts) {
+    pub(crate) fn attach_texts(
+        &mut self,
+        node: Option<NodeId>,
+        parts: super::text::TextParts,
+        span: Span,
+        source: &str,
+    ) {
         self.observe(super::features::OpFamily::TextCompound);
         if let Some(id) = node {
+            parts.assert_compound_laws(id, span, source);
+            let before = vize_s0::cstr!("parts={}", parts.parts.len());
+            let dynamic = parts.dynamic_count();
+            self.record(
+                "lower.text-fact",
+                node,
+                before.as_str(),
+                vize_s0::cstr!(
+                    "fact static={} dynamic={dynamic}",
+                    parts.parts.len() - dynamic
+                ),
+                span,
+            );
             self.texts.insert(id, parts);
         }
     }

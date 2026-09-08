@@ -1,17 +1,17 @@
-//! The lowering's observed feature bits — what the S2 pass planner asks
-//! before it spends a mandatory pass's walk.
+//! The lowering's observed feature bits.
 //!
 //! # Why the bits exist
 //!
-//! Every mandatory S2 pass is the consumer of one op family:
+//! Most mandatory S2 passes are the consumer of one op family:
 //! [`pass::vif`](crate::pass::vif) reads `ui.if`,
 //! [`pass::vfor`](crate::pass::vfor) reads `ui.for`,
-//! [`pass::vslot`](crate::pass::vslot) reads the slot carriers,
-//! [`pass::text`](crate::pass::text) reads compound text records, and
+//! [`pass::vslot`](crate::pass::vslot) reads the slot carriers, and
 //! [`pass::vmodel`](crate::pass::vmodel) reads `ui.model`. Run against an
 //! artifact whose family the lowering never built, such a pass walks the
 //! whole tree to publish an empty fact table and raise no diagnostic — a
 //! walk the build path can decline without declining any product.
+//! Compound text remains observed here, but P2-12b publishes its facts at
+//! lowering time, so it no longer selects a transform pass.
 //!
 //! # Why the bit is set at the op, not read off provenance
 //!
@@ -35,7 +35,7 @@
 //! too. `crates/vize_s1_to_s2/tests/lowering_features.rs` is the pin: it
 //! lowers a template per family — malformed spellings included — and
 //! fails if the bit is missing, then proves the planned run and the full
-//! six-pass table agree on every product an artifact has.
+//! five-pass table agree on every product an artifact has.
 
 /// An op family whose presence keeps a mandatory pass in the plan.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,8 +50,8 @@ pub enum OpFamily {
     /// outlet or a `ui.slot-content` binding (the two `VSlotMisplaced`
     /// anchors, which fire with no component in sight).
     SlotCarrier,
-    /// A compound text/interpolation run whose structured parts are read by
-    /// the text pass.
+    /// A compound text/interpolation run whose structured parts were
+    /// validated and attached by lowering.
     TextCompound,
     /// A `ui.model` binding.
     Model,

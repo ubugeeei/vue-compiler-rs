@@ -1,4 +1,5 @@
-//! The text pass (P2-9 series 4): semantics pins.
+//! Lowering-published text facts (P2-9 series 4, fused in P2-12b):
+//! semantics pins.
 //!
 //! Exact-equality oracles over the installment's three products — the
 //! condensed surface, the compound ops with their recorded parts, and
@@ -103,11 +104,11 @@ fn a_mixed_run_merges_into_one_compound_with_recorded_parts() {
             rebuild_source(&expected).as_str(),
             "Hi {{ name }}! You have {{ n }} new mails."
         );
-        // The consumption left its record.
+        // The lowering-published fact left its record.
         let rules: Vec<(&str, &str, &str)> = lowered
             .provenance
             .iter()
-            .filter(|record| record.rule.as_str() == "pass.text.compound")
+            .filter(|record| record.rule.as_str() == "lower.text-fact")
             .map(|record| {
                 (
                     record.rule.as_str(),
@@ -118,7 +119,7 @@ fn a_mixed_run_merges_into_one_compound_with_recorded_parts() {
             .collect();
         assert_eq!(
             rules,
-            vec![("pass.text.compound", "parts=5", "fact static=3 dynamic=2")]
+            vec![("lower.text-fact", "parts=5", "fact static=3 dynamic=2")]
         );
     });
     assert_transformed_sound(source, "mixed-run");
