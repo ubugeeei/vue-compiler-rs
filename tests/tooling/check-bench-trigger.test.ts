@@ -12,6 +12,7 @@ const CHECK_BENCH_TRIGGER_PATHS = [
   "tools/benchmarks/scripts/check-gate-plants.mjs",
   "tools/benchmarks/scripts/check-gate-report.mjs",
   "tools/benchmarks/scripts/check-gate-report.test.mjs",
+  "tools/benchmarks/scripts/generate.mjs",
   ".github/workflows/check-bench.yml",
 ];
 

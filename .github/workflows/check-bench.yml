@@ -34,6 +34,7 @@ on:
       - tools/benchmarks/scripts/check-gate-plants.mjs
       - tools/benchmarks/scripts/check-gate-report.mjs
       - tools/benchmarks/scripts/check-gate-report.test.mjs
+      - tools/benchmarks/scripts/generate.mjs
       - .github/workflows/check-bench.yml
   schedule:
     # Weekly report cadence; the plants correctness gate itself runs on every
