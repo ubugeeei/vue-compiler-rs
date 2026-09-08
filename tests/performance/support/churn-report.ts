@@ -1,14 +1,7 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { repoRoot } from "../../_helpers/realworld-patch.ts";
 import type { LspChurnBudget } from "./churn-metrics.ts";
-
-export function gitHead(): string {
-  const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" });
-  return result.status === 0 ? result.stdout.trim() : "unknown";
-}
 
 /** The report fields `summary.md` renders; `metrics.json` serialises the whole payload. */
 export type ChurnReportData = {
