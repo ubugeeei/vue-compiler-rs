@@ -36,13 +36,13 @@ defineModel<string>("title", { required: true });
         result.mappings
     );
 
-    let parent = r#"<script setup lang="ts">
+    let parent_source = r#"<script setup lang="ts">
 import ModelChild from "./ModelChild.vue";
 </script>
 <template><ModelChild @update:title="() => undefined" /></template>
 "#;
     let parent =
-        generate_vue_content_mapper_transform(Path::new("App.vue"), parent).expect("parent");
+        generate_vue_content_mapper_transform(Path::new("App.vue"), parent_source).expect("parent");
     let completion = parent
         .text
         .find("__vize_model_events_completion_0['update:title']")
@@ -53,12 +53,29 @@ import ModelChild from "./ModelChild.vue";
         .find("__vize_model_events_nav_0['update:title']")
         .expect("navigation projection")
         + "__vize_model_events_nav_0['".len();
-    assert!(parent.mappings.iter().any(|mapping| {
-        mapping.0[0] == completion && mapping.0[5] == CONTENT_MAPPER_SPAN_FEATURES_COMPLETION
-    }));
-    assert!(parent.mappings.iter().any(|mapping| {
-        mapping.0[0] == navigation && mapping.0[5] == CONTENT_MAPPER_SPAN_FEATURES_WHOLE_SYMBOL
-    }));
+    let original = parent_source.find("@update:title").unwrap() + 1;
+    assert!(
+        has_model_event_mapping(
+            &parent,
+            completion,
+            original,
+            CONTENT_MAPPER_SPAN_FEATURES_COMPLETION,
+        ),
+        "text:\n{}\n\nmappings:\n{:#?}",
+        parent.text,
+        parent.mappings
+    );
+    assert!(
+        has_model_event_mapping(
+            &parent,
+            navigation,
+            original,
+            CONTENT_MAPPER_SPAN_FEATURES_WHOLE_SYMBOL,
+        ),
+        "text:\n{}\n\nmappings:\n{:#?}",
+        parent.text,
+        parent.mappings
+    );
 }
 
 #[test]
@@ -132,5 +149,21 @@ fn has_exact_mapping(result: &ContentMapperTransform, generated: usize, original
             && mapping.0[3] == "\"title\"".len()
             && mapping.0[4] == ContentMapperSpanKind::Verbatim as usize
             && mapping.0[5] == CONTENT_MAPPER_SPAN_FEATURES_ALL
+    })
+}
+
+fn has_model_event_mapping(
+    result: &ContentMapperTransform,
+    generated: usize,
+    original: usize,
+    features: usize,
+) -> bool {
+    result.mappings.iter().any(|mapping| {
+        mapping.0[0] == generated
+            && mapping.0[1] == "update:title".len()
+            && mapping.0[2] == original
+            && mapping.0[3] == "update:title".len()
+            && mapping.0[4] == ContentMapperSpanKind::Verbatim as usize
+            && mapping.0[5] == features
     })
 }
