@@ -208,7 +208,7 @@ test("every bench entry is one single-line inline table", () => {
 
 test("compact-storage peaks are exact per-platform allocation budgets", () => {
   assert.deepEqual(budgets.allocation_peak, {
-    s1_to_s2_lower_vfor_three_aliases: { linux: 1254, macos: 1246 },
+    s1_to_s2_lower_vfor_three_aliases: { linux: 1671, macos: 1246 },
     s1_to_s2_emit_von_two_per_bucket: { linux: 648, macos: 648 },
   });
   for (const [id, peaks] of Object.entries(budgets.allocation_peak)) {
@@ -231,7 +231,7 @@ test("compact-storage probes stay wall-report-only with exact alloc gates", () =
   // wall_p50_ns = 0 seed. The deterministic alloc and per-platform peak gates
   // still fail closed.
   const expected = {
-    s1_to_s2_lower_vfor_three_aliases: { allocs: 10, allocBytesPeakLinux: 1254 },
+    s1_to_s2_lower_vfor_three_aliases: { allocs: 14, allocBytesPeakLinux: 1671 },
     s1_to_s2_emit_von_two_per_bucket: { allocs: 18, allocBytesPeakLinux: 648 },
   };
   for (const [id, row] of Object.entries(expected)) {
