@@ -48,12 +48,13 @@ fn lowering_corpus_is_total() {
             scopes += lowered.scopes.len();
         });
     }
-    // Re-pinned when compound text facts became lowering-published:
-    // four committed battery fixtures now record `lower.text-fact`
-    // provenance before the transform table.
+    // Re-pinned when compound text and v-for facts became
+    // lowering-published: four committed battery fixtures record
+    // `lower.text-fact`, and the v-for battery fixture records
+    // `lower.for-fact` before the transform table.
     assert_eq!(
         (ops, diagnostics, provenance, scopes),
-        (83, 28, 105, 1),
+        (83, 28, 106, 1),
         "battery census moved: re-pin in both lanes deliberately"
     );
 

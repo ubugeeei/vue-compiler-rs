@@ -50,6 +50,7 @@ pub(super) fn try_emit_s2_vdom<'a>(
         provenance: Default::default(),
         scopes: s2.scopes,
         texts: Default::default(),
+        for_facts: Default::default(),
         wrappers: Default::default(),
         for_wrappers: Default::default(),
         features: s2.features,
