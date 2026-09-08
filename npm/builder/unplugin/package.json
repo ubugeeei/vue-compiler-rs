@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/unplugin",
-  "version": "0.404.1",
+  "version": "0.404.2",
   "description": "Experimental Vue SFC integrations for Rollup, Rolldown, Webpack, esbuild, and Babel powered by Vize",
   "keywords": [
     "babel",
