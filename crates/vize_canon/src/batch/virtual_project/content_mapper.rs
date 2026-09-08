@@ -160,6 +160,7 @@ pub fn generate_vue_content_mapper_transform_with_options(
             experimental_in_tag_comments: false,
             hoist_shared_preamble: false,
             omit_vite_client_reference: true,
+            runtime_prop_resolve_cache: None,
         },
     )?;
 

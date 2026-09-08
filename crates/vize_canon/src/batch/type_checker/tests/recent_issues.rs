@@ -15,6 +15,7 @@ mod external_esm_module_augmentation;
 mod external_slot_payloads;
 mod global_component_callbacks;
 mod imported_component_ref_expose;
+mod imported_runtime_props;
 mod literal_dynamic_slot_names;
 mod native_prop_anchors;
 mod open_slot_index_signature;
@@ -34,7 +35,9 @@ mod strict_route_instance_global;
 mod template_handler_ts7006;
 mod template_instance_props;
 mod template_key_expressions;
+mod template_ref_slot_vnode_handlers;
 mod ts_extension_substitution;
+mod tsx_catch_all_emits;
 mod unmapped_template_fallback;
 mod v_for_source_callbacks;
 mod vapor_anchors;
@@ -77,7 +80,6 @@ defineProps<{ value: T }>();
             (
                 "src/usage.tsx",
                 r#"import Child from "./Child.vue";
-
 export default () => <Child value={123} />;
 "#,
             ),

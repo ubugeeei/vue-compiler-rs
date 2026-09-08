@@ -10,7 +10,8 @@ use vize_s0::cstr;
 /// what TypeScript reported. The added hint points at the most common Vue
 /// cause for that error shape.
 pub(super) fn rewrite_corsa_message(message: &str, authored_source: &str) -> String {
-    let normalized_message = restore_virtual_vue_specifiers(message, authored_source);
+    let normalized_message =
+        strip_corsa_overlay_paths(&restore_virtual_vue_specifiers(message, authored_source));
     let message = normalized_message.as_str();
 
     if let Some(prop) = property_does_not_exist_property(message)
@@ -27,6 +28,71 @@ pub(super) fn rewrite_corsa_message(message: &str, authored_source: &str) -> Str
         ).into();
     }
     message.to_string()
+}
+
+fn strip_corsa_overlay_paths(message: &str) -> String {
+    const MARKER: &str = "/node_modules/.vize/corsa/";
+    const OVERLAYS: &str = "/overlays";
+
+    let mut rewritten = String::with_capacity(message.len());
+    let mut cursor = 0;
+    let mut changed = false;
+
+    while let Some(relative_marker) = message[cursor..].find(MARKER) {
+        let marker = cursor + relative_marker;
+        let after_marker = marker + MARKER.len();
+        let Some(relative_overlays) = message[after_marker..].find(OVERLAYS) else {
+            rewritten.push_str(&message[cursor..after_marker]);
+            cursor = after_marker;
+            continue;
+        };
+        let overlays = after_marker + relative_overlays;
+        let overlay_source_start = overlays + OVERLAYS.len();
+        if !message[overlay_source_start..].starts_with('/') {
+            rewritten.push_str(&message[cursor..overlay_source_start]);
+            cursor = overlay_source_start;
+            continue;
+        }
+
+        let path_start = previous_path_boundary(message, marker);
+        let path_end = next_path_boundary(message, overlay_source_start);
+        rewritten.push_str(&message[cursor..path_start]);
+        rewritten.push_str(&message[overlay_source_start..path_end]);
+        cursor = path_end;
+        changed = true;
+    }
+
+    if !changed {
+        return message.to_string();
+    }
+
+    rewritten.push_str(&message[cursor..]);
+    rewritten
+}
+
+fn previous_path_boundary(message: &str, before: usize) -> usize {
+    message[..before]
+        .char_indices()
+        .rev()
+        .find_map(|(index, character)| {
+            is_path_boundary(character).then_some(index + character.len_utf8())
+        })
+        .unwrap_or(0)
+}
+
+fn next_path_boundary(message: &str, after: usize) -> usize {
+    message[after..]
+        .char_indices()
+        .find_map(|(offset, character)| is_path_boundary(character).then_some(after + offset))
+        .unwrap_or(message.len())
+}
+
+fn is_path_boundary(character: char) -> bool {
+    character.is_whitespace()
+        || matches!(
+            character,
+            '\'' | '"' | '`' | '<' | '>' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';'
+        )
 }
 
 /// Extract the property name from a TS7053/TS2339 "Property 'X' does not
@@ -46,7 +112,9 @@ fn property_does_not_exist_property(message: &str) -> Option<&str> {
 mod hint_tests {
     use vize_s0::cstr;
 
-    use super::{property_does_not_exist_property, rewrite_corsa_message};
+    use super::{
+        property_does_not_exist_property, rewrite_corsa_message, strip_corsa_overlay_paths,
+    };
 
     #[test]
     fn rewrites_property_does_not_exist_with_value_hint() {
@@ -129,6 +197,26 @@ mod hint_tests {
     fn passes_through_unrelated_messages() {
         let original = "Expected 1 argument, but got 0.";
         assert_eq!(rewrite_corsa_message(original, ""), original);
+    }
+
+    #[test]
+    fn strips_private_corsa_overlay_roots_from_messages() {
+        let original = "Could not find a declaration file for module '../docs/.vuepress/data/books'. '/workspace/node_modules/.vize/corsa/44018-2/overlays/workspace/docs/.vuepress/data/books.js' implicitly has an 'any' type.";
+
+        assert_eq!(
+            strip_corsa_overlay_paths(original),
+            "Could not find a declaration file for module '../docs/.vuepress/data/books'. '/workspace/docs/.vuepress/data/books.js' implicitly has an 'any' type."
+        );
+    }
+
+    #[test]
+    fn strips_multiple_private_corsa_overlay_roots_from_messages() {
+        let original = "Related files: /repo/node_modules/.vize/corsa/session/overlays/repo/a.ts and /repo/node_modules/.vize/corsa/session/overlays/repo/b.ts";
+
+        assert_eq!(
+            strip_corsa_overlay_paths(original),
+            "Related files: /repo/a.ts and /repo/b.ts"
+        );
     }
 
     #[test]

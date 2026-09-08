@@ -4397,10 +4397,10 @@
         "error:305:50 [TS7031] Binding element 'availableHeight' implicitly has an 'any' type.",
         "error:347:28 [TS7019] Rest parameter 'args' implicitly has an 'any[]' type.",
         "error:386:18 [TS7006] Parameter 'element' implicitly has an 'any' type.",
-        "error:430:24 [TS2339] Property 'asChild' does not exist on type '__DefineProps<PopperContentProps, \"align\" | \"alignFlip\" | \"avoidCollisions\" | \"dir\" | \"disableUpdateOnLayoutShift\" | \"hideShiftedArrow\" | \"hideWhenDetached\" | \"prioritizePosition\" | \"reference\" | \"side\" | \"sideFlip\">'.",
-        "error:431:18 [TS2339] Property 'as' does not exist on type '__DefineProps<PopperContentProps, \"align\" | \"alignFlip\" | \"avoidCollisions\" | \"dir\" | \"disableUpdateOnLayoutShift\" | \"hideShiftedArrow\" | \"hideWhenDetached\" | \"prioritizePosition\" | \"reference\" | \"side\" | \"sideFlip\">'.",
-        "error:447:24 [TS2339] Property 'asChild' does not exist on type '__DefineProps<PopperContentProps, \"align\" | \"alignFlip\" | \"avoidCollisions\" | \"dir\" | \"disableUpdateOnLayoutShift\" | \"hideShiftedArrow\" | \"hideWhenDetached\" | \"prioritizePosition\" | \"reference\" | \"side\" | \"sideFlip\">'.",
-        "error:448:18 [TS2339] Property 'as' does not exist on type '__DefineProps<PopperContentProps, \"align\" | \"alignFlip\" | \"avoidCollisions\" | \"dir\" | \"disableUpdateOnLayoutShift\" | \"hideShiftedArrow\" | \"hideWhenDetached\" | \"prioritizePosition\" | \"reference\" | \"side\" | \"sideFlip\">'."
+        "error:430:24 [TS2339] Property 'asChild' does not exist on type 'Readonly<__VizeMappedOmit<PopperContentProps, \"align\" | \"alignFlip\" | \"alignOffset\" | \"arrowPadding\" | \"avoidCollisions\" | \"collisionBoundary\" | \"collisionPadding\" | \"hideShiftedArrow\" | ... 7 more ... | \"updatePositionStrategy\">> & { ...; } & {}'.",
+        "error:431:18 [TS2339] Property 'as' does not exist on type 'Readonly<__VizeMappedOmit<PopperContentProps, \"align\" | \"alignFlip\" | \"alignOffset\" | \"arrowPadding\" | \"avoidCollisions\" | \"collisionBoundary\" | \"collisionPadding\" | \"hideShiftedArrow\" | ... 7 more ... | \"updatePositionStrategy\">> & { ...; } & {}'.",
+        "error:447:24 [TS2339] Property 'asChild' does not exist on type 'Readonly<__VizeMappedOmit<PopperContentProps, \"align\" | \"alignFlip\" | \"alignOffset\" | \"arrowPadding\" | \"avoidCollisions\" | \"collisionBoundary\" | \"collisionPadding\" | \"hideShiftedArrow\" | ... 7 more ... | \"updatePositionStrategy\">> & { ...; } & {}'.",
+        "error:448:18 [TS2339] Property 'as' does not exist on type 'Readonly<__VizeMappedOmit<PopperContentProps, \"align\" | \"alignFlip\" | \"alignOffset\" | \"arrowPadding\" | \"avoidCollisions\" | \"collisionBoundary\" | \"collisionPadding\" | \"hideShiftedArrow\" | ... 7 more ... | \"updatePositionStrategy\">> & { ...; } & {}'."
       ]
     },
     {

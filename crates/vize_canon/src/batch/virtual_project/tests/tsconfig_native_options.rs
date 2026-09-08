@@ -113,6 +113,51 @@ fn materialized_tsconfig_pins_stable_side_effect_import_checking() {
 }
 
 #[test]
+fn materialized_check_tsconfig_drops_composite_membership_checks() {
+    let case_dir = unique_case_dir("tsconfig-drop-composite");
+    let _ = fs::remove_dir_all(&case_dir);
+    let src_dir = case_dir.join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(
+        case_dir.join("tsconfig.json"),
+        r#"{
+  "compilerOptions": {
+    "composite": true,
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/**/*.vue"]
+}"#,
+    )
+    .unwrap();
+    let vue_path = src_dir.join("App.vue");
+    fs::write(
+        &vue_path,
+        "<script setup lang=\"ts\">import { label } from './util'; label</script>\n",
+    )
+    .unwrap();
+    fs::write(src_dir.join("util.ts"), "export const label = 'ready'\n").unwrap();
+
+    let mut project = VirtualProject::new(&case_dir).unwrap();
+    project.set_tsconfig_path(Some(case_dir.join("tsconfig.json")));
+    project.register_path(&vue_path).unwrap();
+    project.materialize().unwrap();
+
+    let tsconfig_path = project.virtual_root().join("tsconfig.json");
+    let value: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(tsconfig_path).unwrap()).unwrap();
+    let compiler_options = value["compilerOptions"].as_object().unwrap();
+
+    assert!(
+        !compiler_options.contains_key("composite"),
+        "check mirrors must not inherit project-build membership diagnostics: {value:#}"
+    );
+
+    let _ = fs::remove_dir_all(&case_dir);
+}
+
+#[test]
 fn materialized_tsconfig_adds_vue_jsx_defaults_for_lowered_tsx() {
     let case_dir = unique_case_dir("tsconfig-lowered-tsx-jsx");
     let _ = fs::remove_dir_all(&case_dir);

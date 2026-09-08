@@ -33,7 +33,7 @@ use super::diagnostics::{
 use super::{
     art_usage::collect_art_template_referenced_names,
     css_var_usage::collect_css_var_referenced_names,
-    setup_props::augment_type_based_props_from_script_context,
+    setup_props::{RuntimePropResolveCache, augment_type_based_props_from_script_context},
 };
 
 pub(super) struct GeneratedVueFile {
@@ -60,6 +60,10 @@ pub(super) struct VueCodegenOptions<'a> {
     pub(super) hoist_shared_preamble: bool,
     /// Content-mapper transforms can run outside Vite projects.
     pub(super) omit_vite_client_reference: bool,
+    /// Batch generation can share imported runtime prop/default resolution
+    /// across rayon workers. Document/content-mapper callers use a per-file
+    /// cache to avoid keeping stale source-derived state.
+    pub(super) runtime_prop_resolve_cache: Option<&'a RuntimePropResolveCache>,
 }
 
 pub(super) fn generate_vue_virtual_ts(
@@ -210,9 +214,22 @@ pub(super) fn generate_vue_virtual_ts(
     let mut croquis = analysis.croquis;
     let script_content = analysis.script_content;
     let script_offset = analysis.script_offset;
+    let local_runtime_prop_resolve_cache;
+    let runtime_prop_resolve_cache = if let Some(cache) = codegen_options.runtime_prop_resolve_cache
+    {
+        cache
+    } else {
+        local_runtime_prop_resolve_cache = RuntimePropResolveCache::default();
+        &local_runtime_prop_resolve_cache
+    };
     profile!(
         "canon.croquis.augment_type_props",
-        augment_type_based_props_from_script_context(&mut croquis, descriptor, path)
+        augment_type_based_props_from_script_context(
+            &mut croquis,
+            descriptor,
+            path,
+            runtime_prop_resolve_cache
+        )
     );
     // Names the generated component surface consumes outside `<template>`:
     // `<art>` variant templates and CSS `v-bind()` expressions. Both feed the

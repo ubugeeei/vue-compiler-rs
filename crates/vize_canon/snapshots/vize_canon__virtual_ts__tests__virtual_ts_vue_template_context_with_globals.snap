@@ -5,7 +5,9 @@ expression: value
     // Vue template context (delegates to ComponentPublicInstance)
     // @ts-ignore TS2694/TS2307: a `vue` without `ComponentPublicInstance` must degrade template context extras to unchecked, never error.
     type __Ctx = import('vue').ComponentPublicInstance;
-    type __Global<K extends string, F = unknown> = K extends keyof __Ctx ? __Ctx[K] : F;
+    type __VizeGlobalContextIsAny<T> = 0 extends (1 & T) ? true : false;
+    type __VizeGlobalContextProperty<T, F> = __VizeGlobalContextIsAny<T> extends true ? T : unknown extends T ? F : T;
+    type __Global<K extends string, F = unknown> = K extends keyof __Ctx ? __VizeGlobalContextProperty<__Ctx[K], F> : F;
     const __ctx = undefined as unknown as __Ctx;
     const $attrs = __ctx.$attrs;
     const $slots = __ctx.$slots;

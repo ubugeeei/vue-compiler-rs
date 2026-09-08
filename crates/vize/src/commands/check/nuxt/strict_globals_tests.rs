@@ -37,6 +37,13 @@ const GENERATED_IMPORTS: &str = r#"declare global {
 export {}
 "#;
 
+const GENERATED_ROUTER_IMPORTS: &str = r#"declare global {
+  const useRoute: () => { path: string; query: Record<string, string | undefined> }
+  const useRouter: () => { push(to: string): Promise<void> }
+}
+export {}
+"#;
+
 const GENERATED_CUSTOM_PROPERTIES: &str = r#"declare module 'vue' {
   export interface ComponentCustomProperties {
     $shout: (label: string) => string
@@ -83,6 +90,37 @@ fn generated_imports_make_the_declaration_graph_authoritative() {
     // instance and an authored use reports the way the Vue toolchain does.
     assert!(options.strict_instance_globals);
     assert_eq!(global_names(&options), vec!["$shout"]);
+
+    let _ = std::fs::remove_dir_all(&project_root);
+}
+
+#[test]
+fn generated_router_auto_imports_expose_template_route_globals() {
+    let project_root = unique_case_dir("generated-router-globals");
+    write_nuxt_project(&project_root);
+    std::fs::write(
+        project_root.join(".nuxt/imports.d.ts"),
+        GENERATED_ROUTER_IMPORTS,
+    )
+    .unwrap();
+
+    let mut options = VirtualTsOptions::default();
+    let _ = detect_nuxt_auto_imports(&mut options, &project_root);
+
+    assert!(options.strict_instance_globals);
+    let globals = options
+        .template_globals
+        .iter()
+        .map(|global| (global.name.as_str(), global.type_annotation.as_str()))
+        .collect::<Vec<_>>();
+    assert!(
+        globals.contains(&("$route", "ReturnType<typeof useRoute>")),
+        "expected typed $route template global, got: {globals:#?}"
+    );
+    assert!(
+        globals.contains(&("$router", "ReturnType<typeof useRouter>")),
+        "expected typed $router template global, got: {globals:#?}"
+    );
 
     let _ = std::fs::remove_dir_all(&project_root);
 }

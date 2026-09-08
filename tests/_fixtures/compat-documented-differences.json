@@ -3,20 +3,6 @@
   "version": 1,
   "differences": [
     {
-      "project": "elk",
-      "file": "app/components/publish/PublishWidget.vue",
-      "severity": "error",
-      "line": 500,
-      "column": 18,
-      "vize": null,
-      "baseline": {
-        "code": 1117,
-        "message": "An object literal cannot have multiple properties with the same name."
-      },
-      "issue": 5722,
-      "reason": "vue-tsc reports a duplicate generated listener key for legal paired event directives; Vize intentionally keeps listener directives out of the props literal."
-    },
-    {
       "project": "nuxt-ui",
       "file": "docs/app/components/content/examples/tabs/TabsRouteQueryExample.vue",
       "severity": "error",

@@ -37,6 +37,21 @@ pub(crate) fn generated_prop_value(
     prop: &PassedProp,
     template_prop_names: &FxHashSet<String>,
 ) -> Option<String> {
+    generated_prop_value_with_comment_policy(prop, template_prop_names, false)
+}
+
+pub(crate) fn generated_prop_value_preserving_comments(
+    prop: &PassedProp,
+    template_prop_names: &FxHashSet<String>,
+) -> Option<String> {
+    generated_prop_value_with_comment_policy(prop, template_prop_names, true)
+}
+
+fn generated_prop_value_with_comment_policy(
+    prop: &PassedProp,
+    template_prop_names: &FxHashSet<String>,
+    preserve_comments: bool,
+) -> Option<String> {
     if !prop.is_dynamic {
         let mut value = String::default();
         if let Some(static_value) = prop.value.as_ref() {
@@ -47,7 +62,12 @@ pub(crate) fn generated_prop_value(
         return Some(value);
     }
 
-    let value = strip_js_comments(prop.value.as_ref()?.as_str());
+    let raw_value = prop.value.as_ref()?.as_str();
+    let value = if preserve_comments {
+        std::borrow::Cow::Borrowed(raw_value)
+    } else {
+        strip_js_comments(raw_value)
+    };
     let trimmed_value = value.as_ref().trim();
     let rewritten_value = rewrite_reserved_template_prop(trimmed_value, template_prop_names);
     Some(rewritten_value.as_ref().map_or_else(

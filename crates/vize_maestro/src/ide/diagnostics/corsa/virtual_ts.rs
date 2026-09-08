@@ -82,6 +82,7 @@ impl DiagnosticService {
                 legacy_vue2,
                 preserve_event_navigation: false,
                 dialect: Default::default(),
+                preserve_missing_vue_diagnostics: false,
             },
         )
         .ok()?;

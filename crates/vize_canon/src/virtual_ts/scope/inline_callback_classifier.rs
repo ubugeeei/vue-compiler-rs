@@ -10,7 +10,7 @@ use super::handler_shape::inline_callback_event_argument;
 
 /// Whether the value itself is a callback, rather than an expression that only
 /// contains one (for example `items.map((item) => item.id)`).
-pub(super) fn is_direct_inline_function_prop_value(value: &str) -> bool {
+pub(crate) fn is_direct_inline_function_prop_value(value: &str) -> bool {
     inline_callback_event_argument(value).is_some() || parsed_direct_inline_function(value)
 }
 

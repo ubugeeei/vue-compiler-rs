@@ -28,7 +28,7 @@ any read — or any deleted carrier — comes back.
 - Reads of `span.start` / `span.end` are **not** inventoried: they are
   the surviving offset representation — the pre-migration
   `start.offset` / `end.offset` reads moved to them verbatim
-  (293 loc-shaped span-read sites across
+  (299 loc-shaped span-read sites across
   8 crates at generation time).
 - `#[cfg(test)]` code inside `src/` is included and reported in the
   "in test code" column: a site counts as test code when its file is a test

@@ -14,8 +14,8 @@ use crate::ide::FileRenameService;
 mod dependents;
 #[cfg(feature = "native")]
 use dependents::{
-    affected_vue_source_paths, forget_corsa_vue_files, invalidate_corsa_disk_state,
-    versioned_open_typecheck_dependents,
+    affected_vue_source_paths, forget_corsa_vue_files, include_open_typecheck_documents,
+    invalidate_corsa_disk_state, versioned_open_typecheck_dependents,
 };
 
 #[cfg(feature = "native")]
@@ -107,7 +107,7 @@ pub(super) async fn did_change_watched_files(
         let global_components_invalidated = server.state.invalidate_global_component_references(
             changes.iter().map(|change| change.uri.as_str()),
         );
-        let dependents = versioned_open_typecheck_dependents(
+        let mut dependents = versioned_open_typecheck_dependents(
             &server.state,
             changes.iter().map(|change| change.uri.as_str()),
         );
@@ -118,6 +118,9 @@ pub(super) async fn did_change_watched_files(
                 .filter(|change| change.typ == FileChangeType::DELETED)
                 .map(|change| change.uri.as_str()),
         );
+        if !deleted_paths.is_empty() {
+            dependents = include_open_typecheck_documents(&server.state, dependents);
+        }
         if dependents.is_empty() && !global_components_invalidated && deleted_paths.is_empty() {
             return;
         }
@@ -211,7 +214,7 @@ fn record_created_files(state: &ServerState, params: &CreateFilesParams) {
 pub(super) async fn did_delete_files(server: &MaestroServer, params: &DeleteFilesParams) {
     #[cfg(feature = "native")]
     {
-        let dependents = versioned_open_typecheck_dependents(
+        let mut dependents = versioned_open_typecheck_dependents(
             &server.state,
             params.files.iter().map(|file| file.uri.as_str()),
         );
@@ -219,6 +222,9 @@ pub(super) async fn did_delete_files(server: &MaestroServer, params: &DeleteFile
             &server.state,
             params.files.iter().map(|file| file.uri.as_str()),
         );
+        if !deleted_paths.is_empty() {
+            dependents = include_open_typecheck_documents(&server.state, dependents);
+        }
         record_deleted_files(&server.state, params);
         forget_corsa_vue_files(&server.state, &deleted_paths).await;
         invalidate_corsa_disk_state(&server.state);

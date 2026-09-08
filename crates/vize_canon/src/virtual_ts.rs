@@ -33,6 +33,8 @@ mod public_instance_guard_tests;
 mod scope;
 mod semantic_links;
 #[cfg(test)]
+mod strict_template_global_fallback_tests;
+#[cfg(test)]
 mod strict_template_globals_tests;
 #[cfg(test)]
 mod strict_template_scope_tests;
@@ -88,9 +90,15 @@ pub const JSX_COMPONENT_HELPER: &str = "type __VizeJsxKebabCase<S extends string
 type __VizeJsxCamelCase<S extends string> = S extends `data-${string}` | `aria-${string}` ? S : S extends `${infer H}-${infer T}` ? `${H}${Capitalize<__VizeJsxCamelCase<T>>}` : S;\n\
 type __VizeJsxRawPropKeys<R> = R extends unknown ? { [K in keyof R]-?: K extends string ? K | __VizeJsxKebabCase<K> : K }[keyof R] : never;\n\
 type __VizeJsxCanonicalRawProps<R> = R extends unknown ? { [K in keyof R as K extends string ? __VizeJsxCamelCase<K> : K]: R[K] } : never;\n\
+type __VizeJsxIsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : false;\n\
+type __VizeJsxUnionKeys<T> = T extends unknown ? keyof T : never;\n\
+type __VizeJsxUnionValue<T, K extends PropertyKey> = T extends unknown ? K extends keyof T ? T[K] : never : never;\n\
+type __VizeJsxLooseUnionProps<T> = { [K in __VizeJsxUnionKeys<T>]?: __VizeJsxUnionValue<T, K> };\n\
+type __VizeJsxNormalizeProps<T> = __VizeJsxIsUnion<T> extends true ? __VizeJsxLooseUnionProps<T> : T;\n\
 type __VizeJsxDomListenerProps = { [K in keyof GlobalEventHandlersEventMap as K extends string ? `on${Capitalize<K>}` : never]?: (event: GlobalEventHandlersEventMap[K]) => void };\n\
 type __VizeJsxFallthroughAttrs<Owned = {}> = { class?: unknown; style?: unknown } & { [K in `data-${string}`]?: unknown } & { [K in `aria-${string}`]?: unknown } & Omit<__VizeJsxDomListenerProps, keyof Owned>;\n\
-type __VizeJsxComponentProps<C> = C extends abstract new (...args: any[]) => infer I ? I extends { $props: infer P } ? I extends { readonly __vizeRawProps?: infer R } ? Omit<P, __VizeJsxRawPropKeys<R>> & __VizeJsxCanonicalRawProps<R> & __VizeJsxFallthroughAttrs<P> : __VizeJsxCanonicalRawProps<P> & __VizeJsxFallthroughAttrs<P> : any : C extends (props: infer P, ...args: any[]) => any ? __VizeJsxCanonicalRawProps<P> & __VizeJsxFallthroughAttrs<P> : any;\n\
+type __VizeJsxSfcComponentProps<I> = I extends { $props: infer P } ? I extends { readonly __vizeRawProps?: infer R } ? Omit<P, __VizeJsxRawPropKeys<R>> & __VizeJsxCanonicalRawProps<R> & __VizeJsxFallthroughAttrs<P> : __VizeJsxCanonicalRawProps<P> & __VizeJsxFallthroughAttrs<P> : any;\n\
+type __VizeJsxComponentProps<C> = C extends abstract new (...args: any[]) => infer I ? __VizeJsxNormalizeProps<__VizeJsxSfcComponentProps<I>> : C extends (props: infer P, ...args: any[]) => any ? __VizeJsxNormalizeProps<__VizeJsxCanonicalRawProps<P> & __VizeJsxFallthroughAttrs<P>> : any;\n\
 type __VizeJsxSlotPayload<C, N extends string> = C extends abstract new (...args: any[]) => infer I ? I extends { $slots: infer S } ? N extends keyof S ? NonNullable<S[N]> extends (props: infer P, ...args: any[]) => any ? P : any : any : any : any;\n\
 declare function __vize_jsx_component_spread__<O>(value: O): __VizeJsxCanonicalRawProps<Omit<O, 'key' | 'ref'>>;\n\
 declare function __vize_jsx_component__<C>(component: C, props: __VizeJsxComponentProps<C>): any;\n\

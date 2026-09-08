@@ -22,6 +22,7 @@ use super::build::{
     RegisteredFile, VirtualBuildContext, build_registered_file, build_script_registered_file,
     build_vue_registered_file, source_type_for_path,
 };
+use super::setup_props::RuntimePropResolveCache;
 use super::{VirtualProject, project_virtual_root};
 
 impl VirtualProject {
@@ -127,6 +128,7 @@ impl VirtualProject {
                 preserve_relative_declarations: package_route_path,
                 preserve_declaration_spelling: self.session_scripts,
                 rewriter: &self.rewriter,
+                runtime_prop_resolve_cache: None,
             },
         )?;
         self.absorb_registered_file(registered);
@@ -162,6 +164,7 @@ impl VirtualProject {
         }
 
         let preserve_unused_diagnostics = self.tsconfig_preserves_unused_diagnostics();
+        let runtime_prop_resolve_cache = RuntimePropResolveCache::default();
         let build_context = VirtualBuildContext {
             project_root: self.project_root.as_path(),
             virtual_root: self.virtual_root.as_path(),
@@ -178,6 +181,7 @@ impl VirtualProject {
             preserve_relative_declarations: false,
             preserve_declaration_spelling: self.session_scripts,
             rewriter: &self.rewriter,
+            runtime_prop_resolve_cache: Some(&runtime_prop_resolve_cache),
         };
         let package_paths = self
             .package_routes
@@ -224,6 +228,7 @@ impl VirtualProject {
                 preserve_relative_declarations: self.is_package_route_path(path),
                 preserve_declaration_spelling: self.session_scripts,
                 rewriter: &self.rewriter,
+                runtime_prop_resolve_cache: None,
             },
         )?;
         self.absorb_registered_file(registered);

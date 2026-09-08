@@ -1,6 +1,7 @@
 use vize_carton::{FxHashSet, String, append, cstr};
 use vize_croquis::croquis::{ComponentUsage, PassedProp};
 
+use super::component_ref_props::{append_ref_callback_helper, is_inline_ref_callback_prop};
 use super::inline_callback_classifier::is_direct_inline_function_prop_value;
 use crate::virtual_ts::helpers::{to_camel_case, to_safe_identifier_fragment};
 
@@ -35,23 +36,10 @@ pub(super) fn has_inference_props(usage: &ComponentUsage) -> bool {
     })
 }
 
-/// The target the usage's whole props object literal is checked against: the
-/// child's raw declared props type when Vize emitted one, otherwise its public
-/// props type, for every usage.
-///
-/// That single target is what makes an unbound required prop visible (#3569).
-/// TypeScript's own object-literal elaboration then supplies the rest of the
-/// contract for free, and it is worth spelling out because the whole design
-/// rests on it:
-///
-/// * a literal that satisfies every property it *does* pass, but omits a
-///   required one, is rejected as a whole — `TS2345`, anchored at the argument,
-///   which the mapping puts on the element name.
-/// * a literal that passes a *wrong* value is elaborated instead: TypeScript
-///   reports the offending property and stops, so the missing sibling is **not**
-///   reported a second time. `{ count: 'bad' }` against
-///   `{ count: number; label: string }` is exactly one `TS2322` on `count`,
-///   which is the one-error behavior `vue-tsc` shows and #3569 requires.
+/// The target the usage's whole props object literal is checked against. A
+/// literal that omits a required prop is rejected as a whole (`TS2345` on the
+/// element); a literal that passes a wrong value is elaborated to one `TS2322`
+/// on that prop, matching vue-tsc's one-error behavior for #3569.
 ///
 /// The elaborated `TS2322` lands on the literal's key, which maps back to the
 /// authored attribute name — the same position, code and message the per-prop
@@ -137,10 +125,8 @@ pub(super) fn append_prop_checker_alias(
 
 fn usage_needs_per_prop_aliases(usage: &ComponentUsage) -> bool {
     usage.props.iter().any(|prop| {
-        !prop.name_is_dynamic
-            && prop.name.as_str() != "key"
-            && prop.name.as_str() != "ref"
-            && prop.value.is_some()
+        (!prop.name_is_dynamic && prop.name.as_str() != "key" && prop.value.is_some())
+            && (prop.name.as_str() != "ref" || is_inline_ref_callback_prop(prop))
     })
 }
 
@@ -287,6 +273,7 @@ pub(super) fn append_prop_check_helpers(
             "  type __VizeResolvedProp<R, A, K extends PropertyKey, F, __S = __VizeSelectedProps<R, A>, __E = __VizeResolvedPropEntry<__S, K>, __A = __VizeResolvedPropEntry<R, K>, __P = Extract<__E, { value: unknown }>> = [__S] extends [never] ? F : [__P] extends [never] ? [Extract<__A, { value: unknown }>] extends [never] ? F : never : __P extends { value: infer V } ? V : never;\n",
         );
     }
+    append_ref_callback_helper(ts, usages);
 }
 /// The type a per-prop check is annotated with.
 ///
@@ -301,6 +288,9 @@ pub(super) fn prop_alias_type(
     camel_prop_name: &str,
     fallthrough_prop_name: &str,
 ) -> String {
+    if prop.name.as_str() == "ref" && is_inline_ref_callback_prop(prop) {
+        return String::from("__VizeComponentRefCallback");
+    }
     let resolved = cstr!(
         "__VizePropValue<__{component_type_name}_ValueProps_{idx}, '{camel_prop_name}', __{component_type_name}_FallthroughValue_{idx}<'{fallthrough_prop_name}'>>"
     );
@@ -324,7 +314,10 @@ pub(super) fn append_per_prop_aliases(
 ) {
     let mut declared_aliases = FxHashSet::default();
     for prop in &usage.props {
-        if prop.name_is_dynamic || prop.name.as_str() == "key" || prop.name.as_str() == "ref" {
+        if prop.name_is_dynamic
+            || prop.name.as_str() == "key"
+            || (prop.name.as_str() == "ref" && !is_inline_ref_callback_prop(prop))
+        {
             continue;
         }
         if prop.value.is_none() {

@@ -317,6 +317,7 @@ fn generate_vue_document_with_options(
             legacy_vue2: options.legacy_vue2,
             preserve_event_navigation: options.preserve_event_navigation,
             dialect: options.dialect,
+            preserve_missing_vue_diagnostics: true,
         },
         alias_resolver
             .as_ref()

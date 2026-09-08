@@ -101,11 +101,7 @@ impl<'a> DiagnosticMapper<'a> {
             return None;
         }
 
-        let original = self.map_to_original(
-            virtual_path,
-            diagnostic.range.start.line,
-            diagnostic.range.start.character,
-        );
+        let original = self.map_diagnostic_position_to_original(virtual_path, &diagnostic, code);
         if original
             .as_ref()
             .is_some_and(|original| should_skip_original_diagnostic(code, original))

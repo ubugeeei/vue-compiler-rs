@@ -3,6 +3,7 @@ use tempfile::TempDir;
 
 use super::{
     AUTHORED_VUE_TS_ALIAS_SENTINEL, AUTHORED_VUE_TS_SENTINEL, import_rewriter::ImportRewriter,
+    virtual_specifier_message::MISSING_VUE_IMPORT_SENTINEL,
 };
 
 #[test]
@@ -47,6 +48,7 @@ fn authored_vue_ts_specifiers_cannot_resolve_generated_mirrors() {
     ] {
         std::fs::write(source_dir.join(path), "<template />").expect("colliding SFC mirror");
     }
+    std::fs::write(source_dir.join("Generated.vue"), "<template />").expect("generated SFC");
 
     let absent_absolute = project.join("absent/Absolute.vue.ts");
     std::fs::create_dir_all(absent_absolute.parent().unwrap()).expect("absolute source directory");
@@ -107,5 +109,29 @@ fn authored_vue_ts_specifiers_cannot_resolve_generated_mirrors() {
             .rewrite("import './Mirror.vue.ts';", SourceType::ts(), None,)
             .code,
         "import './Mirror.vue.ts';"
+    );
+}
+
+#[test]
+fn missing_vue_specifiers_keep_ts2307_reachable() {
+    let case = TempDir::new().expect("temp project");
+    let source_dir = case.path().join("src");
+    std::fs::create_dir_all(&source_dir).expect("source directory");
+    std::fs::write(source_dir.join("Present.vue"), "<template />").expect("present SFC");
+
+    let source = "import './Present.vue';\nimport './Missing.vue';\n";
+    let rewriter = ImportRewriter::new();
+
+    assert_eq!(
+        rewriter
+            .rewrite(source, SourceType::ts(), Some(&source_dir))
+            .code,
+        format!(
+            "import './Present.vue.ts';\nimport './Missing.vue.ts{MISSING_VUE_IMPORT_SENTINEL}';\n"
+        )
+    );
+    assert_eq!(
+        rewriter.rewrite(source, SourceType::ts(), None).code,
+        "import './Present.vue.ts';\nimport './Missing.vue.ts';\n"
     );
 }

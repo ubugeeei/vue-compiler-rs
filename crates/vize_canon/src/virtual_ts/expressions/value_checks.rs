@@ -1,6 +1,9 @@
 //! The per-file binding tables that decide whether a template expression is
 //! emitted as a typed check or as a bare `void (...)`.
 
+use super::component_ref_callbacks::{
+    ComponentRefCallbackBindings, collect_component_ref_callback_bindings,
+};
 use super::directive_values::{DirectiveValueBindings, collect_directive_value_bindings};
 use super::native_props::{NativePropBindings, collect_native_prop_bindings};
 use crate::virtual_ts::scope::ScopeGenerationOptions;
@@ -17,6 +20,7 @@ use vize_croquis::Croquis;
 pub(crate) struct TemplateValueChecks<'a> {
     pub(crate) native_props: &'a NativePropBindings,
     pub(crate) directive_values: &'a DirectiveValueBindings,
+    pub(crate) component_ref_callbacks: &'a ComponentRefCallbackBindings,
 }
 
 /// Owning form of [`TemplateValueChecks`], collected once per file.
@@ -29,6 +33,7 @@ pub(crate) struct TemplateValueChecks<'a> {
 pub(crate) struct TemplateValueCheckTables {
     native_props: NativePropBindings,
     directive_values: DirectiveValueBindings,
+    component_ref_callbacks: ComponentRefCallbackBindings,
 }
 
 impl TemplateValueCheckTables {
@@ -44,6 +49,10 @@ impl TemplateValueCheckTables {
                 &summary.bindings,
                 options.check_options.check_template_bindings && !legacy_vue2,
             ),
+            component_ref_callbacks: collect_component_ref_callback_bindings(
+                options.template_ast,
+                options.check_options.check_template_bindings && !legacy_vue2,
+            ),
         }
     }
 
@@ -51,6 +60,7 @@ impl TemplateValueCheckTables {
         TemplateValueChecks {
             native_props: &self.native_props,
             directive_values: &self.directive_values,
+            component_ref_callbacks: &self.component_ref_callbacks,
         }
     }
 }

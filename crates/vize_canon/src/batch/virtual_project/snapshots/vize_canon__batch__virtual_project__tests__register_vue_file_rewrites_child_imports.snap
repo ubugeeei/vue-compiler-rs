@@ -12,7 +12,7 @@ expression: virtual_file.content.as_str()
 
 // Shared preamble hoisted to the program-wide __vize_helpers.d.ts
 // ========== Module Scope (imports) ==========
-import Child from './Child.vue.ts'
+import Child from './Child.vue.ts/__vize_missing_vue_import__'
 
 // ========== Exported Types ==========
 export type Props = {};
@@ -129,7 +129,7 @@ type __VizeComponentInstance = {
   $slots: Slots;
 } & __VizeComponentPublicBase;
 type __VizeComponentConstructor = new <__VizeAuthoredProps = unknown>(props?: __VizeAuthoredProps & __VizeComponentInput<Props, {}, __VizeAuthoredProps>, ...args: any[]) => __VizeUsePublicInstance<__VizeAuthoredProps> extends true ? __VizeComponentInstance : Omit<__VizeComponentInstance, '$props'> & {
-$props: __VizeAuthoredKeyWitness<__VizeAuthoredProps> & __VizeComponentInput<Props, {}, __VizeAuthoredProps>;
+$props: __VizeAuthoredKeyWitness<__VizeAuthoredProps> & __VizeComponentInputProps<Props, {}> & __VizeComponentInputGuard<Props, {}, __VizeAuthoredProps>;
 };
 type __VizeVueComponentOptions = {
   [key: string]: any;

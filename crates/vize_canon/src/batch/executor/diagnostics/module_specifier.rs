@@ -14,9 +14,14 @@
 //! diagnostic code, and is gated on proof that the author did not write the
 //! mirror spelling themselves.
 
+use std::path::Path;
+
 use super::{DiagnosticMapper, OriginalPosition};
 use crate::batch::restore_virtual_vue_specifiers;
-use crate::batch::virtual_specifier_message::{QUOTE_PAIRS, quoted_specifiers};
+use crate::batch::virtual_specifier_message::{
+    MISSING_VUE_IMPORT_SENTINEL, QUOTE_PAIRS, quoted_specifiers,
+};
+use crate::corsa_client::LspDiagnostic;
 use vize_carton::{String, cstr};
 
 /// The authored `.vue` spelling behind a generated mirror-module specifier, or
@@ -45,6 +50,47 @@ fn quoted_mirror_specifiers(message: &str) -> Vec<&str> {
 }
 
 impl DiagnosticMapper<'_> {
+    pub(crate) fn map_diagnostic_position_to_original(
+        &mut self,
+        virtual_path: &Path,
+        diagnostic: &LspDiagnostic,
+        code: Option<u32>,
+    ) -> Option<OriginalPosition> {
+        self.map_to_original(
+            virtual_path,
+            diagnostic.range.start.line,
+            diagnostic.range.start.character,
+        )
+        .or_else(|| {
+            (code == Some(2307)).then(|| {
+                self.missing_vue_import_position(virtual_path, diagnostic.message.as_str())
+            })?
+        })
+    }
+
+    fn missing_vue_import_position(
+        &mut self,
+        virtual_path: &Path,
+        message: &str,
+    ) -> Option<OriginalPosition> {
+        let authored = missing_vue_import_specifier_source(message)?;
+        let virtual_file = self.project.find_by_diagnostic_virtual(virtual_path)?;
+        let original_path = virtual_file.original_path.clone();
+        let source = self.original_source(&original_path)?;
+        let offset = authored_specifier_literal_offset(&source.content, authored)
+            .or_else(|| source.content.find(authored))?;
+        let (line, column) = source
+            .line_index
+            .offset_to_line_col(&source.content, offset as u32)?;
+
+        Some(OriginalPosition {
+            path: original_path,
+            line,
+            column,
+            block_type: None,
+        })
+    }
+
     /// Rewrite every generated mirror-module specifier in `message` back to the
     /// spelling the author wrote.
     ///
@@ -118,6 +164,21 @@ impl DiagnosticMapper<'_> {
     }
 }
 
+fn missing_vue_import_specifier_source(message: &str) -> Option<&str> {
+    quoted_specifiers(message).into_iter().find_map(|reported| {
+        reported
+            .strip_suffix(MISSING_VUE_IMPORT_SENTINEL)
+            .and_then(mirror_module_specifier_source)
+    })
+}
+
+fn authored_specifier_literal_offset(source: &str, authored: &str) -> Option<usize> {
+    ['\'', '"', '`'].into_iter().find_map(|quote| {
+        let quoted = cstr!("{quote}{authored}{quote}");
+        source.find(quoted.as_str()).map(|offset| offset + 1)
+    })
+}
+
 /// The contents of the string literal starting at the beginning of `rest`, or
 /// `None` when `rest` does not start with a quote.
 fn string_literal_at(rest: &str) -> Option<&str> {
@@ -135,6 +196,7 @@ mod tests {
     use super::super::{LineIndex, map_batch_diagnostics};
     use super::{mirror_module_specifier_source, quoted_mirror_specifiers, string_literal_at};
     use crate::batch::VirtualProject;
+    use crate::batch::virtual_specifier_message::MISSING_VUE_IMPORT_SENTINEL;
     use crate::corsa_client::{LspDiagnostic, LspPosition, LspRange};
     use serde_json::json;
     use tempfile::TempDir;
@@ -202,6 +264,16 @@ mod tests {
         assert_eq!(string_literal_at("\"unterminated"), None);
     }
 
+    #[test]
+    fn missing_vue_import_sentinel_reports_the_authored_specifier() {
+        assert_eq!(
+            super::missing_vue_import_specifier_source(
+                "Cannot find module './Missing.vue.ts/__vize_missing_vue_import__'."
+            ),
+            Some("./Missing.vue")
+        );
+    }
+
     /// End to end through the collection point: a `TS2307` for an SFC import
     /// reaches the user quoting the authored `.vue` specifier, not the mirror
     /// module the rewriter redirected it onto (#3397).
@@ -229,8 +301,9 @@ import MissingPanel from './MissingPanel.vue'
         project.register_path(&app_path).unwrap();
         let virtual_file = project.find_by_original(&app_path).unwrap();
         let virtual_source = virtual_file.content.as_str();
+        let reported = cstr!("./MissingPanel.vue.ts{MISSING_VUE_IMPORT_SENTINEL}");
         let offset = virtual_source
-            .find("MissingPanel.vue.ts")
+            .find(reported.as_str())
             .expect("the rewriter should redirect the import onto the mirror module");
         let (line, character) = LineIndex::new(virtual_source)
             .offset_to_line_col(virtual_source, offset as u32)
@@ -250,9 +323,9 @@ import MissingPanel from './MissingPanel.vue'
                     severity: Some(1),
                     code: Some(json!("TS2307")),
                     source: Some("ts".into()),
-                    message:
-                        "Cannot find module './MissingPanel.vue.ts' or its corresponding type declarations."
-                            .into(),
+                    message: cstr!(
+                        "Cannot find module '{reported}' or its corresponding type declarations."
+                    ),
                 }],
             )],
             &project,

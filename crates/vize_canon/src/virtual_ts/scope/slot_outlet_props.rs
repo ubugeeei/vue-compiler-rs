@@ -17,6 +17,7 @@ use vize_relief::RootNode;
 
 use crate::virtual_ts::generator::generics::references_any_identifier;
 use crate::virtual_ts::props::extract_generic_names;
+use std::ops::Range;
 
 pub(super) use emit::generate_scope_slot_outlet_checks;
 
@@ -29,6 +30,7 @@ pub(super) struct SlotOutlet {
     vif_guard: Option<CompactString>,
     props: Vec<PassedProp>,
     spread_props: Vec<SpreadProp>,
+    event_handler_ranges: Vec<Range<u32>>,
 }
 
 /// The `<slot>` outlets of one component, grouped by the scope that generates
@@ -58,6 +60,15 @@ impl SlotOutletChecks {
     /// drop that contextual type.
     pub(super) fn expression_ranges(&self, summary: &Croquis) -> FxHashSet<(u32, u32)> {
         collect::slot_outlet_expression_ranges(summary, &self.by_scope)
+    }
+
+    pub(super) fn covers_event_handler_scope(&self, start: u32, end: u32) -> bool {
+        self.by_scope.values().flatten().any(|outlet| {
+            outlet
+                .event_handler_ranges
+                .iter()
+                .any(|range| range.start == start && range.end == end)
+        })
     }
 }
 

@@ -73,6 +73,7 @@ fn map_range(
             legacy_vue2: ctx.state.legacy_vue2_enabled(),
             preserve_event_navigation: true,
             dialect: ctx.state.type_checker_vue_version(),
+            preserve_missing_vue_diagnostics: true,
         },
     )
     .ok()?;
