@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not edit by hand.
      Regenerate: rust-script tools/commands/davinci/rule-parity.rs --write
      Verify:     rust-script tools/commands/davinci/rule-parity.rs --check
-     Generator:  tools/commands/davinci/rule-parity.rs
+     Generator:  tools/davinci/rule-parity.mjs
      Overrides:  davinci-road/plan/rule-parity-overrides.toml (hand-corrections; applied last) -->
 
 # Rule-parity matrix (SFC × JSX)
@@ -26,18 +26,18 @@ Per-rule registration surface, SFC/JSX path membership, croquis usage, and a fir
 
 ## File accounting
 
-- `.rs` files under `crates/vize_patina/src/rules/**`: **360**
-- rule-defining files (exactly one `static META` each): **245** → **245 rules**
-- non-rule files: **115** — 27 module organizers (a `<name>.rs` with a `<name>/` directory beside it), 4 `*_tests.rs` companions, 84 helper/data files (rule submodules, shared tables, private utilities)
+- `.rs` files under `crates/vize_patina/src/rules/**`: **370**
+- rule-defining files (exactly one `static META` each): **247** → **247 rules**
+- non-rule files: **123** — 27 module organizers (a `<name>.rs` with a `<name>/` directory beside it), 4 `*_tests.rs` companions, 92 helper/data files (rule submodules, shared tables, private utilities)
 
 ## Summary
 
-- **total rules: 245**
-- by family: template-family 158, script 71, css 10, musea 6
-- by surface (a rule can have several): `css-text` 10, `markup-facade` 39, `musea-blocks` 6, `script-oxc` 65, `script-source` 6, `sfc-source` 9, `template-ast` 152, `type-aware-corsa` 5
-- path membership: SFC `lint_sfc` 239 · JSX `lint_jsx` 147 · **SFC∩JSX 147** · SFC-only 92 · JSX-only 0 · neither 6 (6 musea + 0 unregistered)
-- JSX lanes: `fallback` 108, `ir` 27, `ir-lowered` 12, `no-jsx-hooks` 11 — `ir` + `ir-lowered` is the markup-facade migration list (39 = 39 `markup-facade` rules)
-- classification: neutral-core-candidate **91** · vue-dialect-bound **132** · container-bound **22** (0 overridden)
+- **total rules: 247**
+- by family: template-family 160, script 71, css 10, musea 6
+- by surface (a rule can have several): `css-text` 10, `markup-facade` 40, `musea-blocks` 6, `script-oxc` 65, `script-source` 6, `sfc-source` 9, `template-ast` 154, `type-aware-corsa` 5
+- path membership: SFC `lint_sfc` 241 · JSX `lint_jsx` 149 · **SFC∩JSX 149** · SFC-only 92 · JSX-only 0 · neither 6 (6 musea + 0 unregistered)
+- JSX lanes: `fallback` 109, `ir` 28, `ir-lowered` 12, `no-jsx-hooks` 11 — `ir` + `ir-lowered` is the markup-facade migration list (40 = 40 `markup-facade` rules)
+- classification: neutral-core-candidate **92** · vue-dialect-bound **134** · container-bound **21** (0 overridden)
 - croquis adoption: **23** rules touch vize_croquis (18 direct imports, 12 via context analysis)
 
 ## Full table
@@ -233,6 +233,7 @@ Sorted by rule name. File paths are relative to `crates/vize_patina/src/rules/`.
 | `vue/no-root-v-if`                              | template-family | `opinionated/vue/no_root_v_if.rs`                      | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
 | `vue/no-script-non-standard-lang`               | template-family | `opinionated/vue/no_script_non_standard_lang.rs`       | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | neutral-core-candidate |
 | `vue/no-src-attribute`                          | template-family | `opinionated/vue/no_src_attribute.rs`                  | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | neutral-core-candidate |
+| `vue/no-static-inline-styles`                   | template-family | `vue/no_static_inline_styles.rs`                       | template-ast, markup-facade    | yes (template-visitor)           | yes (ir)                    | —                                                                                                   | vue-dialect-bound      |
 | `vue/no-template-key`                           | template-family | `vue/no_template_key.rs`                               | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
 | `vue/no-template-lang`                          | template-family | `opinionated/vue/no_template_lang.rs`                  | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | neutral-core-candidate |
 | `vue/no-template-shadow`                        | template-family | `opinionated/vue/no_template_shadow.rs`                | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
@@ -241,7 +242,7 @@ Sorted by rule name. File paths are relative to `crates/vize_patina/src/rules/`.
 | `vue/no-undefined-refs`                         | template-family | `vue/no_undefined_refs.rs`                             | template-ast                   | yes (template-visitor)           | yes (fallback)              | ctx 1                                                                                               | neutral-core-candidate |
 | `vue/no-unsafe-url`                             | template-family | `vue/no_unsafe_url.rs`                                 | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
 | `vue/no-unsandboxed-iframe`                     | template-family | `vue/no_unsandboxed_iframe.rs`                         | template-ast, markup-facade    | yes (template-visitor)           | yes (ir)                    | —                                                                                                   | vue-dialect-bound      |
-| `vue/no-unused-components`                      | template-family | `vue/no_unused_components.rs`                          | template-ast                   | yes (template-visitor)           | yes (fallback)              | direct 6: `Croquis`, `ScopeData`, `naming::is_pascal_case`, +2; ctx 2                               | container-bound        |
+| `vue/no-unused-components`                      | template-family | `vue/no_unused_components.rs`                          | template-ast                   | yes (template-visitor)           | yes (fallback)              | direct 8: `Croquis`, `Scope`, `ScopeData`, +4; ctx 2                                                | neutral-core-candidate |
 | `vue/no-unused-properties`                      | template-family | `vue/no_unused_properties.rs`                          | template-ast                   | yes (template-visitor)           | yes (fallback)              | ctx 2                                                                                               | container-bound        |
 | `vue/no-unused-refs`                            | template-family | `opinionated/vue/no_unused_refs.rs`                    | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | container-bound        |
 | `vue/no-unused-vars`                            | template-family | `vue/no_unused_vars.rs`                                | template-ast                   | yes (template-visitor)           | yes (fallback)              | direct 4: `UnusedVarContext`; ctx 2                                                                 | vue-dialect-bound      |
@@ -259,7 +260,7 @@ Sorted by rule name. File paths are relative to `crates/vize_patina/src/rules/`.
 | `vue/prefer-true-attribute-shorthand`           | template-family | `opinionated/vue/prefer_true_attribute_shorthand.rs`   | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
 | `vue/prop-name-casing`                          | template-family | `vue/prop_name_casing.rs`                              | template-ast                   | yes (template-visitor)           | yes (fallback)              | ctx 1                                                                                               | container-bound        |
 | `vue/require-component-is`                      | template-family | `vue/require_component_is.rs`                          | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
-| `vue/require-component-registration`            | template-family | `opinionated/vue/require_component_registration.rs`    | template-ast                   | yes (template-visitor)           | yes (fallback)              | direct 7: `Croquis`, `ScopeData`, `builtins::is_builtin_component`, +2; ctx 2                       | vue-dialect-bound      |
+| `vue/require-component-registration`            | template-family | `opinionated/vue/require_component_registration.rs`    | template-ast                   | yes (template-visitor)           | yes (fallback)              | direct 11: `Croquis`, `Scope`, `ScopeData`, +4; ctx 2                                               | vue-dialect-bound      |
 | `vue/require-scoped-style`                      | template-family | `vue/require_scoped_style.rs`                          | sfc-source                     | yes (sfc-hooks)                  | no (no JSX-reachable hooks) | —                                                                                                   | container-bound        |
 | `vue/require-toggle-inside-transition`          | template-family | `vue/require_toggle_inside_transition.rs`              | template-ast                   | yes (template-visitor)           | yes (fallback)              | —                                                                                                   | vue-dialect-bound      |
 | `vue/require-v-for-key`                         | template-family | `vue/require_v_for_key.rs`                             | template-ast, markup-facade    | yes (template-visitor)           | yes (ir-lowered)            | —                                                                                                   | vue-dialect-bound      |
