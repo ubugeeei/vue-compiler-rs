@@ -52,7 +52,7 @@ test("process-tree RSS accounting sees the probing process and a child", async (
   }
 });
 
-test("process-tree RSS accounting returns null when the root process is absent", (t) => {
+test("process-tree RSS accounting returns null when the root process is absent", () => {
   const tree = processTreeRss(absentPid);
   if (process.platform === "win32") {
     assert.equal(tree, null);
