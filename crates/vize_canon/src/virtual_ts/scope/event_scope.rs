@@ -26,8 +26,7 @@ use super::component_events::{ComponentEventTypeContext, generate_component_even
 use super::context::{EventHandlerExprContext, ScopeGenContext};
 use super::event_handler::{event_name_source_range, generate_event_handler_expressions};
 use event_targets::{
-    allows_bivariant_handler_assignment, dynamic_component_custom_event,
-    needs_typed_handler_assignment, transition_hook_signature,
+    dynamic_component_custom_event, needs_typed_handler_assignment, transition_hook_signature,
 };
 
 pub(super) fn generate_event_handler_scope(
@@ -70,7 +69,6 @@ pub(super) fn generate_event_handler_scope(
 
     if data.target_component.is_some() {
         let needs_typed_handler_assignment = needs_typed_handler_assignment(data);
-        let allows_bivariant_handler_assignment = allows_bivariant_handler_assignment(data);
         let event_types = generate_component_event_types(
             ts,
             ComponentEventTypeContext {
@@ -82,7 +80,6 @@ pub(super) fn generate_event_handler_scope(
                 template_prop_names: ctx.template_prop_names,
                 legacy_vue2: ctx.legacy_vue2,
                 needs_typed_handler_assignment,
-                allows_bivariant_handler_assignment,
                 indent,
             },
         )

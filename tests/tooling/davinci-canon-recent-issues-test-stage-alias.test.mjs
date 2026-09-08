@@ -119,7 +119,7 @@ const recentIssueRows = [
   [
     "crates/vize_canon/src/batch/type_checker/tests/recent_issues/template_handler_ts7006.rs",
     "test",
-    16,
+    18,
   ],
   [
     "crates/vize_canon/src/batch/type_checker/tests/recent_issues/wide_props_type_complexity.rs",

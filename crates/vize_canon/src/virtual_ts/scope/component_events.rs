@@ -31,7 +31,6 @@ pub(super) struct ComponentEventTypeContext<'a> {
     pub(super) template_prop_names: &'a FxHashSet<String>,
     pub(super) legacy_vue2: bool,
     pub(super) needs_typed_handler_assignment: bool,
-    pub(super) allows_bivariant_handler_assignment: bool,
     pub(super) indent: &'a str,
 }
 
@@ -48,7 +47,6 @@ pub(super) fn generate_component_event_types(
         template_prop_names,
         legacy_vue2,
         needs_typed_handler_assignment,
-        allows_bivariant_handler_assignment,
         indent,
     } = ctx;
     let component_name = data.target_component.as_ref()?;
@@ -179,23 +177,9 @@ pub(super) fn generate_component_event_types(
     };
     let requires_unresolved_handler =
         requires_unresolved_handler_implicit_any(summary, component_name, data, scope);
-    let handler_type_expr = (!legacy_vue2
-        && needs_typed_handler_assignment
-        && (allows_bivariant_handler_assignment || requires_unresolved_handler))
-        .then(|| {
-        let assignment_type = if allows_bivariant_handler_assignment {
-            cstr!(
-                "typeof {component_ref} extends {{ __vizeEmitProps?: any }} ? {listener_type} : {{ bivarianceHack(...args: {listener_args_type}): any }}[\"bivarianceHack\"]"
-            )
-        } else {
-            listener_type.clone()
-        };
-        if requires_unresolved_handler {
-            cstr!("unknown[] extends {args_type} ? unknown : {assignment_type}")
-        } else {
-            cstr!("unknown[] extends {args_type} ? {listener_type} : {assignment_type}")
-        }
-    });
+    let handler_type_expr =
+        (!legacy_vue2 && needs_typed_handler_assignment && requires_unresolved_handler)
+            .then(|| cstr!("unknown[] extends {args_type} ? unknown : {listener_type}"));
     let handler_type = handler_type_expr
         .as_ref()
         .map(|_| cstr!("__{component_type_name}_{scope_id}_{safe_event_name}_handler"));
