@@ -193,6 +193,7 @@ export class ChurnMetrics {
         );
       }
     }
+    this.assertProcessTreeObserved(peakProcesses);
   }
 
   write(context: ChurnContext, failure?: unknown): void {
@@ -252,6 +253,15 @@ export class ChurnMetrics {
       treeKiB: Math.max(0, ...this.rssSamples.map((s) => s.treeKiB)),
       processes: Math.max(0, ...this.rssSamples.map((s) => s.treeProcesses)),
     };
+  }
+
+  private assertProcessTreeObserved(peakProcesses: number): void {
+    if (process.platform === "win32") return;
+    if (this.rssSamples.length > 0 && peakProcesses > 0) return;
+    throw new Error(
+      `${this.suite.title}: process-tree RSS sampling did not observe LSP server process ` +
+        `${this.processId}; cannot enforce maxPeakProcessTreeRssMiB or maxProcessTreeSize.`,
+    );
   }
 
   private assertRss(name: string, peakKiB: number, ceilingMiB: number, field: string): void {

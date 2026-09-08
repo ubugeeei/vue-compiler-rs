@@ -3,6 +3,8 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { test } from "node:test";
 
+import { ChurnMetrics } from "../performance/support/churn-metrics.ts";
+import type { LspChurnBudget } from "../performance/support/churn-metrics.ts";
 import {
   budgetRegistryPath,
   IncrementalMetrics,
@@ -11,11 +13,17 @@ import type { LspIncrementalBudget } from "../performance/support/incremental-me
 import { processTreeRss } from "../performance/support/process-metrics.ts";
 
 const suite = { id: "misskey-lsp-incremental", title: "Misskey LSP Incremental Oracle" };
+const churnSuite = { id: "misskey-lsp-churn", title: "Misskey LSP Churn Stress Oracle" };
+const absentPid = Number.MAX_SAFE_INTEGER;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function mutableBudget(metrics: IncrementalMetrics): LspIncrementalBudget {
   return (metrics as unknown as { budget: LspIncrementalBudget }).budget;
+}
+
+function mutableChurnBudget(metrics: ChurnMetrics): LspChurnBudget {
+  return (metrics as unknown as { budget: LspChurnBudget }).budget;
 }
 
 test("process-tree RSS accounting sees the probing process and a child", async () => {
@@ -44,6 +52,15 @@ test("process-tree RSS accounting sees the probing process and a child", async (
   }
 });
 
+test("process-tree RSS accounting returns null when the root process is absent", () => {
+  const tree = processTreeRss(absentPid);
+  if (process.platform === "win32") {
+    assert.equal(tree, null);
+    return;
+  }
+  assert.equal(tree, null);
+});
+
 test("incremental process-tree RSS failures point at the registry ceiling", (t) => {
   if (process.platform === "win32") {
     t.skip("process-tree RSS accounting is Linux/POSIX only");
@@ -63,6 +80,51 @@ test("incremental process-tree RSS failures point at the registry ceiling", (t) 
       );
       assert.match(error.message, /raising maxPeakProcessTreeRssMiB/);
       assert.ok(error.message.includes(budgetRegistryPath));
+      return true;
+    },
+  );
+});
+
+test("incremental settlement fails when process-tree sampling misses the server pid", (t) => {
+  if (process.platform === "win32") {
+    t.skip("process-tree RSS accounting is Linux/POSIX only");
+    return;
+  }
+  const metrics = new IncrementalMetrics(absentPid, suite);
+  const budget = mutableBudget(metrics);
+  budget.maxPeakRssMiB = 1_000_000;
+  budget.maxPeakProcessTreeRssMiB = 1_000_000;
+  budget.maxProcessTreeSize = 1_000_000;
+  budget.laneBudgetsMs = {};
+  metrics.sampleRss("missing-server");
+  assert.throws(
+    () => metrics.assertBudgetsSettled(),
+    (error: Error) => {
+      assert.match(error.message, /process-tree RSS sampling did not observe LSP server process/);
+      assert.match(error.message, /cannot enforce maxPeakProcessTreeRssMiB or maxProcessTreeSize/);
+      return true;
+    },
+  );
+});
+
+test("churn settlement fails when process-tree sampling misses the server pid", (t) => {
+  if (process.platform === "win32") {
+    t.skip("process-tree RSS accounting is Linux/POSIX only");
+    return;
+  }
+  const metrics = new ChurnMetrics(absentPid, churnSuite);
+  const budget = mutableChurnBudget(metrics);
+  budget.cyclesPerPhase = 0;
+  budget.maxPeakRssMiB = 1_000_000;
+  budget.maxPeakProcessTreeRssMiB = 1_000_000;
+  budget.maxProcessTreeSize = 1_000_000;
+  budget.budgetsMs = {};
+  metrics.sampleRss("missing-server");
+  assert.throws(
+    () => metrics.assertSettled(),
+    (error: Error) => {
+      assert.match(error.message, /process-tree RSS sampling did not observe LSP server process/);
+      assert.match(error.message, /cannot enforce maxPeakProcessTreeRssMiB or maxProcessTreeSize/);
       return true;
     },
   );

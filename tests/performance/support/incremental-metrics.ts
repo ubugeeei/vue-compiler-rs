@@ -183,6 +183,7 @@ export class IncrementalMetrics {
         );
       }
     }
+    this.assertProcessTreeObserved(peaks);
   }
 
   write(context: MetricContext, failure?: unknown): void {
@@ -251,6 +252,15 @@ export class IncrementalMetrics {
         ...Object.values(this.processTreeSamples).map((sample) => sample.processes),
       ),
     };
+  }
+
+  private assertProcessTreeObserved(peaks: { processes: number }): void {
+    if (process.platform === "win32") return;
+    if (Object.keys(this.processTreeSamples).length > 0 && peaks.processes > 0) return;
+    throw new Error(
+      `${this.suite.title}: process-tree RSS sampling did not observe LSP server process ` +
+        `${this.processId}; cannot enforce maxPeakProcessTreeRssMiB or maxProcessTreeSize.`,
+    );
   }
 
   private assertRss(name: string, peakKiB: number, ceilingMiB: number, field: string): void {
