@@ -59,10 +59,12 @@ type __VizeMissingRequiredInputKeys<T, Authored, K extends __VizeRequiredKeys<T>
 type __VizeIsPropKeyUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : false;
 type __VizeIsSinglePropKey<T> = [T] extends [never] ? false : __VizeIsPropKeyUnion<T> extends true ? false : true;
 type __VizeRelaxedDynamicUnionExtra<T, Declared, Authored, K extends keyof Authored> = [keyof Declared] extends [never] ? __VizeIsSinglePropKey<__VizeRequiredKeys<T>> extends true ? K extends string ? K extends `on${string}` ? false : Authored[K] extends true ? false : true : false : false : false;
-type __VizeExtraInputKeys<T, Declared, Authored, Allowed = __VizeComponentInputProps<T, Declared>, K extends keyof Authored = Exclude<keyof Authored, keyof Allowed>> = K extends unknown ? __VizeRelaxedDynamicUnionExtra<T, Declared, Authored, K> extends true ? never : K : never;
+type __VizeExtraInputKeys<T, Declared, Authored, Allowed, K extends keyof Authored = Exclude<keyof Authored, keyof Allowed>> = K extends unknown ? __VizeRelaxedDynamicUnionExtra<T, Declared, Authored, K> extends true ? never : K : never;
 type __VizeComponentMissingInputGuard<T, Authored> = T extends unknown ? [__VizeMissingRequiredInputKeys<T, Authored>] extends [never] ? {} : { readonly __vizeInvalidComponentProps: { readonly missing: __VizeMissingRequiredInputKeys<T, Authored>; readonly extra: never; } } : never;
-type __VizeComponentInputGuard<T, Declared, Authored> = __VizeUsePublicInstance<Authored> extends true ? {} : T extends unknown ? [__VizeMissingRequiredInputKeys<T, Authored> | __VizeExtraInputKeys<T, Declared, Authored>] extends [never] ? {} : { readonly __vizeInvalidComponentProps: { readonly missing: __VizeMissingRequiredInputKeys<T, Authored>; readonly extra: __VizeExtraInputKeys<T, Declared, Authored>; } } : never;
-type __VizeComponentInput<T, Declared, Authored> = __VizeUsePublicInstance<Authored> extends true ? __VizeComponentInputProps<T, Declared> : __VizeComponentInputProps<T, Declared> & __VizeComponentInputGuard<T, Declared, Authored>;
+type __VizeComponentInputGuardFor<T, Declared, Authored, Allowed> = [__VizeMissingRequiredInputKeys<T, Authored> | __VizeExtraInputKeys<T, Declared, Authored, Allowed>] extends [never] ? {} : { readonly __vizeInvalidComponentProps: { readonly missing: __VizeMissingRequiredInputKeys<T, Authored>; readonly extra: __VizeExtraInputKeys<T, Declared, Authored, Allowed>; } };
+type __VizeComponentInputGuard<T, Declared, Authored> = __VizeUsePublicInstance<Authored> extends true ? {} : T extends unknown ? __VizeComponentInputGuardFor<T, Declared, Authored, __VizeComponentInputProps<T, Declared>> : never;
+type __VizeComponentInputFor<T, Declared, Authored, Allowed> = Allowed & __VizeComponentInputGuardFor<T, Declared, Authored, Allowed>;
+type __VizeComponentInput<T, Declared, Authored> = __VizeUsePublicInstance<Authored> extends true ? __VizeComponentInputProps<T, Declared> : T extends unknown ? __VizeComponentInputFor<T, Declared, Authored, __VizeComponentInputProps<T, Declared>> : never;
 type __VizeAuthoredKeyWitness<T> = { [K in keyof T]: unknown };
 type __VizeIsUnknown<T> = unknown extends T ? [keyof T] extends [never] ? true : false : false;
 type __VizeUsePublicInstance<T> = __VizeIsAny<T> extends true ? true : __VizeIsUnknown<T>;
@@ -113,7 +115,7 @@ function __setup() {
   // User setup code
   const elems = { a: [1], b: ["a"] } as const;
   const key = "a" as "a" | "b";
-  // @vize-map: 12599:12678 -> 0:74
+  // @vize-map: 12897:12976 -> 0:74
 
   // ========== Template Scope (inherits from setup) ==========
   ;(function __template() {
