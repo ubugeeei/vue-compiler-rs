@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/fresco",
-  "version": "0.404.2",
+  "version": "0.404.3",
   "description": "Vue TUI framework - Build terminal UIs with Vue.js",
   "keywords": [
     "cli",
