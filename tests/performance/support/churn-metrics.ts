@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,14 +5,14 @@ import { inspect } from "node:util";
 import { performance } from "node:perf_hooks";
 
 import { repoRoot } from "../../_helpers/realworld-patch.ts";
-import { gitHead, writeChurnArtifacts } from "./churn-report.ts";
+import { writeChurnArtifacts } from "./churn-report.ts";
 import {
   budgetRegistryPath,
   budgetScaleVariable,
   incrementalMetricsDir,
-  processRssKiB,
   resolveBudgetScale,
 } from "./incremental-metrics.ts";
+import { gitHead, processRssKiB, processTreeRss } from "./process-metrics.ts";
 
 /** `id` is the metrics directory under `target/vize-tests/metrics/`; `title` heads the summary. */
 export type ChurnSuite = { id: string; title: string };
@@ -77,38 +76,6 @@ export function loadLspChurnBudget(suiteId: string): {
     }
   }
   return { fixtureId: owners[0].id, budget };
-}
-
-/**
- * Resident-set total and process count for a process and every live
- * descendant, so a leaked Corsa/tsgo worker shows up even though it is not the
- * `vize lsp` process itself. Unavailable on Windows, where the churn RSS gates
- * become latency-only; CI enforcement runs on Linux.
- */
-export function processTreeRss(rootPid: number): { totalKiB: number; processes: number } | null {
-  if (process.platform === "win32") return null;
-  const result = spawnSync("ps", ["-Ao", "pid=,ppid=,rss="], { encoding: "utf8" });
-  if (result.status !== 0) return null;
-  const children = new Map<number, number[]>();
-  const rssByPid = new Map<number, number>();
-  for (const line of result.stdout.trim().split("\n")) {
-    const [pid, ppid, rss] = line.trim().split(/\s+/).map(Number);
-    if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(ppid)) continue;
-    rssByPid.set(pid, Number.isFinite(rss) ? rss : 0);
-    children.set(ppid, [...(children.get(ppid) ?? []), pid]);
-  }
-  let totalKiB = 0;
-  let processes = 0;
-  const stack = [rootPid];
-  while (stack.length > 0) {
-    const pid = stack.pop()!;
-    if (rssByPid.has(pid)) {
-      totalKiB += rssByPid.get(pid)!;
-      processes += 1;
-    }
-    stack.push(...(children.get(pid) ?? []));
-  }
-  return { totalKiB, processes };
 }
 
 type RssSample = { label: string; serverKiB: number; treeKiB: number; treeProcesses: number };

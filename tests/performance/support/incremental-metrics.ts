@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +5,8 @@ import { inspect } from "node:util";
 import { performance } from "node:perf_hooks";
 
 import { repoRoot } from "../../_helpers/realworld-patch.ts";
+import { writeIncrementalArtifacts } from "./incremental-report.ts";
+import { gitHead, processRssKiB, processTreeRss } from "./process-metrics.ts";
 
 export type IncrementalSuite = {
   /** Metrics directory name under `target/vize-tests/metrics/`. */
@@ -19,6 +20,8 @@ export type LspIncrementalBudget = {
   suite: string;
   laneHardTimeoutMs: number;
   maxPeakRssMiB: number;
+  maxPeakProcessTreeRssMiB: number;
+  maxProcessTreeSize: number;
   laneBudgetsMs: Record<string, number>;
 };
 
@@ -51,14 +54,19 @@ export function loadLspIncrementalBudget(suiteId: string): {
     );
   }
   const budget = owners[0].lspIncrementalBudget!;
-  assertBudgetMs(budget.laneHardTimeoutMs, suiteId, "laneHardTimeoutMs");
-  assertBudgetMs(budget.maxPeakRssMiB, suiteId, "maxPeakRssMiB");
+  assertPositiveInteger(budget.laneHardTimeoutMs, suiteId, "laneHardTimeoutMs");
+  assertPositiveInteger(budget.maxPeakRssMiB, suiteId, "maxPeakRssMiB");
+  assertPositiveInteger(budget.maxPeakProcessTreeRssMiB, suiteId, "maxPeakProcessTreeRssMiB");
+  assertPositiveInteger(budget.maxProcessTreeSize, suiteId, "maxProcessTreeSize");
+  if (budget.maxPeakRssMiB > budget.maxPeakProcessTreeRssMiB) {
+    throw new Error(`${suiteId} maxPeakRssMiB must not exceed maxPeakProcessTreeRssMiB`);
+  }
   const lanes = Object.entries(budget.laneBudgetsMs ?? {});
   if (lanes.length === 0) {
     throw new Error(`${suiteId} laneBudgetsMs must contain every measured lane`);
   }
   for (const [lane, value] of lanes) {
-    assertBudgetMs(value, suiteId, `laneBudgetsMs.${lane}`);
+    assertPositiveInteger(value, suiteId, `laneBudgetsMs.${lane}`);
     if (value > budget.laneHardTimeoutMs) {
       throw new Error(`${suiteId} laneBudgetsMs.${lane} must not exceed laneHardTimeoutMs`);
     }
@@ -94,6 +102,7 @@ type MetricContext = {
 export class IncrementalMetrics {
   private readonly timingsMs: Record<string, number> = {};
   private readonly rssSamplesKiB: Record<string, number> = {};
+  private readonly processTreeSamples: Record<string, { totalKiB: number; processes: number }> = {};
   private readonly processId: number;
   private readonly suite: IncrementalSuite;
   private readonly fixtureId: string;
@@ -139,6 +148,8 @@ export class IncrementalMetrics {
   sampleRss(name: string): void {
     const rss = processRssKiB(this.processId);
     if (rss != null) this.rssSamplesKiB[name] = rss;
+    const tree = processTreeRss(this.processId);
+    if (tree != null) this.processTreeSamples[name] = tree;
   }
 
   /**
@@ -148,13 +159,19 @@ export class IncrementalMetrics {
    * so tooling tests can exercise it without touching metric artifacts.
    */
   assertBudgetsSettled(): void {
-    const peakKiB = this.sampledPeakRssKiB();
-    const ceilingKiB = this.budget.maxPeakRssMiB * 1024 * this.scale;
-    if (peakKiB > ceilingKiB) {
+    const peaks = this.peakSamples();
+    this.assertRss("LSP", peaks.serverKiB, this.budget.maxPeakRssMiB, "maxPeakRssMiB");
+    this.assertRss(
+      "LSP process-tree",
+      peaks.treeKiB,
+      this.budget.maxPeakProcessTreeRssMiB,
+      "maxPeakProcessTreeRssMiB",
+    );
+    if (peaks.processes > this.budget.maxProcessTreeSize) {
       throw this.budgetViolation(
-        `sampled peak RSS ${(peakKiB / 1024).toFixed(1)} MiB is over its ` +
-          `${this.budget.maxPeakRssMiB * this.scale} MiB budget${this.scaleSuffix()}.`,
-        "maxPeakRssMiB",
+        `the LSP process tree grew to ${peaks.processes} processes, over its ` +
+          `${this.budget.maxProcessTreeSize} process ceiling; a worker session is likely leaking.`,
+        "maxProcessTreeSize",
       );
     }
     for (const lane of Object.keys(this.budget.laneBudgetsMs)) {
@@ -200,21 +217,19 @@ export class IncrementalMetrics {
         cpuCount: os.cpus().length,
         cpuModel: os.cpus()[0]?.model ?? "unknown",
       },
-      budget: {
-        scale: this.scale,
-        laneHardTimeoutMs: this.budget.laneHardTimeoutMs,
-        maxPeakRssMiB: this.budget.maxPeakRssMiB,
-        laneBudgetsMs: this.budget.laneBudgetsMs,
-      },
+      budget: { scale: this.scale, ...this.budget },
       timingsMs: this.timingsMs,
       rssSamplesKiB: this.rssSamplesKiB,
+      processTreeSamples: this.processTreeSamples,
       sampledPeakRssKiB: this.sampledPeakRssKiB(),
+      sampledPeakProcessTreeRssKiB: this.peakSamples().treeKiB,
+      sampledPeakProcessTreeSize: this.peakSamples().processes,
       note:
-        "Latency, RSS, and hang ceilings are enforced from the registry lspIncrementalBudget " +
+        "Latency, RSS, process-tree, and hang ceilings are enforced from the registry " +
+        "lspIncrementalBudget " +
         "block; diagnostic, completion, hover, and repair oracles are gated.",
     };
-    fs.writeFileSync(path.join(outputDir, "metrics.json"), `${JSON.stringify(data, null, 2)}\n`);
-    fs.writeFileSync(path.join(outputDir, "summary.md"), renderMarkdown(this.suite.title, data));
+    writeIncrementalArtifacts(outputDir, this.suite.title, data);
     if (budgetFailure != null) throw budgetFailure;
   }
 
@@ -222,6 +237,30 @@ export class IncrementalMetrics {
     // RSS sampling is unavailable on Windows, where the peak stays 0 and the
     // ceiling is effectively latency-only; CI enforcement runs on Linux.
     return Math.max(0, ...Object.values(this.rssSamplesKiB));
+  }
+
+  private peakSamples(): { serverKiB: number; treeKiB: number; processes: number } {
+    return {
+      serverKiB: this.sampledPeakRssKiB(),
+      treeKiB: Math.max(
+        0,
+        ...Object.values(this.processTreeSamples).map((sample) => sample.totalKiB),
+      ),
+      processes: Math.max(
+        0,
+        ...Object.values(this.processTreeSamples).map((sample) => sample.processes),
+      ),
+    };
+  }
+
+  private assertRss(name: string, peakKiB: number, ceilingMiB: number, field: string): void {
+    if (peakKiB > ceilingMiB * 1024 * this.scale) {
+      throw this.budgetViolation(
+        `sampled peak ${name} RSS ${(peakKiB / 1024).toFixed(1)} MiB is over its ` +
+          `${ceilingMiB * this.scale} MiB budget${this.scaleSuffix()}.`,
+        field,
+      );
+    }
   }
 
   /**
@@ -285,65 +324,8 @@ export function countFiles(
   return count;
 }
 
-function assertBudgetMs(value: number, suiteId: string, field: string): void {
+function assertPositiveInteger(value: number, suiteId: string, field: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${suiteId} ${field} must be a positive safe integer, got ${inspect(value)}`);
   }
-}
-
-export function processRssKiB(processId: number): number | null {
-  if (process.platform === "win32") return null;
-  const result = spawnSync("ps", ["-o", "rss=", "-p", String(processId)], { encoding: "utf8" });
-  if (result.status !== 0) return null;
-  const value = Number.parseInt(result.stdout.trim(), 10);
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function gitHead(): string {
-  const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" });
-  return result.status === 0 ? result.stdout.trim() : "unknown";
-}
-
-function renderMarkdown(
-  title: string,
-  data: {
-    status: string;
-    fixture: string;
-    fixtureRevision: string;
-    corpus: { vueFiles: number; vueAndTypeScriptFiles: number; baselineDiagnostics: number };
-    budget: { scale: number; maxPeakRssMiB: number; laneBudgetsMs: Record<string, number> };
-    timingsMs: Record<string, number>;
-    sampledPeakRssKiB: number;
-  },
-): string {
-  const scale = data.budget.scale;
-  const lines = [
-    `## ${title}`,
-    "",
-    `Status: **${data.status}**. Fixture: \`${data.fixture}@${data.fixtureRevision}\`.`,
-    "",
-    `Corpus: ${data.corpus.vueFiles} Vue files; ${data.corpus.vueAndTypeScriptFiles} Vue/TS files; ${data.corpus.baselineDiagnostics} baseline diagnostics.`,
-    "",
-    "| Stage | Time | Budget |",
-    "| --- | ---: | ---: |",
-  ];
-  for (const [stage, milliseconds] of Object.entries(data.timingsMs)) {
-    const budgetMs = data.budget.laneBudgetsMs[stage];
-    const budgetCell = budgetMs == null ? "—" : `${budgetMs * scale} ms`;
-    lines.push(`| ${stage} | ${milliseconds.toFixed(1)} ms | ${budgetCell} |`);
-  }
-  lines.push(
-    "",
-    `Sampled peak LSP RSS: ${
-      data.sampledPeakRssKiB > 0
-        ? `${(data.sampledPeakRssKiB / 1024).toFixed(1)} MiB`
-        : "unavailable"
-    } (budget ${data.budget.maxPeakRssMiB * scale} MiB).`,
-    "",
-    `Latency, RSS, and hang ceilings are enforced at scale ${scale} from the registry ` +
-      "lspIncrementalBudget block. The clean/broken/repaired diagnostics, completion, hover, " +
-      "and dependency propagation are hard assertions.",
-    "",
-  );
-  return lines.join("\n");
 }

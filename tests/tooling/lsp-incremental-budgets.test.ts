@@ -4,11 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import {
-  ChurnMetrics,
-  loadLspChurnBudget,
-  processTreeRss,
-} from "../performance/support/churn-metrics.ts";
+import { ChurnMetrics, loadLspChurnBudget } from "../performance/support/churn-metrics.ts";
 import {
   budgetRegistryPath,
   budgetScaleVariable,
@@ -134,7 +130,7 @@ test("peak RSS over its ceiling fails settlement with rebaseline instructions", 
   assert.throws(
     () => metrics.assertBudgetsSettled(),
     (error: Error) => {
-      assert.match(error.message, /sampled peak RSS .* MiB is over its 0\.256 MiB budget/);
+      assert.match(error.message, /sampled peak LSP RSS .* MiB is over its 0\.256 MiB budget/);
       assert.match(error.message, /raising maxPeakRssMiB/);
       assert.ok(error.message.includes(budgetRegistryPath));
       return true;
@@ -243,17 +239,6 @@ test("churn settlement gates cycle count, RSS ceilings, and latency decay", asyn
   );
 });
 
-test("process-tree RSS accounting sees the probing process itself", () => {
-  const tree = processTreeRss(process.pid);
-  if (process.platform === "win32") {
-    assert.equal(tree, null);
-    return;
-  }
-  assert.ok(tree != null, "ps-based tree sampling must work on POSIX hosts");
-  assert.ok(tree.processes >= 1, "the root process must be part of its own tree");
-  assert.ok(tree.totalKiB > 0, "a live process tree has resident memory");
-});
-
 test("incremental LSP suites carry complete enforced budget blocks", () => {
   const owners = readBudgetOwners();
 
@@ -307,6 +292,18 @@ test("incremental LSP suites carry complete enforced budget blocks", () => {
     assert.ok(
       Number.isSafeInteger(budget.maxPeakRssMiB) && budget.maxPeakRssMiB > 0,
       `${id} maxPeakRssMiB must be a positive integer`,
+    );
+    assert.ok(
+      Number.isSafeInteger(budget.maxPeakProcessTreeRssMiB) && budget.maxPeakProcessTreeRssMiB > 0,
+      `${id} maxPeakProcessTreeRssMiB must be a positive integer`,
+    );
+    assert.ok(
+      budget.maxPeakRssMiB <= budget.maxPeakProcessTreeRssMiB,
+      `${id} process-tree RSS budget must cover the server RSS budget`,
+    );
+    assert.ok(
+      Number.isSafeInteger(budget.maxProcessTreeSize) && budget.maxProcessTreeSize > 0,
+      `${id} maxProcessTreeSize must be a positive integer`,
     );
     for (const [lane, budgetMs] of Object.entries(budget.laneBudgetsMs)) {
       assert.ok(
