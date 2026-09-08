@@ -26,7 +26,12 @@ export function processTreeRss(rootPid: number): { totalKiB: number; processes: 
     const [pid, ppid, rss] = line.trim().split(/\s+/).map(Number);
     if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(ppid)) continue;
     rssByPid.set(pid, Number.isFinite(rss) ? rss : 0);
-    children.set(ppid, [...(children.get(ppid) ?? []), pid]);
+    const siblings = children.get(ppid);
+    if (siblings == null) {
+      children.set(ppid, [pid]);
+    } else {
+      siblings.push(pid);
+    }
   }
   let totalKiB = 0;
   let processes = 0;

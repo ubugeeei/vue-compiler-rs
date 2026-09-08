@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { test } from "node:test";
 
 import {
@@ -10,19 +12,36 @@ import { processTreeRss } from "../performance/support/process-metrics.ts";
 
 const suite = { id: "misskey-lsp-incremental", title: "Misskey LSP Incremental Oracle" };
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function mutableBudget(metrics: IncrementalMetrics): LspIncrementalBudget {
   return (metrics as unknown as { budget: LspIncrementalBudget }).budget;
 }
 
-test("process-tree RSS accounting sees the probing process itself", () => {
+test("process-tree RSS accounting sees the probing process and a child", async () => {
   const tree = processTreeRss(process.pid);
   if (process.platform === "win32") {
     assert.equal(tree, null);
     return;
   }
-  assert.ok(tree != null, "ps-based tree sampling must work on POSIX hosts");
-  assert.ok(tree.processes >= 1, "the root process must be part of its own tree");
-  assert.ok(tree.totalKiB > 0, "a live process tree has resident memory");
+  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+    stdio: "ignore",
+  });
+  try {
+    await once(child, "spawn");
+    let sampled = tree;
+    for (let tries = 0; tries < 50; tries += 1) {
+      sampled = processTreeRss(process.pid);
+      if (sampled != null && sampled.processes >= 2) break;
+      await delay(20);
+    }
+    assert.ok(sampled != null, "ps-based tree sampling must work on POSIX hosts");
+    assert.ok(sampled.processes >= 2, "the root and child processes must both be counted");
+    assert.ok(sampled.totalKiB > 0, "a live process tree has resident memory");
+  } finally {
+    child.kill();
+    await Promise.race([once(child, "exit"), delay(1_000)]);
+  }
 });
 
 test("incremental process-tree RSS failures point at the registry ceiling", (t) => {

@@ -44,7 +44,7 @@
         "laneHardTimeoutMs": 60000,
         "maxPeakRssMiB": 256,
         "maxPeakProcessTreeRssMiB": 512,
-        "maxProcessTreeSize": 3,
+        "maxProcessTreeSize": 4,
         "laneBudgetsMs": {
           "initialize": 1000,
           "coldOpen": 8000,
