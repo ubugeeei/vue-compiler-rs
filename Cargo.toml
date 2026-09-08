@@ -35,7 +35,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.404.0"
+version = "0.404.1"
 edition = "2024"
 rust-version = "1.95.0"
 license = "MIT"
@@ -43,23 +43,23 @@ repository = "https://github.com/ubugeeei-prod/vize"
 
 [workspace.dependencies]
 # Publishable internal crates (path for local dev, version fallback for crates.io)
-vize_carton = { path = "crates/vize_carton", version = "=0.404.0" }
-vize_relief = { path = "crates/vize_relief", version = "=0.404.0" }
-vize_armature = { path = "crates/vize_armature", version = "=0.404.0" }
-vize_croquis = { path = "crates/vize_croquis", version = "=0.404.0" }
-vize_croquis_cf = { path = "crates/vize_croquis_cf", version = "=0.404.0" }
-vize_atelier_core = { path = "crates/vize_atelier_core", version = "=0.404.0" }
-vize_atelier_dom = { path = "crates/vize_atelier_dom", version = "=0.404.0" }
-vize_atelier_vapor = { path = "crates/vize_atelier_vapor", version = "=0.404.0" }
-vize_atelier_ssr = { path = "crates/vize_atelier_ssr", version = "=0.404.0" }
-vize_atelier_sfc = { path = "crates/vize_atelier_sfc", version = "=0.404.0", default-features = false }
-vize_atelier_jsx = { path = "crates/vize_atelier_jsx", version = "=0.404.0" }
-vize_musea = { path = "crates/vize_musea", version = "=0.404.0" }
-vize_patina = { path = "crates/vize_patina", version = "=0.404.0" }
-vize_canon = { path = "crates/vize_canon", version = "=0.404.0", default-features = false }
-vize_fresco = { path = "crates/vize_fresco", version = "=0.404.0", default-features = false }
-vize_marquette = { path = "crates/vize_marquette", version = "=0.404.0" }
-vize_doctor = { path = "crates/vize_doctor", version = "=0.404.0" }
+vize_carton = { path = "crates/vize_carton", version = "=0.404.1" }
+vize_relief = { path = "crates/vize_relief", version = "=0.404.1" }
+vize_armature = { path = "crates/vize_armature", version = "=0.404.1" }
+vize_croquis = { path = "crates/vize_croquis", version = "=0.404.1" }
+vize_croquis_cf = { path = "crates/vize_croquis_cf", version = "=0.404.1" }
+vize_atelier_core = { path = "crates/vize_atelier_core", version = "=0.404.1" }
+vize_atelier_dom = { path = "crates/vize_atelier_dom", version = "=0.404.1" }
+vize_atelier_vapor = { path = "crates/vize_atelier_vapor", version = "=0.404.1" }
+vize_atelier_ssr = { path = "crates/vize_atelier_ssr", version = "=0.404.1" }
+vize_atelier_sfc = { path = "crates/vize_atelier_sfc", version = "=0.404.1", default-features = false }
+vize_atelier_jsx = { path = "crates/vize_atelier_jsx", version = "=0.404.1" }
+vize_musea = { path = "crates/vize_musea", version = "=0.404.1" }
+vize_patina = { path = "crates/vize_patina", version = "=0.404.1" }
+vize_canon = { path = "crates/vize_canon", version = "=0.404.1", default-features = false }
+vize_fresco = { path = "crates/vize_fresco", version = "=0.404.1", default-features = false }
+vize_marquette = { path = "crates/vize_marquette", version = "=0.404.1" }
+vize_doctor = { path = "crates/vize_doctor", version = "=0.404.1" }
 
 # Workspace-only internal crates (always use the local path)
 davinci_harness = { path = "tools/benchmarks/crates/davinci_harness" }
@@ -72,16 +72,16 @@ vize_curator = { path = "crates/vize_curator" }
 # Publishable Davinci stage infrastructure. Stage crates keep their physical
 # names and version fallbacks so a publishable consumer can resolve the same
 # dependency graph from crates.io.
-vize_davinci = { path = "crates/vize_davinci", version = "=0.404.0" }
-vize_davinci_derive = { path = "crates/vize_davinci_derive", version = "=0.404.0" }
+vize_davinci = { path = "crates/vize_davinci", version = "=0.404.1" }
+vize_davinci_derive = { path = "crates/vize_davinci_derive", version = "=0.404.1" }
 
 # Davinci stage aliases. These are the preferred implementation names for new
 # code; S0 still aliases the published Carton package until a compatibility
 # change can move it to a physical stage name.
-vize_s0 = { package = "vize_carton", path = "crates/vize_carton", version = "=0.404.0" }
-vize_s1 = { path = "crates/vize_s1", version = "=0.404.0" }
-vize_s2 = { path = "crates/vize_s2", version = "=0.404.0" }
-vize_s1_to_s2 = { path = "crates/vize_s1_to_s2", version = "=0.404.0" }
+vize_s0 = { package = "vize_carton", path = "crates/vize_carton", version = "=0.404.1" }
+vize_s1 = { path = "crates/vize_s1", version = "=0.404.1" }
+vize_s2 = { path = "crates/vize_s2", version = "=0.404.1" }
+vize_s1_to_s2 = { path = "crates/vize_s1_to_s2", version = "=0.404.1" }
 
 # OXC dependencies (pinned to a specific upstream revision for reproducibility)
 oxc_parser = { version = "=0.142.0", git = "https://github.com/oxc-project/oxc", rev = "fc702c1fa9f0412d06ec6908b58cd395b826cf7f" }

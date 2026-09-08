@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/native",
-  "version": "0.404.0",
+  "version": "0.404.1",
   "description": "High-performance Vue.js compiler - Native bindings",
   "keywords": [
     "compiler",
