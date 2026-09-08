@@ -1,10 +1,11 @@
-//! TS-17 for the `v-for` pass (P2-9 series 2): committed fixture in,
-//! pipeline out, **full normalized folio** snapshot — the P2-4 harness
-//! shape, as `vif_pass_snapshot.rs` applied it to installment 1.
+//! TS-17 for lowering-published `v-for` facts (P2-9 series 2):
+//! committed fixture in, pipeline out, **full normalized folio**
+//! snapshot — the P2-4 harness shape, as `vif_pass_snapshot.rs`
+//! applied it to installment 1.
 //!
 //! The snapshot is the oracle; the walk accounting, the consumed-scope
 //! facts and the diagnostics are the targeted structural supplements
-//! (assurance §4). Since the v-for pass preserves the tree, what the
+//! (assurance §4). Since v-for facts preserve the tree, what the
 //! snapshots pin is the *lowered loop shape surviving the pipeline
 //! untouched* — the iterated `li`'s `key` still on its attribute
 //! surface — while the vif pass's extractions (the `term` branch key in
@@ -39,11 +40,12 @@ fn the_loops_fixture_snapshots_the_post_pass_folio() {
 
         // Supplements: the planned walk accounting through the budget
         // observer's own derived page. The fixture builds `v-if` and
-        // `v-for` but no slot carrier, no compound text and no model, so
-        // the plan is those two plus the analysis.
+        // `v-for` but no slot carrier, no compound text and no model.
+        // `v-for` facts are lowering-published, so the plan is `v-if`
+        // plus the analysis.
         assert_eq!(
             budget.print_to_string(FolioMode::Full).as_str(),
-            "[budget-observer]\nwalks=3\npasses=3\nanalyses=0\npipelines=1\nfailures=0\n\n"
+            "[budget-observer]\nwalks=2\npasses=2\nanalyses=0\npipelines=1\nfailures=0\n\n"
         );
         // Three loops, consumed in document order with fresh tags: the
         // keyed `li`, the destructuring `<template v-for>`, the
@@ -91,7 +93,7 @@ fn the_holes_fixture_snapshots_the_post_pass_folio() {
     with_transformed(&source, |lowered, folio, facts, _| {
         // The undecomposable value keeps its op (pessimal escape); the
         // expressionless v-for keeps only its element. Both errors are
-        // the lowering's — the pass adds none.
+        // the lowering's — the fact mirror adds none.
         assert_folio_snapshot!(*folio);
         assert_eq!(lowered.diagnostics.len(), 2);
         assert_eq!(

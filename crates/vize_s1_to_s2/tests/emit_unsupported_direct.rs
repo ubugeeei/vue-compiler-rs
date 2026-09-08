@@ -206,6 +206,7 @@ fn lowered<'a>(a: &'a Allocator, root: Region<'a>) -> Lowered<'a> {
         provenance: StdVec::new(),
         scopes: SideTable::new(),
         texts: SideTable::new(),
+        for_facts: SideTable::new(),
         wrappers: SideTable::new(),
         for_wrappers: SideTable::new(),
         features: LoweringFeatures::EMPTY,

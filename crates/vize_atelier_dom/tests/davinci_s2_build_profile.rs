@@ -22,22 +22,23 @@ struct TraversalBudget {
 /// Both columns are per fixture because the S2 pass planner declines a
 /// mandatory pass whose op family the lowering never built
 /// (`vize_s1_to_s2::lower::features`). The S2 column is the artifact's
-/// transform plan plus its one emit walk; the build column now matches it
-/// because source-map-free DOM compiles no longer run the legacy pre-S2
-/// transform after S2 emission succeeds.
+/// transform plan plus its one emit walk; `v-for` facts are
+/// lowering-published, so they no longer add a transform walk. The build
+/// column now matches it because source-map-free DOM compiles no longer
+/// run the legacy pre-S2 transform after S2 emission succeeds.
 ///
 /// | fixture       | families present                      | S2 | build |
 /// | ------------- | ------------------------------------- | -- | ----- |
 /// | small         | compound text                         | 2  | 2     |
 /// | medium        | components                            | 3  | 3     |
-/// | large         | `v-if`, `v-for`, slot carriers        | 5  | 5     |
+/// | large         | `v-if`, `v-for`, slot carriers        | 4  | 4     |
 /// | stress-deep   | `v-if`                                | 3  | 3     |
 /// | stress-wide   | none                                  | 2  | 2     |
 /// | stress-interp | compound text                         | 2  | 2     |
 const CURRENT_WALKS: [(&str, u64, u64); 6] = [
     ("small", 2, 2),
     ("medium", 3, 3),
-    ("large", 5, 5),
+    ("large", 4, 4),
     ("stress-deep", 3, 3),
     ("stress-wide", 2, 2),
     ("stress-interp", 2, 2),

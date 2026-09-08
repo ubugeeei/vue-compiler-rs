@@ -64,12 +64,12 @@ walks the whole tree to publish an empty fact table and raise no
 diagnostic. The lowering now records the families it built
 (`vize_s1_to_s2::lower::features`, one bit set where the op is minted) and
 the planner drops those passes. Ladder evidence, transform walks per
-fixture: small 5 -> 2, medium 5 -> 3, large 5 -> 5, stress-deep 5 -> 3,
+fixture: small 5 -> 2, medium 5 -> 3, large 5 -> 4, stress-deep 5 -> 3,
 stress-wide 5 -> 2, stress-interp 5 -> 2; the profiled build path falls
-from 7 walks to 4/5/7/5/4/4. Four corpus lanes (default, prefixed,
+from 7 walks to 4/5/6/5/4/4. Four corpus lanes (default, prefixed,
 bindings over 12,062 hydrated templates; the lowering lane over 12,215
 files) stay at zero divergence, and `tests/lowering_features.rs` pins the
-stronger claim per artifact: the planned run and the forced five-pass table
+stronger claim per artifact: the planned run and the forced four-pass table
 agree on the artifact, its diagnostics, its provenance and every fact
 table.
 
@@ -80,14 +80,14 @@ parse-to-S2 removes, and (b) the passes an artifact genuinely owes —
 task contract already names as region-local, so those are the ones real
 fusion has to earn. **Skipping is not fusing**, and the walk counts above
 should not be read as evidence that fusion is unnecessary: an artifact
-that uses every transform family still pays five.
+that uses every transform family still pays four transform walks.
 
 Prototype note (2026-09-07, third): source-map-free DOM compiles now skip the
 legacy pre-S2 transform when S2 emission succeeds. The profiled build counter
 therefore matches the S2 observer total on the ladder set. After compound text
-facts became lowering-published, the current counts are: small and
+facts and `v-for` facts became lowering-published, the current counts are: small and
 stress-interp at 2 walks; medium and stress-deep at 3 walks; stress-wide at 2
-walks; and large at 5 walks. P2-12b's remaining work is S2 transform fusion for
+walks; and large at 4 walks. P2-12b's remaining work is S2 transform fusion for
 the genuinely required passes above the one-walk emit floor, plus the direct
 parse-to-S2 path and exact traversal gate; source-map requests still use the
 compatibility path.
@@ -96,8 +96,8 @@ One measured correction to the derivation: the first cut read the family
 bits off provenance rule names, which is wrong. Provenance records
 _decisions_, and a failed decision records a different rule while still
 leaving its op behind — `<p v-for="items">` records
-`error.v-for-malformed` and keeps its `ui.for`, so the pass that reads
-that op was skipped and its facts lost. `vfor_pass.rs`'s
+`error.v-for-malformed` and keeps its `ui.for`, so any provenance-derived
+feature bit would miss the lowering-published facts. `vfor_pass.rs`'s
 `an_undecomposable_value_is_pessimally_pending` caught it. The bits are
 set at the op's construction site instead.
 

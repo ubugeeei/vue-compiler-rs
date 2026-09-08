@@ -32,15 +32,15 @@ struct EmitCount {
 /// The transform column is per fixture rather than a constant because the
 /// planner declines a mandatory pass whose op family the lowering never
 /// built (`lower::features`). The optional static analysis is the floor
-/// every default artifact pays; text facts are lowering-published, and
-/// each structural family adds its own pass only when the lowering built
-/// that product:
+/// every default artifact pays; text and `v-for` facts are
+/// lowering-published, and each remaining structural family adds its own
+/// pass only when the lowering built that product:
 ///
 /// | fixture       | families present                      | transform walks |
 /// | ------------- | ------------------------------------- | --------------- |
 /// | small         | compound text                         | 1               |
 /// | medium        | components (`el-row`, `svg-icon`, ...)| 2               |
-/// | large         | `v-if`, `v-for`, slot carriers        | 4               |
+/// | large         | `v-if`, `v-for`, slot carriers        | 3               |
 /// | stress-deep   | `v-if`                                | 2               |
 /// | stress-wide   | none                                  | 1               |
 /// | stress-interp | compound text                         | 1               |
@@ -51,7 +51,7 @@ struct EmitCount {
 const S2_DOM_EMIT_COUNTS: [(&str, u32, u32, u32); 6] = [
     ("small", 1, 5, 1),
     ("medium", 1, 33, 2),
-    ("large", 1, 54, 4),
+    ("large", 1, 54, 3),
     ("stress-deep", 1, 72, 2),
     ("stress-wide", 1, 2, 1),
     ("stress-interp", 1, 201, 1),

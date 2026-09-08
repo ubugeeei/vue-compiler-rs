@@ -65,6 +65,7 @@ pub(crate) use expr::simple_identifier;
 // The wrapper-key channel (P2-9 series 5): captured `<template v-if>`
 // keys, folded into branch-key facts by the v-if pass.
 pub use css::{lower_style_block, lower_style_block_in};
+pub use forop::{ForName, ForParts};
 pub use structural::{ForWrapper, WrapperAttr, WrapperClass, WrapperKey, WrapperKeys};
 // The one-rebuild rule (the same discipline): compound text facts and
 // their opaque display spelling share one construction rule.
@@ -100,6 +101,9 @@ pub struct Lowered<'a> {
     /// by its compound `ui.interpolation` op (P2-9 installment 4,
     /// [`lower::text`](text)); validated and published by lowering.
     pub texts: SideTable<TextParts>,
+    /// Consumed `ui.for` scope views, keyed by the `ui.for` op's
+    /// page-order id; validated and published by lowering.
+    pub for_facts: SideTable<ForParts>,
     /// Captured `<template v-if>` wrapper keys, keyed by the `ui.if`
     /// op's page-order id (P2-9 series 5, [`WrapperKeys`]); folded into
     /// branch-key facts by `pass::vif`. `from_template` is the P2-11
@@ -248,6 +252,7 @@ fn lower_source_block_with_caps_and_comment_policy<'a>(
         provenance: cx.provenance,
         scopes: cx.scopes,
         texts: cx.texts,
+        for_facts: cx.for_facts,
         wrappers: cx.wrappers,
         for_wrappers: cx.for_wrappers,
         features: cx.features,
@@ -276,6 +281,7 @@ impl fmt::Debug for Lowered<'_> {
             .field("provenance", &self.provenance)
             .field("scopes", &self.scopes)
             .field("texts", &self.texts)
+            .field("for_facts", &self.for_facts)
             .field("wrappers", &self.wrappers)
             .field("for_wrappers", &self.for_wrappers)
             .field("features", &self.features)

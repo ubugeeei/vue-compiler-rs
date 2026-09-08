@@ -21,8 +21,8 @@ or `collections` modules does not bypass the boundary.
 
 ## Retained `alloc::vec::Vec` inventory
 
-The four library trees in the reviewed inventory contain 78 production files,
-90 direct `alloc::vec::Vec` paths, and 309 bound `Vec`/`StdVec` uses. "Direct"
+The four library trees in the reviewed inventory contain 77 production files,
+89 direct `alloc::vec::Vec` paths, and 305 bound `Vec`/`StdVec` uses. "Direct"
 counts imports and fully-qualified paths; "bound" counts every type,
 constructor, and method path reached through a direct `Vec` import or alias.
 The executable ledger requires strict equality, so both growth and reduction
@@ -32,8 +32,8 @@ must update the file row and aggregate evidence in the same change.
 | -------- | ----: | -----------: | ---------: | ------------------------------------------------------------------------------------------------------------------ |
 | contract |    13 |           24 |         65 | Owned Folio and S2 serialization data has input-defined cardinality and forms a stable contract.                   |
 | analysis |     7 |            8 |         18 | Diagnostics, side tables, filters, and verifier results grow with the input; no inline bound is established.       |
-| lower    |    12 |           12 |         47 | Lowering worklists and owned results grow with source-tree shape. Bounded substructures may migrate independently. |
-| pass     |    14 |           14 |         52 | Facts, provenance, and traversal worklists grow with the number of operations.                                     |
+| lower    |    12 |           12 |         48 | Lowering worklists and owned results grow with source-tree shape. Bounded substructures may migrate independently. |
+| pass     |    13 |           13 |         47 | Facts, provenance, and traversal worklists grow with the number of operations.                                     |
 | emit     |    32 |           32 |        127 | Ordered output buffers and collected emission inputs grow with the document.                                       |
 
 This is not an endorsement of every retained allocation. A focused change may
@@ -71,9 +71,9 @@ or count and fails the gate instead of becoming a `no_std` escape from S0.
 | s2       | `vize_s0::String`       |    11 |           11 |         55 |
 | s2       | `vize_s0::Vec`          |     9 |            9 |         17 |
 | s2       | `vize_s0::SmallVec`     |     0 |            0 |          0 |
-| s1_to_s2 | `alloc::vec::Vec`       |    58 |           58 |        226 |
+| s1_to_s2 | `alloc::vec::Vec`       |    57 |           57 |        222 |
 | s1_to_s2 | `alloc::string::String` |     0 |            0 |          0 |
-| s1_to_s2 | `vize_s0::String`       |    84 |           88 |        429 |
+| s1_to_s2 | `vize_s0::String`       |    83 |           87 |        428 |
 | s1_to_s2 | `vize_s0::Vec`          |    15 |           16 |         69 |
 | s1_to_s2 | `vize_s0::SmallVec`     |     4 |            4 |          9 |
 

@@ -1,8 +1,9 @@
-//! The `v-for` pass (P2-9 series 2): semantics pins.
+//! Lowering-published `v-for` facts (P2-9 series 2): semantics pins.
 //!
-//! Exact-equality oracles over the pass's products — the consumed-scope
-//! facts, the provenance trail, and the things it deliberately does
-//! *not* do (no mutation, no user diagnostic, no synthesized name).
+//! Exact-equality oracles over the fact mirror's products — the
+//! consumed-scope facts, the provenance trail, and the things it
+//! deliberately does *not* do (no mutation, no user diagnostic, no
+//! synthesized name).
 //! The TS-17 folio snapshots live in `vfor_pass_snapshot.rs`.
 
 mod support;
@@ -51,14 +52,16 @@ fn consumption_publishes_the_scope_view_per_position() {
                 }
             )]
         );
-        // The consumption left exactly one v-for record, spelled
+        // The lowering left exactly one v-for fact record, spelled
         // exactly; the series-6 analysis pass adds its per-owner fact
         // record behind it (the iterated element: dynamic text, no
         // hoistable props).
         let records: Vec<(&str, &str, &str)> = lowered
             .provenance
             .iter()
-            .filter(|record| record.rule.starts_with("pass."))
+            .filter(|record| {
+                record.rule == "lower.for-fact" || record.rule == "pass.hoist-static.fact"
+            })
             .map(|record| {
                 (
                     record.rule.as_str(),
@@ -71,7 +74,7 @@ fn consumption_publishes_the_scope_view_per_position() {
             records,
             vec![
                 (
-                    "pass.v-for.scope",
+                    "lower.for-fact",
                     "scope #0 bindings=3",
                     "fact value=item key=k index=idx",
                 ),
@@ -201,18 +204,18 @@ fn every_ui_for_is_consumed_with_a_fresh_tag() {
 }
 
 #[test]
-fn the_pass_neither_mutates_nor_diagnoses() {
-    // The preserving mandatory pass, pinned: the post-pass folio and
-    // diagnostics are byte-for-byte the lowering's own.
+fn the_fact_mirror_neither_mutates_nor_diagnoses() {
+    // The lowering-published fact mirror is preserving: the transformed
+    // folio and diagnostics are byte-for-byte the lowering's own.
     let source = r#"<section><div v-for="(a, b) in xs" key="k" :title="a">{{ b }}</div></section>"#;
     let (before_folio, before_diagnostics) = with_lowered(source, |lowered, folio| {
         (folio.clone(), lowered.diagnostics.clone())
     });
     with_transformed(source, |lowered, folio, _, _| {
-        assert_eq!(folio, &before_folio, "the v-for pass must not mutate");
+        assert_eq!(folio, &before_folio, "the v-for mirror must not mutate");
         assert_eq!(
             lowered.diagnostics, before_diagnostics,
-            "the v-for pass emits no user diagnostic"
+            "the v-for mirror emits no user diagnostic"
         );
     });
 }
@@ -221,7 +224,8 @@ fn the_pass_neither_mutates_nor_diagnoses() {
 fn a_for_wrapped_branch_is_consumed_behind_the_vif_pass() {
     // The precedence interplay from the vif side, read from this side:
     // v-if wraps v-for, the vif pass leaves the iteration's key alone,
-    // and the vfor pass consumes the wrapped `ui.for` like any other.
+    // and the lowering-published facts consume the wrapped `ui.for`
+    // like any other.
     let source = r#"<li v-if="ok" v-for="i in xs" key="k">{{ i }}</li>"#;
     with_transformed(source, |_, _, facts, _| {
         assert!(facts.if_facts.is_empty());
@@ -234,7 +238,7 @@ fn a_for_wrapped_branch_is_consumed_behind_the_vif_pass() {
 
 #[test]
 fn the_pass_is_total_over_malformed_loops() {
-    // The lowering already diagnosed these; the pass must stay sound.
+    // The lowering already diagnosed these; the fact mirror must stay sound.
     for (name, source) in [
         ("no-expression", r#"<li v-for>x</li>"#),
         ("empty-expression", r#"<li v-for="">x</li>"#),
