@@ -138,6 +138,7 @@ test("a cross-engine surface with no same-engine incumbent still publishes nothi
   const nativeIncumbents = ["verter-tsc", "golar-typecheck", "golar-default"];
   const surface = createSurface(
     checkSurfaceInput({
+      id: "custom-check",
       variants: CHECK_VARIANTS.filter((variant) => !nativeIncumbents.includes(variant.id)),
     }),
   );
@@ -177,7 +178,7 @@ test("a same-engine surface keeps its ranked primary speedup", () => {
 
 test("a surface without a measurable Vize lane reports no speedup at all", () => {
   const surface = createSurface({
-    id: "check",
+    id: "custom-check",
     label: "Type check",
     files: 1,
     bytes: 1,
