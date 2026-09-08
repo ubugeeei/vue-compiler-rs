@@ -169,6 +169,17 @@ test("the Nuxt fairness note states the Vue-compilation share and where the modu
   assert.equal(publishedDoc.includes(`- ${nuxtNotes[0]}`), true);
 });
 
+test("legacy typecheck benchmark does not publish cross-engine ratios", () => {
+  const script = fs.readFileSync(path.join(root, "tools/benchmarks/scripts/check.ts"), "utf-8");
+
+  assert.doesNotMatch(script, /\$\{[^}]+}x faster/);
+  assert.doesNotMatch(script, /user-facing speedup/);
+  assert.doesNotMatch(script, /vue-tsc ST vs Vize/);
+  assert.doesNotMatch(script, /vue-tsc MT vs Vize/);
+  assert.match(script, /This legacy local harness reports timings only/);
+  assert.match(script, /same-native-engine rows such as verter-tsc and\s+\*\s+Golar/);
+});
+
 test("native batch sequence variants require parallel capacity", () => {
   const options = {
     native: {},
