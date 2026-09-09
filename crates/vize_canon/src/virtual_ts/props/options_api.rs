@@ -57,6 +57,8 @@ pub(super) fn emit_options_api_props_type(
     ts: &mut String,
     generic_decl: &str,
     source: &OptionsApiPropsSource,
+    type_name: &str,
+    exported: bool,
 ) {
     if source.captures_default {
         ts.push_str(
@@ -68,7 +70,11 @@ pub(super) fn emit_options_api_props_type(
             "type __VizeOptionsPropRequired<T> = T extends { required: true } ? true : false;\ntype __VizeOptionsPropShape<T extends Record<string, any>> = { [K in keyof T as __VizeOptionsPropRequired<T[K]> extends true ? K : never]-?: __RuntimePropCtor<T[K]>; } & { [K in keyof T as __VizeOptionsPropRequired<T[K]> extends true ? never : K]?: __RuntimePropCtor<T[K]>; };\n",
         ),
         Some(DirectOptionsApiPropsSource::Names(names)) => {
-            append!(*ts, "export type Props{generic_decl} = {{\n");
+            if exported {
+                append!(*ts, "export type {type_name}{generic_decl} = {{\n");
+            } else {
+                append!(*ts, "type {type_name} = {{\n");
+            }
             for name in names {
                 append!(*ts, "  \"{name}\"?: unknown;\n");
             }
@@ -77,10 +83,17 @@ pub(super) fn emit_options_api_props_type(
             ts.push_str(";\n");
         }
         None => {
-            append!(
-                *ts,
-                "export type Props{generic_decl} = __VizeDefaultProps<Awaited<ReturnType<typeof __setup>>[\"__default__\"]>;\n"
-            );
+            if exported {
+                append!(
+                    *ts,
+                    "export type {type_name}{generic_decl} = __VizeDefaultProps<Awaited<ReturnType<typeof __setup>>[\"__default__\"]>;\n"
+                );
+            } else {
+                append!(
+                    *ts,
+                    "type {type_name} = __VizeDefaultProps<Awaited<ReturnType<typeof __setup>>[\"__default__\"]>;\n"
+                );
+            }
         }
     }
 }

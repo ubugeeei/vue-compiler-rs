@@ -1,5 +1,6 @@
 mod keyed_template_names;
 mod mappings;
+mod model_props;
 mod options_api;
 mod setup_scoped;
 mod template_bindings;
@@ -8,41 +9,22 @@ mod template_model_modifiers;
 mod template_names;
 mod with_defaults;
 pub(crate) use mappings::{PropBindingMappings, PropsSource, prop_source};
+use model_props::{append_macro_props_type_literal, append_model_props_type_literal};
 pub(crate) use options_api::OptionsApiPropsSource;
 pub(crate) use options_api::append_default_props;
 use options_api::emit_options_api_props_type;
 use setup_scoped::unused_generic_comment;
 pub(crate) use setup_scoped::{PropsTypeEmission, generate_setup_scoped_props_artifact};
 pub(crate) use template_model::{TemplatePropsModel, generate_props_variables};
-use template_model_modifiers::{model_modifier_prop_name, model_modifier_type};
 pub(crate) use template_names::collect_template_prop_names;
-use vize_carton::{FxHashSet, String, append, cstr};
+use vize_carton::{CompactString, FxHashSet, String, append, cstr};
 use vize_croquis::Croquis;
-use vize_croquis::macros::ModelDefinition;
 
-fn model_prop_type(model: &ModelDefinition) -> &str {
-    model.model_type.as_deref().unwrap_or("unknown")
-}
-
-fn emit_model_prop_member(ts: &mut String, summary: &Croquis, model: &ModelDefinition) {
-    let optional = if model.required { "" } else { "?" };
-    let name = model.name.as_str();
-    let prop_type = model_prop_type(model);
-    append!(*ts, "  \"{name}\"{optional}: {prop_type};\n");
-    let modifiers_name = model_modifier_prop_name(name);
-    let modifier_type = model_modifier_type(summary, model);
-    append!(
-        *ts,
-        "  \"{modifiers_name}\"?: Partial<Record<{modifier_type}, true>>;\n"
-    );
-}
-
-fn append_model_props_type_literal(ts: &mut String, summary: &Croquis, models: &[ModelDefinition]) {
-    ts.push_str("{\n");
-    for model in models {
-        emit_model_prop_member(ts, summary, model);
-    }
-    ts.push('}');
+fn inner_macro_type(type_args: &str) -> &str {
+    type_args
+        .strip_prefix('<')
+        .and_then(|s| s.strip_suffix('>'))
+        .unwrap_or(type_args)
 }
 
 pub(crate) fn generate_props_type(
@@ -50,6 +32,7 @@ pub(crate) fn generate_props_type(
     summary: &Croquis,
     generic_param: Option<&str>,
     options_api_props: Option<&OptionsApiPropsSource>,
+    type_only_imported_names: &FxHashSet<CompactString>,
     emission: PropsTypeEmission,
 ) {
     let props = summary.macros.props();
@@ -60,12 +43,18 @@ pub(crate) fn generate_props_type(
         .macros
         .define_props()
         .and_then(|m| m.type_args.as_ref());
+    let define_props_inner_type =
+        define_props_type_args.map(|type_args| inner_macro_type(type_args.trim()));
+    let define_props_is_authored = summary.macros.define_props().is_some();
+    let props_imported_type_only = type_only_imported_names.contains("Props");
+    let imported_props_would_collide = props_imported_type_only
+        && (define_props_is_authored || has_models || options_api_props.is_some());
     let props_already_defined = summary
         .type_exports
         .iter()
-        .any(|te| te.name.as_str() == "Props");
+        .any(|te| te.name.as_str() == "Props")
+        || imported_props_would_collide;
 
-    // Build generic suffix for Props type declaration (with `= any` defaults).
     let generic_decl = generic_param
         .map(|g| {
             let with_defaults = strip_const_modifiers(&add_generic_defaults(g));
@@ -76,19 +65,36 @@ pub(crate) fn generate_props_type(
     ts.push_str("// ========== Exported Types ==========\n");
 
     if emission == PropsTypeEmission::DeferredToSetup && define_props_type_args.is_some() {
+    } else if imported_props_would_collide {
+        if let Some(inner_type) = define_props_inner_type {
+            ts.push_str("type __VizeResolvedProps = ");
+            ts.push_str(inner_type);
+            if has_models {
+                ts.push_str(" & ");
+                append_model_props_type_literal(ts, summary, models);
+            }
+            ts.push_str(";\n");
+        } else if has_props || has_models {
+            ts.push_str("type __VizeResolvedProps = ");
+            append_macro_props_type_literal(ts, summary, models);
+            ts.push_str(";\n");
+        } else if let Some(options_api_props) = options_api_props {
+            emit_options_api_props_type(
+                ts,
+                &generic_decl,
+                options_api_props,
+                "__VizeResolvedProps",
+                false,
+            );
+        }
     } else if props_already_defined {
         if has_models {
             ts.push_str("type __VizeResolvedProps = Props & ");
             append_model_props_type_literal(ts, summary, models);
             ts.push_str(";\n");
         }
-    } else if let Some(type_args) = define_props_type_args {
-        let inner_type = type_args
-            .strip_prefix('<')
-            .and_then(|s| s.strip_suffix('>'))
-            .unwrap_or(type_args.as_str());
+    } else if let Some(inner_type) = define_props_inner_type {
         ts.push_str(unused_generic_comment(generic_param, inner_type));
-        // Always emit Props alias so it's available in template and default export.
         if has_models {
             append!(*ts, "export type Props{generic_decl} = {inner_type} & ");
             append_model_props_type_literal(ts, summary, models);
@@ -97,23 +103,11 @@ pub(crate) fn generate_props_type(
             append!(*ts, "export type Props{generic_decl} = {inner_type};\n");
         }
     } else if has_props || has_models {
-        append!(*ts, "export type Props{generic_decl} = {{\n");
-        let mut emitted_names: FxHashSet<String> = FxHashSet::default();
-        for prop in props {
-            let prop_type = prop.prop_type.as_deref().unwrap_or("unknown");
-            let optional = if prop.required { "" } else { "?" };
-            append!(*ts, "  {}{optional}: {prop_type};\n", prop.name);
-            emitted_names.insert(prop.name.as_str().into());
-        }
-        for model in models {
-            if emitted_names.contains(model.name.as_str()) {
-                continue;
-            }
-            emit_model_prop_member(ts, summary, model);
-        }
-        ts.push_str("};\n");
+        append!(*ts, "export type Props{generic_decl} = ");
+        append_macro_props_type_literal(ts, summary, models);
+        ts.push_str(";\n");
     } else if let Some(options_api_props) = options_api_props {
-        emit_options_api_props_type(ts, &generic_decl, options_api_props);
+        emit_options_api_props_type(ts, &generic_decl, options_api_props, "Props", true);
     } else {
         append!(*ts, "export type Props{generic_decl} = {{}};\n");
     }

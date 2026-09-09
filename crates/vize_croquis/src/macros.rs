@@ -10,7 +10,6 @@ pub const DEFINE_SLOTS: &str = "defineSlots";
 pub const DEFINE_MODEL: &str = "defineModel";
 pub const WITH_DEFAULTS: &str = "withDefaults";
 pub const DEFINE_ART: &str = "defineArt";
-
 /// How a macro participates in the script setup compilation lifecycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MacroLifecycle {

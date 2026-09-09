@@ -7,7 +7,7 @@ use vize_carton::CompactString;
 use super::super::ScriptParseResult;
 use super::common::{
     argument_identifier, argument_object, argument_string_literal, component_name_from_source,
-    fill_define_art_tags, object_bool_property, object_expression_source_property,
+    fill_define_art_tags, object_bool_property, object_expression_source_property, object_property,
     object_string_property, object_u32_property,
 };
 
@@ -101,7 +101,7 @@ pub fn process_call_expression(
                     _ => None,
                 })
                 .unwrap_or_else(|| call.callee.span());
-            let model_type = call
+            let explicit_model_type = call
                 .type_arguments
                 .as_ref()
                 .and_then(|type_params| type_params.params.first())
@@ -138,6 +138,8 @@ pub fn process_call_expression(
                     )
                 })
                 .unwrap_or((false, None));
+            let model_type = explicit_model_type
+                .or_else(|| options_arg.and_then(runtime_model_type_from_options_arg));
 
             result.macros.add_model_with_declaration(
                 ModelDefinition {
@@ -185,6 +187,56 @@ pub fn process_call_expression(
     }
 
     Some(macro_kind)
+}
+
+fn runtime_model_type_from_options_arg(arg: &Argument<'_>) -> Option<CompactString> {
+    let options = argument_object(arg)?;
+    let type_expression = object_property(options, "type")?;
+    runtime_model_type_from_expression(type_expression)
+}
+
+fn runtime_model_type_from_expression(expression: &Expression<'_>) -> Option<CompactString> {
+    match expression {
+        Expression::Identifier(identifier) => {
+            runtime_constructor_model_type(identifier.name.as_str()).map(CompactString::new)
+        }
+        Expression::ArrayExpression(array) => {
+            let mut types = Vec::new();
+            for element in &array.elements {
+                let Some(expression) = element.as_expression() else {
+                    continue;
+                };
+                let Some(model_type) = runtime_model_type_from_expression(expression) else {
+                    continue;
+                };
+                if !types.contains(&model_type) {
+                    types.push(model_type);
+                }
+            }
+            (!types.is_empty()).then(|| CompactString::new(types.join(" | ")))
+        }
+        Expression::ParenthesizedExpression(parenthesized) => {
+            runtime_model_type_from_expression(&parenthesized.expression)
+        }
+        Expression::TSAsExpression(ts_as) => runtime_model_type_from_expression(&ts_as.expression),
+        Expression::TSSatisfiesExpression(ts_satisfies) => {
+            runtime_model_type_from_expression(&ts_satisfies.expression)
+        }
+        _ => None,
+    }
+}
+
+fn runtime_constructor_model_type(name: &str) -> Option<&'static str> {
+    match name {
+        "String" => Some("string"),
+        "Number" => Some("number"),
+        "Boolean" => Some("boolean"),
+        "Array" => Some("unknown[]"),
+        "Object" => Some("Record<string, unknown>"),
+        "Date" => Some("Date"),
+        "Function" => Some("(...args: any[]) => any"),
+        _ => None,
+    }
 }
 
 fn extract_define_art(

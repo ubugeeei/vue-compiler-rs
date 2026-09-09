@@ -19,6 +19,18 @@ fn emits_of(script: &str) -> std::string::String {
     code[start..end].into()
 }
 
+fn code_of(script: &str) -> std::string::String {
+    let allocator = vize_carton::Allocator::new();
+    let (root, _) = vize_armature::parse(&allocator, "<div>{{ model }}</div>");
+    let mut analyzer = vize_croquis::Analyzer::with_options(vize_croquis::AnalyzerOptions::full());
+    analyzer.analyze_script_setup(script);
+    analyzer.analyze_template(&root);
+    let summary = analyzer.finish();
+    generate_virtual_ts(&summary, Some(script), Some(&root), 0)
+        .code
+        .into()
+}
+
 #[test]
 fn an_optional_model_update_payload_carries_undefined() {
     let emits = emits_of("const model = defineModel<string>()\nvoid model;\n");
@@ -49,6 +61,29 @@ fn an_untyped_model_keeps_the_bare_unknown_payload() {
     assert!(
         emits.contains("\"update:modelValue\": [value: unknown]"),
         "an untyped model keeps the bare `unknown` payload:\n{emits}"
+    );
+}
+
+#[test]
+fn runtime_constructor_model_flows_into_public_props_and_emits() {
+    let code = code_of("const model = defineModel({ type: String, default: '' })\nvoid model;\n");
+
+    assert!(
+        code.contains("\"modelValue\"?: string;"),
+        "runtime constructor model should expose a string public prop:\n{code}"
+    );
+    assert!(
+        code.contains("\"update:modelValue\": [value: string]"),
+        "runtime constructor model should expose a string update payload:\n{code}"
+    );
+}
+
+#[test]
+fn optional_runtime_constructor_model_update_payload_carries_undefined() {
+    let emits = emits_of("const model = defineModel({ type: String })\nvoid model;\n");
+    assert!(
+        emits.contains("\"update:modelValue\": [value: (string) | undefined]"),
+        "optional runtime constructor model should accept undefined:\n{emits}"
     );
 }
 

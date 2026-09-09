@@ -270,6 +270,76 @@
       },
       "issue": 5722,
       "reason": "vue-tsc reports this baseline-only real-project diagnostic while Vize accepts the same source; the exact row is tracked for follow-up under issue 5722."
+    },
+    {
+      "project": "vue-vben-admin",
+      "file": "packages/effects/common-ui/src/ui/about/about.vue",
+      "severity": "error",
+      "line": 30,
+      "column": 9,
+      "vize": null,
+      "baseline": {
+        "code": 2451,
+        "message": "Cannot redeclare block-scoped variable '__VBEN_ADMIN_METADATA__'."
+      },
+      "issue": 5722,
+      "reason": "vue-tsc reports this baseline-only redeclaration for the project-level Vite metadata define surface, while Vize's SFC virtual module keeps the authored declaration isolated; the exact row is tracked for follow-up under issue 5722."
+    },
+    {
+      "project": "vuetify",
+      "file": "packages/docs/src/components/app/TooltipBtn.vue",
+      "severity": "error",
+      "line": 37,
+      "column": 29,
+      "vize": null,
+      "baseline": {
+        "code": 2307,
+        "message": "Cannot find module 'vuetify/components' or its corresponding type declarations."
+      },
+      "issue": 5722,
+      "reason": "Vize resolves the pinned Vuetify workspace package source through native package-route topology, while the vue-tsc baseline runs against an unbuilt package entry and reports TS2307; matching the baseline would remove a reachable source route and weaken batch/editor checking."
+    },
+    {
+      "project": "vuetify",
+      "file": "packages/docs/src/components/app/VersionBtn.vue",
+      "severity": "error",
+      "line": 15,
+      "column": 27,
+      "vize": null,
+      "baseline": {
+        "code": 2307,
+        "message": "Cannot find module 'vuetify' or its corresponding type declarations."
+      },
+      "issue": 5722,
+      "reason": "Vize resolves the pinned Vuetify workspace package source through native package-route topology, while the vue-tsc baseline runs against an unbuilt package entry and reports TS2307; matching the baseline would remove a reachable source route and weaken batch/editor checking."
+    },
+    {
+      "project": "vuetify",
+      "file": "packages/docs/src/components/app/search/SearchResults.vue",
+      "severity": "error",
+      "line": 92,
+      "column": 30,
+      "vize": null,
+      "baseline": {
+        "code": 2307,
+        "message": "Cannot find module 'vuetify/components' or its corresponding type declarations."
+      },
+      "issue": 5722,
+      "reason": "Vize resolves the pinned Vuetify workspace package source through native package-route topology, while the vue-tsc baseline runs against an unbuilt package entry and reports TS2307; matching the baseline would remove a reachable source route and weaken batch/editor checking."
+    },
+    {
+      "project": "vuetify",
+      "file": "packages/docs/src/components/doc/Releases.vue",
+      "severity": "error",
+      "line": 164,
+      "column": 27,
+      "vize": null,
+      "baseline": {
+        "code": 2307,
+        "message": "Cannot find module 'vuetify' or its corresponding type declarations."
+      },
+      "issue": 5722,
+      "reason": "Vize resolves the pinned Vuetify workspace package source through native package-route topology, while the vue-tsc baseline runs against an unbuilt package entry and reports TS2307; matching the baseline would remove a reachable source route and weaken batch/editor checking."
     }
   ]
 }
