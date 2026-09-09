@@ -21,14 +21,16 @@ use collect::{ModuleSpecifierCollector, collect_specifier_occurrences};
 #[path = "import_rewriter_virtual.rs"]
 mod virtual_rewrite;
 pub(super) use virtual_rewrite::rewrite_relative_vue_specifier;
-use virtual_rewrite::{
-    absolute_import_needs_virtual_rewrite, is_rewritable_project_specifier,
-    is_rewritable_vue_specifier,
-};
+
+#[path = "import_rewriter_virtual_alias.rs"]
+mod virtual_alias;
+pub(crate) use virtual_alias::VirtualAliasRewritePolicy;
 
 #[path = "import_rewriter_dts.rs"]
 mod dts_rewrite;
-use dts_rewrite::rewrite_relative_dts_specifier;
+
+#[path = "import_rewriter_virtual_project.rs"]
+mod virtual_project_rewrite;
 
 #[path = "import_rewriter_source_map.rs"]
 mod source_map;
@@ -61,6 +63,23 @@ impl ImportRewriter {
         source_dir: Option<&Path>,
         preserve_missing_vue_diagnostics: bool,
     ) -> RewriteResult {
+        self.rewrite_with_missing_vue_policy_and_alias_policy(
+            source,
+            source_type,
+            source_dir,
+            preserve_missing_vue_diagnostics,
+            None,
+        )
+    }
+
+    pub(crate) fn rewrite_with_missing_vue_policy_and_alias_policy(
+        &self,
+        source: &str,
+        source_type: SourceType,
+        source_dir: Option<&Path>,
+        preserve_missing_vue_diagnostics: bool,
+        alias_rewrite_policy: Option<&VirtualAliasRewritePolicy>,
+    ) -> RewriteResult {
         let relative_candidate =
             source_dir.is_some() && source_may_contain_relative_specifier(source);
         if !source.contains(".vue") && !relative_candidate {
@@ -71,62 +90,14 @@ impl ImportRewriter {
         }
 
         self.rewrite_with(source, source_type, |path, _| {
-            self.rewrite_module_specifier_with_missing_vue_policy(
+            self.rewrite_module_specifier_with_missing_vue_policy_and_alias_policy(
                 path,
                 source_dir,
                 preserve_missing_vue_diagnostics,
                 true,
+                alias_rewrite_policy,
             )
             .or_else(|| source_dir.and_then(|dir| rewrite_relative_vue_specifier(path, dir)))
-        })
-    }
-
-    /// Rewrite a script's module specifiers for the canon virtual project.
-    /// `source_dir` (when known) enables the generated-`.d.ts` redirect (#2227).
-    pub fn rewrite_for_virtual_project(
-        &self,
-        source: &str,
-        source_type: SourceType,
-        roots: (&std::path::Path, &std::path::Path),
-        source_dir: Option<&std::path::Path>,
-    ) -> RewriteResult {
-        self.rewrite_for_virtual_project_with_policy(source, source_type, roots, source_dir, false)
-    }
-
-    pub(crate) fn rewrite_for_package_shadow(
-        &self,
-        source: &str,
-        source_type: SourceType,
-        roots: (&std::path::Path, &std::path::Path),
-        source_dir: Option<&std::path::Path>,
-    ) -> RewriteResult {
-        self.rewrite_for_virtual_project_with_policy(source, source_type, roots, source_dir, true)
-    }
-
-    fn rewrite_for_virtual_project_with_policy(
-        &self,
-        source: &str,
-        source_type: SourceType,
-        roots: (&std::path::Path, &std::path::Path),
-        source_dir: Option<&std::path::Path>,
-        preserve_relative_declarations: bool,
-    ) -> RewriteResult {
-        let project_root = roots.0.to_string_lossy();
-        let dts_candidate = source_dir.is_some() && source_may_contain_relative_specifier(source);
-        if !source.contains(".vue") && !source.contains(project_root.as_ref()) && !dts_candidate {
-            return RewriteResult {
-                code: source.to_compact_string(),
-                source_map: ImportSourceMap::empty(),
-            };
-        }
-
-        self.rewrite_with(source, source_type, |path, _| {
-            self.rewrite_virtual_project_specifier(
-                path,
-                roots,
-                source_dir,
-                preserve_relative_declarations,
-            )
         })
     }
 
@@ -264,51 +235,6 @@ impl ImportRewriter {
         source_type: SourceType,
     ) -> Vec<(String, crate::PackageResolutionMode)> {
         collect_specifier_occurrences(source, source_type)
-    }
-
-    fn rewrite_virtual_project_specifier(
-        &self,
-        path: &str,
-        roots: (&std::path::Path, &std::path::Path),
-        source_dir: Option<&std::path::Path>,
-        preserve_relative_declarations: bool,
-    ) -> Option<String> {
-        if let Some(rewritten) =
-            authored_vue_ts::rewrite_authored_or_missing_vue_import(path, source_dir, true, false)
-        {
-            return Some(rewritten);
-        }
-        if let Some(source_dir) = source_dir
-            && let Some(rewritten) = (!preserve_relative_declarations)
-                .then(|| rewrite_relative_dts_specifier(path, source_dir, roots.0))
-                .flatten()
-                .or_else(|| rewrite_relative_vue_specifier(path, source_dir))
-        {
-            return Some(rewritten);
-        }
-        let candidate = std::path::Path::new(path);
-        let canonical_candidate = vize_carton::path::canonicalize_non_verbatim(candidate);
-        let canonical_project_root = vize_carton::path::canonicalize_non_verbatim(roots.0);
-        if candidate.is_absolute()
-            && let Ok(relative) = canonical_candidate
-                .strip_prefix(canonical_project_root.as_path())
-                .or_else(|_| candidate.strip_prefix(roots.0))
-            && is_rewritable_project_specifier(relative)
-        {
-            if !path.ends_with(".vue") && !absolute_import_needs_virtual_rewrite(candidate) {
-                return None;
-            }
-            let mut rewritten = cstr!("{}", roots.1.join(relative).display());
-            if path.ends_with(".vue") {
-                rewritten.push_str(".ts");
-            }
-            return Some(rewritten);
-        }
-        if is_rewritable_vue_specifier(path) {
-            Some(cstr!("{path}.ts"))
-        } else {
-            None
-        }
     }
 
     fn rewrite_declaration_specifier(&self, path: &str) -> Option<String> {

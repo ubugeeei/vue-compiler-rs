@@ -1,6 +1,8 @@
 use super::generate_virtual_ts_with_offsets;
 use vize_croquis::{Analyzer, AnalyzerOptions};
 
+mod imported_props;
+
 #[test]
 fn test_define_props_typeof_setup_binding_deferred_to_setup_scope() {
     let script = r#"const someDefinition = {

@@ -141,6 +141,59 @@ defineModel<string>("title", { required: true });
     );
 }
 
+#[test]
+fn maps_models_merged_with_imported_props_type_without_redeclaring_props() {
+    let source = r#"<script setup lang="ts">
+import type { Props } from "./types";
+defineProps<Props>();
+defineModel<string>("title", { required: true });
+</script>
+"#;
+    let result = generate_vue_content_mapper_transform(Path::new("ImportedProps.vue"), source)
+        .expect("model");
+
+    assert!(
+        !result.text.contains("export type Props = Props &"),
+        "imported Props must not be redeclared:\n{}",
+        result.text
+    );
+    assert!(
+        result
+            .text
+            .contains("type __VizeResolvedProps = Props & {\n  \"title\""),
+        "model props should extend imported Props through the private alias:\n{}",
+        result.text
+    );
+    assert!(
+        result
+            .text
+            .contains("$props: __VizeResolvedProps & __EmitProps<Emits>;"),
+        "public instance should use the resolved props alias:\n{}",
+        result.text
+    );
+}
+
+#[test]
+fn maps_runtime_constructor_model_type_to_public_props_and_emits() {
+    let source = r#"<script setup lang="ts">
+defineModel("title", { type: String, default: "" });
+</script>
+"#;
+    let result = generate_vue_content_mapper_transform(Path::new("RuntimeModel.vue"), source)
+        .expect("model");
+
+    assert!(
+        result.text.contains("\"title\"?: string;"),
+        "runtime constructor model should expose a string prop:\n{}",
+        result.text
+    );
+    assert!(
+        result.text.contains("\"update:title\": [value: string];"),
+        "runtime constructor model should expose a string update payload:\n{}",
+        result.text
+    );
+}
+
 fn has_exact_mapping(result: &ContentMapperTransform, generated: usize, original: usize) -> bool {
     result.mappings.iter().any(|mapping| {
         mapping.0[0] == generated

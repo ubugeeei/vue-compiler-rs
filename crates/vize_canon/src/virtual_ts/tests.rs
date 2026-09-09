@@ -1973,33 +1973,33 @@ function handleTest(value1: string, value2: number) {
         output.code
     );
 
-    // Bare callable reference: checked against the listener type and invoked
-    // with every argument spread.
     assert!(
         output.code.contains(
-            "const __vize_handler_8_13: __Test_8_test_listener | null | undefined = (handleTest);"
+            "type __Test_8_test_handler = unknown[] extends __Test_8_test_args ? ((...args: any[]) => any) : __Test_8_test_listener;"
+        ) && output.code.contains(
+            "const __vize_handler_8_13: __Test_8_test_handler | null | undefined = (handleTest);"
         ),
-        "bare handler reference must be typed against the emit listener type:\n{}",
+        "bare handler reference must be typed through the emit handler alias:\n{}",
         output.code
     );
     assert!(
-        output.code.contains("__vize_handler_8_13(...__vize_args);"),
+        output
+            .code
+            .contains("(__vize_handler_8_13 as __Test_8_test_listener)(...__vize_args);"),
         "bare handler reference must be invoked with the full argument spread:\n{}",
         output.code
     );
-
-    // Inline multi-parameter arrow: also checked against the listener type (so
-    // its parameters are typed) and invoked through the typed const with the
-    // full argument spread, avoiding TS2556 on the fixed-arity arrow.
     assert!(
         output.code.contains(
-            "const __vize_handler_9_40: __Test_9_test_listener | null | undefined = ((value1, value2) => handleTest(value1, value2));"
+            "const __vize_handler_9_40: __Test_9_test_handler | null | undefined = ((value1, value2) => handleTest(value1, value2));"
         ),
-        "inline multi-arg arrow must be typed against the emit listener type:\n{}",
+        "inline multi-arg arrow must be typed through the emit handler alias:\n{}",
         output.code
     );
     assert!(
-        output.code.contains("__vize_handler_9_40(...__vize_args);"),
+        output
+            .code
+            .contains("(__vize_handler_9_40 as __Test_9_test_listener)(...__vize_args);"),
         "inline multi-arg arrow must be invoked with the full argument spread:\n{}",
         output.code
     );

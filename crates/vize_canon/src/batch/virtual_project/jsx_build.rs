@@ -31,7 +31,13 @@ pub(super) fn build_jsx_registered_file(
         "canon.import.rewrite.jsx",
         context
             .rewriter
-            .rewrite(&code, SourceType::ts(), path.parent())
+            .rewrite_with_missing_vue_policy_and_alias_policy(
+                &code,
+                SourceType::ts(),
+                path.parent(),
+                true,
+                context.alias_rewrite_policy,
+            )
     );
 
     let blocks = vec![crate::batch::source_map::SfcBlockRange {

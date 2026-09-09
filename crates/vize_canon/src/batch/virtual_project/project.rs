@@ -19,8 +19,8 @@ mod config;
 mod package_routes;
 
 use super::build::{
-    RegisteredFile, VirtualBuildContext, build_registered_file, build_script_registered_file,
-    build_vue_registered_file, source_type_for_path,
+    RegisteredFile, ScriptBuildOptions, VirtualBuildContext, build_registered_file,
+    build_script_registered_file, build_vue_registered_file, source_type_for_path,
 };
 use super::setup_props::RuntimePropResolveCache;
 use super::{VirtualProject, project_virtual_root};
@@ -37,6 +37,7 @@ impl VirtualProject {
             tsconfig_path: None,
             preserve_unused_diagnostics: false,
             source_policy: Default::default(),
+            alias_rewrite_policy: Default::default(),
             virtual_ts_options: VirtualTsOptions::default(),
             diagnostic_paths: FxHashSet::default(),
             declaration_roots: None,
@@ -93,6 +94,7 @@ impl VirtualProject {
         project.preserve_unused_diagnostics =
             project.resolve_tsconfig_preserves_unused_diagnostics();
         project.source_policy = project.resolve_source_file_policy();
+        project.alias_rewrite_policy = project.resolve_alias_rewrite_policy();
         Ok(project)
     }
 
@@ -128,6 +130,7 @@ impl VirtualProject {
                 preserve_relative_declarations: package_route_path,
                 preserve_declaration_spelling: self.session_scripts,
                 rewriter: &self.rewriter,
+                alias_rewrite_policy: Some(self.alias_rewrite_policy()),
                 runtime_prop_resolve_cache: None,
             },
         )?;
@@ -181,6 +184,7 @@ impl VirtualProject {
             preserve_relative_declarations: false,
             preserve_declaration_spelling: self.session_scripts,
             rewriter: &self.rewriter,
+            alias_rewrite_policy: Some(self.alias_rewrite_policy()),
             runtime_prop_resolve_cache: Some(&runtime_prop_resolve_cache),
         };
         let package_paths = self
@@ -228,6 +232,7 @@ impl VirtualProject {
                 preserve_relative_declarations: self.is_package_route_path(path),
                 preserve_declaration_spelling: self.session_scripts,
                 rewriter: &self.rewriter,
+                alias_rewrite_policy: Some(self.alias_rewrite_policy()),
                 runtime_prop_resolve_cache: None,
             },
         )?;
@@ -259,11 +264,14 @@ impl VirtualProject {
         let registered = build_script_registered_file(
             path,
             content,
-            source_type,
-            (&self.project_root, &self.virtual_root),
-            &self.rewriter,
-            self.is_package_route_path(path),
-            self.session_scripts,
+            ScriptBuildOptions {
+                source_type,
+                roots: (&self.project_root, &self.virtual_root),
+                rewriter: &self.rewriter,
+                alias_rewrite_policy: Some(self.alias_rewrite_policy()),
+                preserve_relative_declarations: self.is_package_route_path(path),
+                preserve_declaration_spelling: self.session_scripts,
+            },
         )?;
         self.absorb_registered_file(registered);
         Ok(())

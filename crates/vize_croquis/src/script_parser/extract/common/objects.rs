@@ -87,7 +87,7 @@ pub(in crate::script_parser::extract) fn fill_define_art_tags(
     }
 }
 
-pub(super) fn object_property<'a>(
+pub(in crate::script_parser::extract) fn object_property<'a>(
     object: &'a ObjectExpression<'a>,
     name: &str,
 ) -> Option<&'a Expression<'a>> {

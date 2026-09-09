@@ -1,3 +1,4 @@
+mod alias_rewrite_policy;
 mod base_url;
 pub(super) mod compiler_options;
 mod compiler_options_snapshot;
@@ -10,7 +11,6 @@ pub use references::{TsconfigOwnershipCache, TsconfigOwnershipOptions, TsconfigS
 mod remap;
 mod vue_alias;
 mod vue_compiler_options;
-
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};

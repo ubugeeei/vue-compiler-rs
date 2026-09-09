@@ -26,6 +26,7 @@ mod options_api_declaration_instance;
 mod options_api_inherited_members;
 mod pascal_case_prop_names;
 mod public_instance_contract;
+mod real_project_parity;
 mod sequence_prop_expressions;
 mod single_required_camel_prop;
 mod split_script_diagnostic_anchors;
@@ -41,7 +42,6 @@ mod tsx_catch_all_emits;
 mod unmapped_template_fallback;
 mod v_for_source_callbacks;
 mod vapor_anchors;
-
 fn normalize_component_check_props_tail(message: &str) -> std::string::String {
     const START: &str = "__VizeComponentCheckProps<Props, ";
     const STABLE_TYPE: &str = "__VizeComponentCheckProps<Props, __VizeFallthroughAttrs>";

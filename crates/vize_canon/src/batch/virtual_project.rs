@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use vize_atelier_core::TemplateSyntaxMode;
 use vize_carton::{FxHashMap, FxHashSet, String as CompactString};
 
-use super::import_rewriter::ImportRewriter;
+use super::import_rewriter::{ImportRewriter, VirtualAliasRewritePolicy};
 use super::source_map::CompositeSourceMap;
 use super::source_policy::SourceFilePolicy;
 use super::{Diagnostic, SfcBlockType};
@@ -161,6 +161,9 @@ pub struct VirtualProject {
 
     /// Effective TypeScript source membership and JavaScript diagnostic policy.
     source_policy: SourceFilePolicy,
+
+    /// Effective path-alias policy for virtual `.vue` specifier rewrites.
+    alias_rewrite_policy: VirtualAliasRewritePolicy,
 
     /// Global virtual TS options applied to every Vue file.
     virtual_ts_options: VirtualTsOptions,

@@ -91,6 +91,25 @@ fn array_destructured_define_model_keeps_public_model_contract() {
 }
 
 #[test]
+fn define_model_runtime_constructor_type_is_recorded() {
+    let result = parse_script_setup("const model = defineModel({ type: String, default: '' })");
+    let models = result.macros.models();
+
+    assert_eq!(models.len(), 1);
+    assert_eq!(models[0].model_type.as_deref(), Some("string"));
+    assert!(models[0].default_value.is_some());
+}
+
+#[test]
+fn define_model_runtime_constructor_array_type_is_recorded() {
+    let result = parse_script_setup("const model = defineModel({ type: [String, Number] })");
+    let models = result.macros.models();
+
+    assert_eq!(models.len(), 1);
+    assert_eq!(models[0].model_type.as_deref(), Some("string | number"));
+}
+
+#[test]
 fn shifting_macros_keeps_model_declarations_in_script_coordinates() {
     let mut result = parse_script_setup("defineModel<string>(\"title\")");
     let declaration = result

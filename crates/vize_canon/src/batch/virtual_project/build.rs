@@ -12,17 +12,19 @@ use vize_atelier_sfc::{SfcParseOptions, parse_sfc};
 use crate::batch::Diagnostic;
 use crate::batch::declaration_path::is_declaration_file;
 use crate::batch::error::{CorsaError, CorsaResult};
-use crate::batch::import_rewriter::ImportRewriter;
+use crate::batch::import_rewriter::{ImportRewriter, VirtualAliasRewritePolicy};
 use crate::batch::source_map::{CompositeSourceMap, SfcSourceMap};
 use crate::virtual_ts::{VirtualTsCheckOptions, VirtualTsOptions, VizeMapping};
 
 mod css_modules;
+#[path = "script_build.rs"]
+mod script_build;
 pub(super) use super::paths::source_type_for_path;
 pub(super) use css_modules::virtual_ts_options_for_descriptor;
+pub(super) use script_build::{ScriptBuildOptions, build_script_registered_file};
 
 use super::VirtualFile;
 use super::diagnostics::collect_sfc_block_ranges;
-use super::esm_declaration_spelling::should_preserve_esm_declaration_spelling;
 use super::javascript_sfc::descriptor_is_unchecked_javascript;
 pub(super) use super::javascript_sfc::descriptor_uses_jsx_script;
 use super::jsx_build::build_jsx_registered_file;
@@ -65,6 +67,7 @@ pub(super) struct VirtualBuildContext<'a> {
     pub(super) preserve_relative_declarations: bool,
     pub(super) preserve_declaration_spelling: bool,
     pub(super) rewriter: &'a ImportRewriter,
+    pub(super) alias_rewrite_policy: Option<&'a VirtualAliasRewritePolicy>,
     pub(super) runtime_prop_resolve_cache: Option<&'a RuntimePropResolveCache>,
 }
 
@@ -81,11 +84,14 @@ pub(super) fn build_registered_file(
         return build_script_registered_file(
             path,
             content,
-            SourceType::ts(),
-            (context.project_root, context.virtual_root),
-            context.rewriter,
-            context.preserve_relative_declarations,
-            context.preserve_declaration_spelling,
+            ScriptBuildOptions {
+                source_type: SourceType::ts(),
+                roots: (context.project_root, context.virtual_root),
+                rewriter: context.rewriter,
+                alias_rewrite_policy: context.alias_rewrite_policy,
+                preserve_relative_declarations: context.preserve_relative_declarations,
+                preserve_declaration_spelling: context.preserve_declaration_spelling,
+            },
         );
     }
 
@@ -105,11 +111,14 @@ pub(super) fn build_registered_file(
     build_script_registered_file(
         path,
         content,
-        source_type,
-        (context.project_root, context.virtual_root),
-        context.rewriter,
-        context.preserve_relative_declarations,
-        context.preserve_declaration_spelling,
+        ScriptBuildOptions {
+            source_type,
+            roots: (context.project_root, context.virtual_root),
+            rewriter: context.rewriter,
+            alias_rewrite_policy: context.alias_rewrite_policy,
+            preserve_relative_declarations: context.preserve_relative_declarations,
+            preserve_declaration_spelling: context.preserve_declaration_spelling,
+        },
     )
 }
 
@@ -176,7 +185,15 @@ pub(super) fn build_vue_registered_file(
     }
     let rewritten = profile!(
         "canon.import.rewrite.vue",
-        context.rewriter.rewrite(&code, source_type, path.parent())
+        context
+            .rewriter
+            .rewrite_with_missing_vue_policy_and_alias_policy(
+                &code,
+                source_type,
+                path.parent(),
+                true,
+                context.alias_rewrite_policy,
+            )
     );
     let source_map = CompositeSourceMap::new_vue(
         SfcSourceMap::new_with_semantic_links(
@@ -220,42 +237,6 @@ pub(super) fn build_vue_registered_file(
         ),
         diagnostics,
         unchecked_javascript: descriptor_is_unchecked_javascript(&descriptor),
-    })
-}
-
-pub(super) fn build_script_registered_file(
-    path: &Path,
-    content: &str,
-    source_type: SourceType,
-    roots: (&Path, &Path),
-    rewriter: &ImportRewriter,
-    preserve_relative_declarations: bool,
-    preserve_declaration_spelling: bool,
-) -> CorsaResult<RegisteredFile> {
-    let rewritten = profile!("canon.import.rewrite.script", {
-        if preserve_relative_declarations {
-            rewriter.rewrite_for_package_shadow(content, source_type, roots, path.parent())
-        } else {
-            rewriter.rewrite_for_virtual_project(content, source_type, roots, path.parent())
-        }
-    });
-    let preserve_declaration_spelling =
-        preserve_declaration_spelling || should_preserve_esm_declaration_spelling(path, content);
-    let virtual_path =
-        super::paths::script_virtual_path(roots, path, content, preserve_declaration_spelling)?;
-
-    Ok(RegisteredFile {
-        file: VirtualFile {
-            content: rewritten.code,
-            source_map: CompositeSourceMap::new_script(rewritten.source_map),
-            original_path: path.to_path_buf(),
-            virtual_path,
-        },
-        extra_virtual_files: Vec::new(),
-        original_content: content.to_compact_string(),
-        passthrough_files: collect_passthrough_modules(path, content, roots.0, roots.1),
-        diagnostics: Vec::new(),
-        unchecked_javascript: false,
     })
 }
 

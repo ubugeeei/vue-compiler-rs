@@ -61,7 +61,7 @@ impl Croquis {
                 } else {
                     model.name.as_str()
                 };
-                if let Some(ref ty) = model.model_type {
+                if let Some(ty) = model.model_type.as_ref() {
                     writeln!(output, "{}:{}", name, ty).ok();
                 } else {
                     writeln!(output, "{}", name).ok();

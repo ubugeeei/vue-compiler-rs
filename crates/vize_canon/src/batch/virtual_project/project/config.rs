@@ -41,6 +41,7 @@ impl VirtualProject {
         self.tsconfig_path = tsconfig_path.map(vize_carton::path::normalize_windows_verbatim_path);
         self.preserve_unused_diagnostics = self.resolve_tsconfig_preserves_unused_diagnostics();
         self.source_policy = self.resolve_source_file_policy();
+        self.alias_rewrite_policy = self.resolve_alias_rewrite_policy();
         self.virtual_ts_check_options.check_unknown_props = self.resolve_check_unknown_props();
     }
 
@@ -55,6 +56,7 @@ impl VirtualProject {
     pub(crate) fn refresh_compiler_configuration(&mut self) {
         self.preserve_unused_diagnostics = self.resolve_tsconfig_preserves_unused_diagnostics();
         self.source_policy = self.resolve_source_file_policy();
+        self.alias_rewrite_policy = self.resolve_alias_rewrite_policy();
         self.virtual_ts_check_options.check_unknown_props = self.resolve_check_unknown_props();
         self.mark_incremental_config_file();
         self.mark_incremental_link_topology();

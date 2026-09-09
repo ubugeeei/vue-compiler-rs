@@ -35,17 +35,21 @@ pub(super) fn emit_slot_outlet_helpers(
 ) {
     let mut needs_static = false;
     let mut needs_dynamic = false;
+    let mut needs_spread = false;
     for outlet in slot_outlets_by_scope
         .values()
         .flat_map(|outlets| outlets.iter())
     {
+        if !outlet.spread_props.is_empty() {
+            needs_spread = true;
+        }
         if outlet.name_is_dynamic {
             needs_dynamic = true;
         } else {
             needs_static = true;
         }
     }
-    if !needs_static && !needs_dynamic {
+    if !needs_static && !needs_dynamic && !needs_spread {
         return;
     }
 
@@ -78,6 +82,14 @@ pub(super) fn emit_slot_outlet_helpers(
         );
         ts.push_str(
             "  type __VizeAnySlotOutletPayload<__S> = [__VizeAnySlotOutletArgs<__S>] extends [[]] ? unknown : __VizeAnySlotOutletArgs<__S>[0];\n",
+        );
+    }
+    if needs_spread {
+        ts.push_str(
+            "  type __VizeSlotOutletSpreadPayload<__T> = __T extends object ? __T : Record<string, unknown>;\n",
+        );
+        ts.push_str(
+            "  function __vizeSlotOutletSpread<__T>(value: __T): __VizeSlotOutletSpreadPayload<__T> { return value as any; }\n",
         );
     }
 }
@@ -235,9 +247,9 @@ fn append_slot_outlet_literal(
     }
 
     for spread in &outlet.spread_props {
-        append!(*ts, "{expr_indent}  ...");
+        append!(*ts, "{expr_indent}  ...__vizeSlotOutletSpread((");
         let gen_range = append_prop_value(ts, spread.expression.as_str());
-        ts.push_str(",\n");
+        ts.push_str(")),\n");
         let source_expression = spread_expression_source_range(source_context, spread);
         mappings.push(VizeMapping {
             gen_range: gen_range.clone(),

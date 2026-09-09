@@ -7,6 +7,18 @@ use oxc_span::SourceType;
 use vize_carton::{CompactString, FxHashSet};
 use vize_croquis::Croquis;
 
+use super::global_components::GlobalComponentPlan;
+
+pub(super) fn should_collect_syntactic_type_only_imported_names(
+    summary: &Croquis,
+    global_components: &GlobalComponentPlan<'_>,
+) -> bool {
+    (global_components.enabled() && !summary.component_usages.is_empty())
+        || !summary.used_components.is_empty()
+        || summary.macros.define_props().is_some()
+        || !summary.macros.models().is_empty()
+}
+
 pub(super) fn collect_syntactic_type_only_imported_names(
     summary: &Croquis,
     script_content: Option<&str>,

@@ -4,6 +4,7 @@ use crate::{batch::Diagnostic, batch::SfcBlockType, virtual_ts::VirtualTsOptions
 use std::{fs, path::Path, path::PathBuf};
 use vize_atelier_core::TemplateSyntaxMode;
 use vize_carton::cstr;
+mod alias_rewrite;
 mod base_url;
 mod declaration_root_dir;
 mod graphql_generated;
@@ -69,7 +70,6 @@ fn diagnostic_snapshot(diagnostics: &[Diagnostic]) -> Vec<DiagnosticSnapshot<'_>
         })
         .collect()
 }
-
 fn snapshot_text(source: &str) -> std::string::String {
     let mut output = std::string::String::with_capacity(source.len());
     for (index, line) in source.split('\n').enumerate() {

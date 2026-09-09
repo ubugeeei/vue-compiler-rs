@@ -51,7 +51,9 @@ use self::setup_helpers::{SetupHelperComponentContext, emit_setup_helpers};
 use self::setup_props::{generate_setup_props, prop_source};
 use self::setup_type_exports::SetupTypeExportsPlan;
 use self::spans::{DEFINE_COMPONENT_REF, rewrite_export_default_for_module_scope, template_usage};
-use self::type_only_imports::collect_syntactic_type_only_imported_names;
+use self::type_only_imports::{
+    collect_syntactic_type_only_imported_names, should_collect_syntactic_type_only_imported_names,
+};
 use self::unresolved_components::emit_unresolved_components;
 use super::{
     helpers::{SETUP_SCOPE_HELPER_NAMES, generate_template_context},
@@ -355,18 +357,15 @@ pub(crate) fn generate_virtual_ts_with_offsets_and_checks(
     } else {
         FxHashSet::default()
     };
-    let syntactic_type_only_imported_names = if (global_components.enabled()
-        && !summary.component_usages.is_empty())
-        || !summary.used_components.is_empty()
-    {
-        profile!(
-            "canon.virtual_ts.extract_syntactic_type_only_imported_names",
-            collect_syntactic_type_only_imported_names(summary, script_content)
-        )
-    } else {
-        FxHashSet::default()
-    };
-
+    let syntactic_type_only_imported_names =
+        if should_collect_syntactic_type_only_imported_names(summary, &global_components) {
+            profile!(
+                "canon.virtual_ts.extract_syntactic_type_only_imported_names",
+                collect_syntactic_type_only_imported_names(summary, script_content)
+            )
+        } else {
+            FxHashSet::default()
+        };
     if !options.auto_import_stubs.is_empty() {
         profile!(
             "canon.virtual_ts.emit_auto_import_stubs",
@@ -401,6 +400,7 @@ pub(crate) fn generate_virtual_ts_with_offsets_and_checks(
         prop_source(&mut mappings, summary, script_content, source_offset),
         generic_param,
         options_api_props.as_ref(),
+        &syntactic_type_only_imported_names,
         setup_type_exports.exports_public_type("Props"),
     );
     ts.push_str("// ========== Setup Scope ==========\n");
