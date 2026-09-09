@@ -35,8 +35,8 @@ pub use define_props_destructure::{
     process_props_destructure, transform_destructured_props,
 };
 pub use import_usage_check::{
-    TemplateUsedIdentifiers, is_used_in_template, resolve_template_used_identifiers,
-    resolve_template_v_model_identifiers,
+    TemplateUsedIdentifiers, is_used_in_template, resolve_template_read_identifiers,
+    resolve_template_used_identifiers, resolve_template_v_model_identifiers,
 };
 pub(crate) use static_expression::{is_static_enum, register_enum};
 pub(crate) use type_resolution::{

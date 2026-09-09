@@ -839,7 +839,7 @@ compiler	Compiler	source	crates/vize_atelier_sfc/src/script/import_usage_check.r
 compiler	Compiler	source	crates/vize_atelier_sfc/src/script/import_usage_check.rs	8	raw_oxc	raw OXC	raw	oxc_ast	raw	1
 compiler	Compiler	source	crates/vize_atelier_sfc/src/script/import_usage_check.rs	8	raw_oxc	raw OXC	raw	oxc_ast_visit	raw	1
 compiler	Compiler	source	crates/vize_atelier_sfc/src/script/import_usage_check.rs	8	raw_oxc	raw OXC	raw	oxc_parser	raw	1
-compiler	Compiler	test/dev	crates/vize_atelier_sfc/src/script/import_usage_check.rs	417	s0	S0	stage	vize_carton	compat	1
+compiler	Compiler	test/dev	crates/vize_atelier_sfc/src/script/import_usage_check/tests.rs	6	s0	S0	stage	vize_carton	compat	5
 compiler	Compiler	source	crates/vize_atelier_sfc/src/script/static_expression.rs	3	raw_oxc	raw OXC	raw	oxc_ast	raw	1
 compiler	Compiler	test/dev	crates/vize_atelier_sfc/src/script/static_expression.rs	69	raw_oxc	raw OXC	raw	oxc_allocator	raw	1
 compiler	Compiler	test/dev	crates/vize_atelier_sfc/src/script/static_expression.rs	69	raw_oxc	raw OXC	raw	oxc_ast	raw	1
@@ -2370,7 +2370,7 @@ typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_prop_expressions.rs	1	croquis	Croquis analysis	old	vize_croquis	legacy	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_prop_navigation.rs	3	s0	S0	stage	vize_carton	compat	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_prop_navigation.rs	3	croquis	Croquis analysis	old	vize_croquis	legacy	1
-typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_props.rs	4	s0	S0	stage	vize_carton	compat	7
+typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_props.rs	4	s0	S0	stage	vize_carton	compat	2
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_props.rs	4	croquis	Croquis analysis	old	vize_croquis	legacy	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_ref_props.rs	1	s0	S0	stage	vize_carton	compat	1
 typechecker	Typechecker	source	crates/vize_canon/src/virtual_ts/scope/component_ref_props.rs	1	croquis	Croquis analysis	old	vize_croquis	legacy	1
@@ -2470,8 +2470,11 @@ typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/options_
 typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/slot_component_bindings.rs	2	s0	S0	stage	vize_carton	compat	6
 typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/slot_component_bindings.rs	2	old_ast	old AST/parser	old	vize_armature	legacy	5
 typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/slot_component_bindings.rs	2	croquis	Croquis analysis	old	vize_croquis	legacy	1
-typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/unused_refs.rs	4	s0	S0	stage	vize_carton	compat	2
-typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/unused_refs.rs	4	old_ast	old AST/parser	old	vize_armature	legacy	2
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/template_ref_unwrap.rs	5	s0	S0	stage	vize_carton	compat	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/template_ref_unwrap.rs	5	old_ast	old AST/parser	old	vize_armature	legacy	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/template_ref_unwrap.rs	5	croquis	Croquis analysis	old	vize_croquis	legacy	1
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/unused_refs.rs	4	s0	S0	stage	vize_carton	compat	4
+typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/unused_refs.rs	4	old_ast	old AST/parser	old	vize_armature	legacy	4
 typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/unused_refs.rs	4	croquis	Croquis analysis	old	vize_croquis	legacy	1
 typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/vif_chain.rs	2	s0	S0	stage	vize_carton	compat	4
 typechecker	Typechecker	test/dev	crates/vize_canon/src/virtual_ts/tests/vif_chain.rs	2	old_ast	old AST/parser	old	vize_armature	legacy	4
@@ -2594,17 +2597,21 @@ typechecker	Typechecker	source	crates/vize/src/commands/check/nuxt/virtual_modul
 typechecker	Typechecker	source	crates/vize/src/commands/check/nuxt/virtual_modules.rs	6	raw_oxc	raw OXC	raw	oxc_parser	raw	1
 typechecker	Typechecker	source	crates/vize/src/commands/check/path_cache.rs	5	s0	S0	stage	vize_s0	preferred	2
 typechecker	Typechecker	test/dev	crates/vize/src/commands/check/path_cache.rs	47	s0	S0	stage	vize_s0	preferred	1
-typechecker	Typechecker	test/dev	crates/vize/src/commands/check/runner.rs	145	s0	S0	stage	vize_s0	preferred	1
+typechecker	Typechecker	test/dev	crates/vize/src/commands/check/runner.rs	146	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize/src/commands/check/runner/collect_tests.rs	11	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/collect.rs	10	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize/src/commands/check/runner/collect.rs	273	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	test/dev	crates/vize/src/commands/check/runner/default_imports_tests.rs	3	s0	S0	stage	vize_s0	preferred	1
-typechecker	Typechecker	source	crates/vize/src/commands/check/runner/default_imports.rs	3	s0	S0	stage	vize_s0	preferred	1
+typechecker	Typechecker	source	crates/vize/src/commands/check/runner/default_imports.rs	6	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/diagnostics.rs	9	s0	S0	stage	vize_s0	preferred	3
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/diagnostics/source_context.rs	3	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/diagnostics/source_filter.rs	3	s0	S0	stage	vize_s0	preferred	1
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/execution.rs	9	s0	S0	stage	vize_s0	preferred	3
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/global_components.rs	15	s0	S0	stage	vize_s0	preferred	1
+typechecker	Typechecker	source	crates/vize/src/commands/check/runner/global_components/specifier_rewrite.rs	3	s0	S0	stage	vize_s0	preferred	1
+typechecker	Typechecker	source	crates/vize/src/commands/check/runner/global_components/workspace_declarations.rs	8	s0	S0	stage	vize_s0	preferred	2
+typechecker	Typechecker	source	crates/vize/src/commands/check/runner/global_components/workspace_declarations.rs	8	old_ast	old AST/parser	old	vize_armature	legacy	1
+typechecker	Typechecker	source	crates/vize/src/commands/check/runner/global_components/workspace_declarations.rs	8	croquis	Croquis analysis	old	vize_croquis	legacy	1
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/ignores.rs	43	s0	S0	stage	vize_s0	preferred	2
 typechecker	Typechecker	source	crates/vize/src/commands/check/runner/input_scope.rs	16	s0	S0	stage	vize_s0	preferred	3
 typechecker	Typechecker	test/dev	crates/vize/src/commands/check/runner/input_scope/tests.rs	18	s0	S0	stage	vize_s0	preferred	1

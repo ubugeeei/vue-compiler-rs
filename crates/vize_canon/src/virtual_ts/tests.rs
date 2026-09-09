@@ -19,6 +19,7 @@ mod options_api_props_spread;
 mod options_api_setup_spread;
 mod options_api_this_bridge;
 mod slot_component_bindings;
+mod template_ref_unwrap;
 mod unused_refs;
 mod vif_chain;
 fn assert_virtual_ts_snapshot(name: &str, value: &str) {
@@ -26,7 +27,6 @@ fn assert_virtual_ts_snapshot(name: &str, value: &str) {
         insta::assert_snapshot!(name, value);
     });
 }
-
 #[test]
 fn test_vue_setup_helpers_are_actual_functions() {
     assert_virtual_ts_snapshot("virtual_ts_vue_setup_helpers", VUE_SETUP_HELPERS);
@@ -614,7 +614,7 @@ fn test_external_template_bindings_do_not_shadow_auto_imported_components() {
     use vize_croquis::{Analyzer, AnalyzerOptions};
 
     let script = "const count = 'oops'\n";
-    let template = r#"<AutoCard :count="count" />"#;
+    let template = r#"<auto-card :count="count" />"#;
 
     let allocator = vize_carton::Allocator::new();
     let (root, _) = vize_armature::parse(&allocator, template);
@@ -640,11 +640,11 @@ fn test_external_template_bindings_do_not_shadow_auto_imported_components() {
             .code
             .contains("declare const AutoCard: typeof import")
     );
-    assert!(!output.code.contains("const AutoCard: any"));
+    assert!(!output.code.contains("const auto_card: any"));
     assert!(
         output
             .code
-            .contains("type __AutoCard_Props_0 = typeof AutoCard extends { __vizeCheck: infer __F } ? (__VizeIsAny<__F> extends true ? __VizeComponentRawProps<typeof AutoCard> : Record<string, unknown>) : __VizeComponentRawProps<typeof AutoCard>;")
+            .contains("type __auto_card_Props_0 = typeof AutoCard extends { __vizeCheck: infer __F } ? (__VizeIsAny<__F> extends true ? __VizeComponentRawProps<typeof AutoCard> : Record<string, unknown>) : __VizeComponentRawProps<typeof AutoCard>;")
     );
 }
 

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use vize_s0::path::canonicalize_non_verbatim;
 
@@ -12,6 +12,13 @@ fn unique_case_dir(name: &str) -> PathBuf {
             "check-runner-{name}-{}-{case_id}",
             std::process::id()
         ))
+}
+
+fn write(root: &Path, rel: &str, content: &str) -> PathBuf {
+    let path = root.join(rel);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, content).unwrap();
+    path
 }
 
 #[test]
@@ -155,6 +162,151 @@ fn default_tsconfig_run_registers_hidden_ambient_declarations_for_type_resolutio
         "hidden ambient declarations are registered for types, not reported"
     );
     assert!(package_routes.is_empty());
+
+    let _ = std::fs::remove_dir_all(&project_root);
+}
+
+#[test]
+fn explicit_run_registers_discovered_global_component_declaration_imports() {
+    let project_root = unique_case_dir("explicit-global-component-ambient-imports");
+    let _ = std::fs::remove_dir_all(&project_root);
+    let entry = write(
+        &project_root,
+        "src/App.vue",
+        "<template><UiButton /></template>\n",
+    );
+    let ambient = write(
+        &project_root,
+        "docs/components.d.ts",
+        r#"import "vue";
+declare module "vue" {
+  export interface GlobalComponents {
+    UiButton: typeof import("../packages/ui/UiButton.vue")["default"]
+  }
+}
+export {};
+"#,
+    );
+    let imported = write(&project_root, "packages/ui/UiButton.vue", "<template />\n");
+    write(
+        &project_root,
+        "tsconfig.json",
+        r#"{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": ["src/**/*.vue"]
+}"#,
+    );
+
+    let project_root = project_root.canonicalize().unwrap();
+    let mut files = vec![canonicalize_non_verbatim(&entry)];
+    let mut tsconfig_input_cache = super::TsconfigInputCache::default();
+    let mut canonical_paths = super::CanonicalPathCache::default();
+    let mut package_routes = vize_canon::PackageRouteResolver::default();
+
+    let discovered_package_routes = super::register_explicit_ambient_imports(
+        &mut files,
+        super::ExplicitAmbientImportContext::new(
+            &project_root,
+            &project_root,
+            &project_root.join("tsconfig.json"),
+            &project_root,
+            &[canonicalize_non_verbatim(&ambient)],
+            super::ImportFileOptions::default(),
+        ),
+        &mut tsconfig_input_cache,
+        &mut canonical_paths,
+        &mut package_routes,
+    );
+
+    let ambient = canonicalize_non_verbatim(&ambient);
+    let imported = canonicalize_non_verbatim(&imported);
+    assert!(
+        files.contains(&ambient),
+        "missing ambient declaration: {files:?}"
+    );
+    assert!(
+        files.contains(&imported),
+        "missing ambient import: {files:?}"
+    );
+    assert!(discovered_package_routes.is_empty());
+
+    let _ = std::fs::remove_dir_all(&project_root);
+}
+
+#[test]
+fn explicit_run_discovers_imports_from_non_module_vue_ambient_without_registering_it() {
+    let project_root = unique_case_dir("explicit-global-component-non-module-ambient");
+    let _ = std::fs::remove_dir_all(&project_root);
+    let entry = write(
+        &project_root,
+        "src/App.vue",
+        "<template><UiButton /></template>\n",
+    );
+    let ambient = write(
+        &project_root,
+        "src/shims.d.ts",
+        r#"declare module "*.css";
+declare module "vue" {
+  export interface GlobalComponents {
+    UiButton: typeof import("../packages/ui/UiButton.vue")["default"]
+  }
+}
+"#,
+    );
+    let imported = write(&project_root, "packages/ui/UiButton.vue", "<template />\n");
+    write(
+        &project_root,
+        "tsconfig.json",
+        r#"{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.vue"]
+}"#,
+    );
+
+    let project_root = project_root.canonicalize().unwrap();
+    let mut files = vec![canonicalize_non_verbatim(&entry)];
+    let mut tsconfig_input_cache = super::TsconfigInputCache::default();
+    let mut canonical_paths = super::CanonicalPathCache::default();
+    let mut package_routes = vize_canon::PackageRouteResolver::default();
+
+    let discovered_package_routes = super::register_explicit_ambient_imports(
+        &mut files,
+        super::ExplicitAmbientImportContext::new(
+            &project_root,
+            &project_root,
+            &project_root.join("tsconfig.json"),
+            &project_root,
+            &[canonicalize_non_verbatim(&ambient)],
+            super::ImportFileOptions::default(),
+        ),
+        &mut tsconfig_input_cache,
+        &mut canonical_paths,
+        &mut package_routes,
+    );
+
+    let ambient = canonicalize_non_verbatim(&ambient);
+    let imported = canonicalize_non_verbatim(&imported);
+    assert!(
+        !files.contains(&ambient),
+        "non-module vue declarations must not become program roots: {files:?}"
+    );
+    assert!(
+        files.contains(&imported),
+        "missing global component import: {files:?}"
+    );
+    assert!(discovered_package_routes.is_empty());
 
     let _ = std::fs::remove_dir_all(&project_root);
 }

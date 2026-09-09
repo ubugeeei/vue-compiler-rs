@@ -134,14 +134,9 @@ function __setup<T extends string | number>() {
   // @vize-map: 13073:13267 -> 0:193
 
   // ========== Template Scope (inherits from setup) ==========
-  // Ref type captures (before template scope shadows them)
-  type __R_activeItem = typeof activeItem;
   // Anchor before the template scope shadows `props`
   void props;
   ;(function __template() {
-    // Auto-unwrap Vue refs in template scope
-    type __U<T> = T extends import('vue').Ref ? T['value'] : T;
-    var activeItem: __U<__R_activeItem> = undefined as any;
     // Vue template context (delegates to ComponentPublicInstance)
     // @ts-ignore TS2694/TS2307: a `vue` without `ComponentPublicInstance` must degrade template context extras to unchecked, never error.
     type __Ctx = import('vue').ComponentPublicInstance;

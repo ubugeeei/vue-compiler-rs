@@ -1384,15 +1384,15 @@ fn create_seeded_mutation_oracle(ctx: MutationContext<'_>) -> Result<Value, Stri
         ));
     }
     let start = usize::from_str_radix(&seed[..8], 16).unwrap_or(0) % shared_files.len();
+    let vize_diagnostic_counts = vize_report_diagnostic_counts(ctx.vize_report);
+    let mut candidates = Vec::new();
     let mut failed_oracle = None;
-    let mut candidate_count = 0usize;
     for offset in 0..shared_files.len() {
         let file = shared_files[(start + offset) % shared_files.len()].clone();
         let clean_source = common::read_text(ctx.fixture_root.join(&file))?;
         let Some((broken_source, line, column)) = build_seeded_mutation(&clean_source) else {
             continue;
         };
-        candidate_count += 1;
         let candidate = MutationCandidate {
             seed: seed.clone(),
             file,
@@ -1401,13 +1401,26 @@ fn create_seeded_mutation_oracle(ctx: MutationContext<'_>) -> Result<Value, Stri
             line,
             column,
         };
+        candidates.push((offset, candidate));
+    }
+    candidates.sort_by_key(|(offset, candidate)| {
+        (
+            vize_diagnostic_counts
+                .get(candidate.file.as_str())
+                .copied()
+                .unwrap_or(usize::MAX),
+            candidate.clean_source.len(),
+            *offset,
+        )
+    });
+    for (_, candidate) in candidates {
         let oracle = observe_mutation_candidate(&ctx, &candidate)?;
         if oracle.get("passed").and_then(Value::as_bool) == Some(true) {
             return Ok(oracle);
         }
         failed_oracle = Some(oracle);
     }
-    if candidate_count == 0 {
+    if failed_oracle.is_none() {
         return Ok(unusable_mutation(
             &seed,
             "seeded mutation found no authored Vue file accepting a TS probe",
@@ -1419,6 +1432,24 @@ fn create_seeded_mutation_oracle(ctx: MutationContext<'_>) -> Result<Value, Stri
             "seeded mutation found no authored Vue file accepting a TS probe",
         )
     }))
+}
+
+fn vize_report_diagnostic_counts(report: &Value) -> HashMap<String, usize> {
+    let Some(files) = report.get("files").and_then(Value::as_array) else {
+        return HashMap::new();
+    };
+    files
+        .iter()
+        .filter_map(|entry| {
+            Some((
+                entry.get("file")?.as_str()?.to_string(),
+                entry
+                    .get("diagnostics")
+                    .and_then(Value::as_array)
+                    .map_or(0, Vec::len),
+            ))
+        })
+        .collect()
 }
 
 fn observe_mutation_candidate(
@@ -2665,7 +2696,7 @@ fn build_seeded_mutation(clean_source: &str) -> Option<(String, u64, u64)> {
         let prefix = format!("{before_close}{separator}");
         return Some((
             format!(
-                "{prefix}const __vize_typecheck_mutation_probe: string = 1\n{}",
+                "{prefix}const __vize_typecheck_mutation_probe: string = 1\nvoid __vize_typecheck_mutation_probe\n{}",
                 &clean_source[close_index..]
             ),
             line_count(&prefix),
@@ -2728,7 +2759,9 @@ fn appended_mutation(clean_source: &str, tag: &str) -> (String, u64, u64) {
     };
     let before_probe = format!("{prefix}<{tag} lang=\"ts\">\n");
     (
-        format!("{before_probe}const __vize_typecheck_mutation_probe: string = 1\n</script>\n"),
+        format!(
+            "{before_probe}const __vize_typecheck_mutation_probe: string = 1\nvoid __vize_typecheck_mutation_probe\n</script>\n"
+        ),
         line_count(&before_probe),
         1,
     )

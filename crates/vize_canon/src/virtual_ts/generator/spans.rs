@@ -1,7 +1,7 @@
 //! Span collection/merging, template-referenced-name discovery, and
 //! `export default` rewriting used while assembling the virtual TypeScript.
 
-use vize_atelier_sfc::script::resolve_template_used_identifiers;
+use vize_atelier_sfc::script::resolve_template_read_identifiers;
 use vize_carton::{FxHashSet, String};
 use vize_croquis::{Croquis, ScopeData};
 
@@ -27,7 +27,7 @@ fn collect_template_referenced_names(
     let mut names = FxHashSet::default();
 
     if let Some(template_ast) = template_ast {
-        names.extend(resolve_template_used_identifiers(template_ast).used_ids);
+        names.extend(resolve_template_read_identifiers(template_ast));
     }
 
     if let Some(extra_names) = extra_template_referenced_names {
@@ -82,17 +82,6 @@ fn collect_template_referenced_names(
     }
 
     names
-}
-
-pub(super) fn is_local_setup_binding(summary: &Croquis, name: &str) -> bool {
-    let Some(&(start, end)) = summary.binding_spans.get(name) else {
-        return true;
-    };
-
-    !summary
-        .import_statements
-        .iter()
-        .any(|import| start >= import.start && end <= import.end)
 }
 
 fn collect_expression_identifiers(names: &mut FxHashSet<String>, expression: &str) {

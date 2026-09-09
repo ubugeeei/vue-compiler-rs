@@ -1,7 +1,8 @@
 use super::{
-    collect_project_global_component_stubs, dialect_from_features, find_nearest_tsconfig_dir,
-    is_suppressed_false_positive, resolve_declaration_dir, resolve_declaration_emit_options,
-    resolve_project_root, resolve_tsconfig_path, validate_corsa_server_count,
+    GlobalComponentStubOptions, collect_project_global_component_stubs, dialect_from_features,
+    find_nearest_tsconfig_dir, is_suppressed_false_positive, resolve_declaration_dir,
+    resolve_declaration_emit_options, resolve_project_root, resolve_tsconfig_path,
+    validate_corsa_server_count,
 };
 use crate::commands::check::tsconfig_inputs::TsconfigDeclarationOptions;
 use std::{
@@ -68,6 +69,7 @@ export {};
         std::slice::from_ref(&dts_path),
         &project_root,
         None,
+        GlobalComponentStubOptions::default(),
     );
 
     assert_eq!(options.external_template_bindings, ["GlobalComponent"]);

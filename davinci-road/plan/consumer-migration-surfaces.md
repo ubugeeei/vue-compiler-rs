@@ -45,9 +45,9 @@ observational guard for planning only. It does not change rollout state.
 
 | consumer                   | stage/Davinci | preferred stage names | compat code names | old AST/Croquis | raw OXC | source/manifest | test/dev | surface files | scanned files |
 | -------------------------- | ------------: | --------------------: | ----------------: | --------------: | ------: | --------------: | -------: | ------------: | ------------: |
-| Compiler                   |          1129 |                   787 |               342 |             157 |     373 |            1006 |      653 |           556 |           696 |
+| Compiler                   |          1133 |                   787 |               346 |             157 |     373 |            1006 |      657 |           557 |           697 |
 | Linter                     |           339 |                   339 |                 0 |             295 |     297 |             694 |      237 |           383 |           558 |
-| Typechecker                |           922 |                   252 |               670 |             408 |     214 |             869 |      675 |           495 |           709 |
+| Typechecker                |           923 |                   255 |               668 |             414 |     214 |             869 |      682 |           498 |           712 |
 | Typechecker content-mapper |             9 |                     9 |                 0 |               0 |       0 |               9 |        0 |             8 |            20 |
 | Formatter                  |            40 |                    40 |                 0 |               0 |      21 |              42 |       19 |            32 |            69 |
 | LSP                        |           288 |                   288 |                 0 |             115 |      47 |             336 |      114 |           174 |           410 |
@@ -61,7 +61,7 @@ Scope: build command plus atelier compiler crates. This is a lexical inventory, 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
 | Davinci          |          30 |              10 |       20 |
-| S0               |         942 |             495 |      447 |
+| S0               |         946 |             495 |      451 |
 | S1               |           5 |               1 |        4 |
 | S2               |          41 |              21 |       20 |
 | S1->S2           |         111 |              13 |       98 |
@@ -134,9 +134,9 @@ Scope: check command plus Canon, excluding dedicated content-mapper files. This 
 
 | surface          | total sites | source/manifest | test/dev |
 | ---------------- | ----------: | --------------: | -------: |
-| S0               |         922 |             529 |      393 |
-| old AST/parser   |         162 |              36 |      126 |
-| Croquis analysis |         246 |             126 |      120 |
+| S0               |         923 |             527 |      396 |
+| old AST/parser   |         166 |              37 |      129 |
+| Croquis analysis |         248 |             127 |      121 |
 | raw OXC          |         214 |             178 |       36 |
 
 #### Top source and manifest files
@@ -149,7 +149,7 @@ Scope: check command plus Canon, excluding dedicated content-mapper files. This 
 | `crates/vize_canon/src/corsa_bridge/vue_dependencies_alias/context/cache.rs:7` | source   | S0 10                                                       |    10 |
 | `crates/vize_canon/src/virtual_ts/expressions/statements.rs:17`                | source   | S0 6<br>Croquis analysis 3                                  |     9 |
 
-Additional source/manifest rows are in the TSV: 329 omitted.
+Additional source/manifest rows are in the TSV: 331 omitted.
 
 #### Top test/dev files
 
@@ -161,7 +161,7 @@ Additional source/manifest rows are in the TSV: 329 omitted.
 | `crates/vize_canon/src/virtual_ts/expressions/component_props_tests.rs:1`                    | test/dev | S0 8<br>old AST/parser 8<br>Croquis analysis 1    |    17 |
 | `crates/vize_canon/src/virtual_ts/strict_template_globals_tests.rs:3`                        | test/dev | S0 8<br>old AST/parser 7<br>Croquis analysis 1    |    16 |
 
-Additional test/dev rows are in the TSV: 194 omitted.
+Additional test/dev rows are in the TSV: 195 omitted.
 
 ### Typechecker content-mapper
 

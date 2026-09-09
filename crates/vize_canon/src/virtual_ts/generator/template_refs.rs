@@ -10,7 +10,6 @@ use vize_s0::{FxHashMap, FxHashSet, String, append, cstr};
 use super::super::types::{VirtualTsGenerationOptions, VirtualTsOptions};
 use super::anchors::emit_props_shadow_anchor;
 use super::legacy_vue2::{needs_legacy_vue2_helpers, ref_unwrap_helper_for_template};
-use super::spans::is_local_setup_binding;
 use crate::virtual_ts::{VizeSemanticLink, VizeSemanticLinkKind};
 
 pub(super) struct TemplateRefUnwraps {
@@ -90,10 +89,8 @@ impl TemplateRefUnwraps {
             .bindings
             .iter()
             .filter(|(name, _)| {
-                template_referenced_names.is_none_or(|referenced| {
-                    referenced.contains(name.as_str())
-                        || is_local_setup_binding(summary, name.as_str())
-                })
+                template_referenced_names
+                    .is_none_or(|referenced| referenced.contains(name.as_str()))
             })
             .filter(|(name, _)| !options_api_setup_binding_names.contains(name.as_str()))
             .filter(|(name, binding_type)| {
