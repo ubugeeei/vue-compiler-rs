@@ -200,7 +200,18 @@ function configuredRuleCacheKey(ruleName: string, ruleOptions: PatinaRuleOptions
     ruleName,
     ruleOptions.componentNameInTemplateCasing ?? "",
     ruleOptions.customEventNameCasing ?? "",
+    ruleOptions.htmlSelfClosing == null ? "" : htmlSelfClosingCacheKey(ruleOptions.htmlSelfClosing),
   ].join("\0");
+}
+
+function htmlSelfClosingCacheKey(options: NonNullable<PatinaRuleOptions["htmlSelfClosing"]>): string {
+  return [
+    options.html?.void ?? "",
+    options.html?.normal ?? "",
+    options.html?.component ?? "",
+    options.svg ?? "",
+    options.math ?? "",
+  ].join("/");
 }
 
 export function getScriptMap(state: FileState): SingleScriptMap | null {

@@ -66,6 +66,7 @@ mod mustache_interpolation_spacing;
 mod no_lone_template;
 mod no_multi_spaces;
 mod no_multiple_template_root;
+mod no_non_component_keep_alive_child;
 mod sfc_element_order;
 mod v_on_style;
 mod v_slot_style;
@@ -143,8 +144,10 @@ pub use valid_v_slot::ValidVSlot;
 pub use valid_v_text::ValidVText;
 
 // Strongly recommended rules exports
-pub use crate::rules::opinionated::vue::HtmlSelfClosing;
 pub use crate::rules::opinionated::vue::NoTemplateShadow;
+pub use crate::rules::opinionated::vue::{
+    HtmlSelfClosing, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
+};
 pub use crate::rules::opinionated::vue::{VBindStyle, VBindStyleOption};
 pub use attribute_hyphenation::AttributeHyphenation;
 pub use component_definition_name_casing::ComponentDefinitionNameCasing;
@@ -165,6 +168,7 @@ pub use crate::rules::opinionated::vue::RequireComponentRegistration;
 pub use crate::rules::opinionated::vue::ScopedEventNames;
 pub use attribute_order::AttributeOrder;
 pub use no_lone_template::NoLoneTemplate;
+pub use no_non_component_keep_alive_child::NoNonComponentKeepAliveChild;
 pub use sfc_element_order::SfcElementOrder;
 
 // Security rules exports
@@ -289,5 +293,8 @@ pub(crate) fn register_opt_in(registry: &mut crate::rule::RuleRegistry) {
     }
     if !registry.has_rule("vue/no-static-inline-styles") {
         registry.register(Box::new(NoStaticInlineStyles));
+    }
+    if !registry.has_rule("vue/no-non-component-keep-alive-child") {
+        registry.register(Box::new(NoNonComponentKeepAliveChild));
     }
 }

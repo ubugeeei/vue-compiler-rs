@@ -394,7 +394,9 @@ const emailId = useId();
 `happy-path`，`nuxt`，`opinionated`。
 
 `vue/html-self-closing`强制执行自我闭合风格。默认值：`warning`。预设：`nuxt`，
-`opinionated`。
+`opinionated`。可通过 `linter.ruleOptions["vue/html-self-closing"]` 配置 `html.void`、
+`html.normal`、`html.component`、`svg` 和 `math`。每个值都接受 `"always"`、`"never"` 或 `"any"`。
+Vize 默认对 void HTML、组件、SVG 和 MathML 使用 `"always"`，对普通 HTML 使用 `"any"`。
 
 `vue/multi-word-component-names`要求组件名称包含多个词。默认：
 `error`。预设：`essential`、`nuxt`、`opinionated`。
@@ -413,6 +415,9 @@ const emailId = useId();
 
 `vue/no-multi-spaces`不允许模板中重复空格。默认值：`warning`。预设：
 `happy-path`，`nuxt`，`opinionated`。
+
+`vue/no-non-component-keep-alive-child` 会报告 `<KeepAlive>` 直下的普通元素包装器，因为 Vue
+只能缓存组件 VNode。默认值：`warning`。预设：无（选择加入）。只使用 `v-show` 的包装器会被忽略。
 
 `vue/no-preprocessor-lang`不鼓励在SFC块中使用CSS预处理器语言。默认值：`warning`。
 预设：`nuxt`，`opinionated`。

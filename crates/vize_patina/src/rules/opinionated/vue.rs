@@ -37,8 +37,10 @@ use crate::rule::RuleRegistry;
 pub(crate) use component_name_in_template_casing::ComponentNameInTemplateCasingNuxt;
 pub use component_name_in_template_casing::{ComponentCasing, ComponentNameInTemplateCasing};
 pub use html_button_has_type::HtmlButtonHasType;
-pub use html_self_closing::HtmlSelfClosing;
-use html_self_closing::HtmlSelfClosingNuxt;
+pub(crate) use html_self_closing::HtmlSelfClosingNuxt;
+pub use html_self_closing::{
+    HtmlSelfClosing, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
+};
 pub use multi_word_component_names::MultiWordComponentNames;
 pub use no_array_index_key::NoArrayIndexKey;
 pub use no_boolean_attr_value::NoBooleanAttrValue;
@@ -93,8 +95,8 @@ fn register_shared(registry: &mut RuleRegistry, flavor: PresetFlavor) {
     registry.register(Box::new(VBindStyle::default()));
     registry.register(Box::new(VOnHandlerStyle));
     match flavor {
-        PresetFlavor::Default => registry.register(Box::new(HtmlSelfClosing)),
-        PresetFlavor::Nuxt => registry.register(Box::new(HtmlSelfClosingNuxt)),
+        PresetFlavor::Default => registry.register(Box::new(HtmlSelfClosing::default())),
+        PresetFlavor::Nuxt => registry.register(Box::new(HtmlSelfClosingNuxt::default())),
     }
     registry.register(Box::new(HtmlButtonHasType));
     registry.register(Box::new(ScopedEventNames));

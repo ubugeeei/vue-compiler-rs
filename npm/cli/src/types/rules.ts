@@ -181,6 +181,7 @@ export const LINT_RULE_NAMES = [
   "vue/no-invalid-html-attribute",
   "vue/no-lone-template",
   "vue/no-multi-spaces",
+  "vue/no-non-component-keep-alive-child",
   "vue/no-multiple-objects-in-class",
   "vue/no-multiple-template-root",
   "vue/no-mutating-props",

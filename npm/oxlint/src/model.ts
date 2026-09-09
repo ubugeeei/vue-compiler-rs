@@ -46,6 +46,7 @@ export interface PatinaBinding {
       corsaPath?: string;
       componentNameInTemplateCasing?: ComponentNameInTemplateCasingOption;
       customEventNameCasing?: CustomEventNameCasingOption;
+      htmlSelfClosing?: HtmlSelfClosingOption;
     },
   ): PatinaLintResult;
   getPatinaRules(): PatinaRuleMeta[];
@@ -71,6 +72,7 @@ export interface PatinaSettings {
 export interface PatinaRuleOptions {
   componentNameInTemplateCasing?: ComponentNameInTemplateCasingOption;
   customEventNameCasing?: CustomEventNameCasingOption;
+  htmlSelfClosing?: HtmlSelfClosingOption;
 }
 
 export interface LineColumn {
@@ -80,6 +82,16 @@ export interface LineColumn {
 
 export type ComponentNameInTemplateCasingOption = "PascalCase" | "kebab-case";
 export type CustomEventNameCasingOption = "camelCase" | "kebab-case";
+export type HtmlSelfClosingStyle = "always" | "never" | "any";
+export interface HtmlSelfClosingOption {
+  html?: {
+    void?: HtmlSelfClosingStyle;
+    normal?: HtmlSelfClosingStyle;
+    component?: HtmlSelfClosingStyle;
+  };
+  svg?: HtmlSelfClosingStyle;
+  math?: HtmlSelfClosingStyle;
+}
 
 export type SfcBlockKind = "template" | "script" | "script-setup" | "style" | "custom";
 

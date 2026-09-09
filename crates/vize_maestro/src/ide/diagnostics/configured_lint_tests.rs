@@ -120,6 +120,58 @@ window.localStorage.getItem("token")
 }
 
 #[test]
+fn collect_lints_configured_html_self_closing_options() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("src")).unwrap();
+    std::fs::write(
+        dir.path().join("vize.config.json"),
+        r##"{
+            "languageServer": { "lint": true },
+            "linter": {
+                "preset": "incremental",
+                "rules": {
+                    "vue/html-self-closing": "error"
+                },
+                "ruleOptions": {
+                    "vue/html-self-closing": {
+                        "html": {
+                            "void": "any",
+                            "normal": "never",
+                            "component": "any"
+                        },
+                        "svg": "any",
+                        "math": "any"
+                    }
+                }
+            }
+        }"##,
+    )
+    .unwrap();
+
+    let state = ServerState::new();
+    state.load_lsp_config(dir.path());
+
+    let uri = Url::from_file_path(dir.path().join("src/SelfClosing.vue")).unwrap();
+    let source = r#"<template>
+  <img>
+  <div />
+  <MyWidget></MyWidget>
+</template>
+"#;
+    state
+        .documents
+        .open(uri.clone(), source.to_string(), 1, "vue".to_string());
+
+    let diagnostics = DiagnosticService::collect_lint_only(&state, &uri);
+    assert_eq!(
+        diagnostic_codes(&diagnostics),
+        ["vue/html-self-closing"],
+        "configured html-self-closing options must run through the LSP lint path"
+    );
+    assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
+}
+
+#[test]
 fn collect_musea_lint_respects_disabled_linter_config() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("src")).unwrap();

@@ -10,6 +10,7 @@ use super::config::Linter;
 use crate::preset::LintPreset;
 use crate::rules::opinionated::vue::{
     ComponentCasing, ComponentNameInTemplateCasing, ComponentNameInTemplateCasingNuxt,
+    HtmlSelfClosing, HtmlSelfClosingNuxt, HtmlSelfClosingOptions,
 };
 use crate::rules::script::{CustomEventNameCasing, EventNameCasing};
 use crate::rules::script::{NoRestrictedMembers, RestrictedGlobals};
@@ -73,6 +74,19 @@ impl Linter {
         } else {
             self.registry
                 .replace(Box::new(ComponentNameInTemplateCasing::new(casing)));
+        }
+        self
+    }
+
+    /// Configure `vue/html-self-closing`.
+    #[inline]
+    pub fn with_html_self_closing_options(mut self, options: HtmlSelfClosingOptions) -> Self {
+        if matches!(self.preset, Some(LintPreset::Nuxt)) {
+            self.registry
+                .replace(Box::new(HtmlSelfClosingNuxt::new(options)));
+        } else {
+            self.registry
+                .replace(Box::new(HtmlSelfClosing::new(options)));
         }
         self
     }

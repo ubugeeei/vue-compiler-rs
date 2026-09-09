@@ -17,6 +17,7 @@ const fixtureDir = path.join(
 );
 const configPath = path.join(fixtureDir, ".oxlintrc.json");
 const vuePath = path.join(fixtureDir, "Casing.vue");
+const selfClosingPath = path.join(fixtureDir, "SelfClosing.vue");
 const oxlintEnv = { ...process.env };
 delete oxlintEnv.GITHUB_ACTIONS;
 
@@ -126,6 +127,65 @@ assert.equal(
 assert.match(
   payload.diagnostics.map((diagnostic) => diagnostic.message).join("\n"),
   /Custom event name 'keepOriginal' is not kebab-case/u,
+);
+
+fs.writeFileSync(
+  configPath,
+  JSON.stringify(
+    {
+      plugins: ["vue"],
+      jsPlugins: [pluginEntry],
+      settings: { vize: { helpLevel: "none", preset: "incremental" } },
+      rules: {
+        "vize/vue/html-self-closing": [
+          "error",
+          {
+            html: {
+              void: "any",
+              normal: "never",
+              component: "any",
+            },
+            svg: "any",
+            math: "any",
+          },
+        ],
+      },
+    },
+    null,
+    2,
+  ),
+);
+fs.writeFileSync(
+  selfClosingPath,
+  `<template>
+  <img>
+  <div />
+  <MyWidget></MyWidget>
+  <svg><path></path></svg>
+  {{ ready }}
+</template>
+
+<script setup lang="ts">
+const ready = true;
+</script>
+`,
+);
+
+const selfClosingRun = runOxlint(["-c", ".oxlintrc.json", "-f", "json", "SelfClosing.vue"]);
+assert.notEqual(selfClosingRun.exitCode, 0, "html-self-closing violations should fail lint");
+assert.doesNotMatch(selfClosingRun.output, /does not accept options/u);
+const selfClosingPayload = JSON.parse(selfClosingRun.output) as {
+  diagnostics: Array<{ code: string; message: string }>;
+};
+assert.equal(
+  selfClosingPayload.diagnostics.filter(
+    (diagnostic) => diagnostic.code === "vize(vue/html-self-closing)",
+  ).length,
+  1,
+);
+assert.match(
+  selfClosingPayload.diagnostics.map((diagnostic) => diagnostic.message).join("\n"),
+  /Element must not use self-closing syntax/u,
 );
 
 console.log("✅ oxlint-plugin-vize casing option tests passed!");

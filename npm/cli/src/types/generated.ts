@@ -230,6 +230,15 @@ export interface LintRuleOptions {
   "script/custom-event-name-casing"?: {
     casing?: "camelCase" | "kebab-case";
   };
+  "vue/html-self-closing"?: {
+    html?: {
+      void?: "always" | "never" | "any";
+      normal?: "always" | "never" | "any";
+      component?: "always" | "never" | "any";
+    };
+    svg?: "always" | "never" | "any";
+    math?: "always" | "never" | "any";
+  };
   "musea/prefer-design-tokens"?: MuseaPreferDesignTokensOptions;
 }
 export interface NoRestrictedGlobalsOptions {

@@ -6,7 +6,7 @@ title: Todas as Regras de Pátina
 
 # Todas as Regras de Pátina
 
-Esta página lista todas as 238 implementações da regra Patina declaradas sob `crates/vize_patina/src/rules`. As páginas de categorias mantêm os exemplos mais longos; Esta página é a referência compacta para cobertura, severidade padrão, associação predefinida, fixabilidade e implementação de código-fonte.
+Esta página lista todas as 239 implementações da regra Patina declaradas sob `crates/vize_patina/src/rules`. As páginas de categorias mantêm os exemplos mais longos; Esta página é a referência compacta para cobertura, severidade padrão, associação predefinida, fixabilidade e implementação de código-fonte.
 
 Nomes pré-definidos usam terminologia CLI do Vize. O nome dos metadados do plugin oxlint, `general-recommended` é mostrado aqui como `happy-path`. `_none_` significa que a regra é opt-in, orientada pelo host ou fora dos presets de lint incluídos.
 
@@ -16,7 +16,7 @@ Nomes pré-definidos usam terminologia CLI do Vize. O nome dos metadados do plug
 | ------------------------------------------------ | -----: |
 | [Essential](#essential-48)                       |     48 |
 | [Strongly Recommended](#strongly-recommended-12) |     12 |
-| [Recommended](#recommended-41)                   |     41 |
+| [Recommended](#recommended-42)                   |     42 |
 | [Accessibility](#accessibility-31)               |     31 |
 | [HTML Conformance](#html-conformance-9)          |      9 |
 | [Type Aware](#type-aware-5)                      |      5 |
@@ -86,7 +86,7 @@ Nomes pré-definidos usam terminologia CLI do Vize. O nome dos metadados do plug
 | `vue/attribute-hyphenation`            | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/attribute_hyphenation.rs#L27)            | Impor o estilo de nomeação de atributos em componentes personalizados   |
 | `vue/component-definition-name-casing` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/component_definition_name_casing.rs#L28) | Aplicar o PascalCase para nomes de definição de componentes             |
 | `vue/html-quotes`                      | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/html_quotes.rs#L27)                      | Impor o estilo de aspas dos atributos HTML                              |
-| `vue/html-self-closing`                | `warning` | `nuxt`, `opinionated`                            | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L27)    | Impor o estilo de auto-fechamento                                       |
+| `vue/html-self-closing`                | `warning` | `nuxt`, `opinionated`                            | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L28)    | Impor o estilo de auto-fechamento                                       |
 | `vue/mustache-interpolation-spacing`   | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/mustache_interpolation_spacing.rs#L26)   | Impor espaçamento consistente dentro das interpolações do bigode        |
 | `vue/no-multi-spaces`                  | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_multi_spaces.rs#L24)                  | Proibir múltiplos espaços consecutivos                                  |
 | `vue/no-template-shadow`               | `warning` | `nuxt`, `opinionated`                            | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_template_shadow.rs#L34)   | Não permitir nomes de variáveis que ocultem variáveis no escopo externo |
@@ -96,7 +96,7 @@ Nomes pré-definidos usam terminologia CLI do Vize. O nome dos metadados do plug
 | `vue/v-on-style`                       | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_on_style.rs#L28)                       | Aplicar `v-on` estilo diretivo                                          |
 | `vue/v-slot-style`                     | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_slot_style.rs#L27)                     | Aplicar `v-slot` estilo diretivo                                        |
 
-## Recomendado (41)
+## Recomendado (42)
 
 | Governo                                 | Gravidade | Presets                                                       | Pode ser consertado | Implementação                                                                                                                                   | Descrição                                                                                 |
 | --------------------------------------- | --------- | ------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -113,6 +113,7 @@ Nomes pré-definidos usam terminologia CLI do Vize. O nome dos metadados do plug
 | `vue/no-inline-style`                   | `warning` | `nuxt`, `opinionated`                                         | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_inline_style.rs#L33)                   | Desestimular o uso de atributos de estilo inline                                          |
 | `vue/no-invalid-html-attribute`         | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated`              | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_invalid_html_attribute.rs#L12)                     | Proibir valores estáticos inválidos para atributos HTML                                   |
 | `vue/no-lone-template`                  | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated`              | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_lone_template.rs#L32)                              | Proibir elementos desnecessários de `&lt;template&gt;`                                    |
+| `vue/no-non-component-keep-alive-child` | `warning` | _nenhum_                                                      | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_non_component_keep_alive_child.rs#L14)            | Proibir wrappers de elemento nativo diretamente sob `&lt;KeepAlive&gt;`                  |
 | `vue/no-multiple-objects-in-class`      | `warning` | `nuxt`, `opinionated`                                         | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_multiple_objects_in_class.rs#L29)      | Não permitir múltiplos literais de objeto dentro de uma vinculação de array :class        |
 | `vue/no-negated-v-if-condition`         | `warning` | `nuxt`, `opinionated`                                         | Não                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_negated_v_if_condition.rs#L37)         | Proibir uma condição v-if negada quando a cadeia tem um v-else                            |
 | `vue/no-preprocessor-lang`              | `warning` | `nuxt`, `opinionated`                                         | Sim                 | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_preprocessor_lang.rs#L22)              | Desestimular o uso do pré-processador CSS em favor do CSS moderno                         |

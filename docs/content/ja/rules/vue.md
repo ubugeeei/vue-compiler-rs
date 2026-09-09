@@ -394,7 +394,9 @@ const emailId = useId();
 `happy-path`、`nuxt`、`opinionated`。
 
 `vue/html-self-closing` は自動終了スタイルを強制します。デフォルト: `warning`。プリセット: `nuxt`、
-`opinionated`。
+`opinionated`。`linter.ruleOptions["vue/html-self-closing"]` で `html.void`、`html.normal`、
+`html.component`、`svg`、`math` を設定できます。各値は `"always"`、`"never"`、`"any"` です。
+Vize のデフォルトは void HTML、コンポーネント、SVG、MathML が `"always"`、通常 HTML が `"any"` です。
 
 `vue/multi-word-component-names` では、コンポーネント名に複数の単語が含まれる必要があります。デフォルト:
 `error`。プリセット: `essential`、`nuxt`、`opinionated`。
@@ -413,6 +415,10 @@ const emailId = useId();
 
 `vue/no-multi-spaces` では、テンプレート内でスペースを繰り返すことは許可されません。デフォルト: `warning`。プリセット:
 `happy-path`、`nuxt`、`opinionated`。
+
+`vue/no-non-component-keep-alive-child` は、`<KeepAlive>` 直下のプレーン要素ラッパーを報告します。
+Vue がキャッシュできるのはコンポーネント VNode だけだからです。デフォルト: `warning`。プリセット: なし
+（オプトイン）。`v-show` だけのラッパーは無視します。
 
 `vue/no-preprocessor-lang` は、SFC ブロック内の CSS プリプロセッサ言語を抑制します。デフォルト: `warning`。
 プリセット: `nuxt`、`opinionated`。

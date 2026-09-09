@@ -6,7 +6,7 @@ title: 全是铜绿规则
 
 # 所有铜绿统治
 
-本页列出了`crates/vize_patina/src/rules`下宣告的所有238个Patina规则实现。分类页面保留较长的示例;本页是涵盖范围、默认严重度、预设成员资格、可修复性和源代码实现的简要参考。
+本页列出了`crates/vize_patina/src/rules`下宣告的所有239个Patina规则实现。分类页面保留较长的示例;本页是涵盖范围、默认严重度、预设成员资格、可修复性和源代码实现的简要参考。
 
 预设名称使用 Vize CLI 术语。oxlint 插件的元数据名称`general-recommended`此处显示为 `happy-path`。`_none_`意味着规则是选择加入的、由主机驱动的，或者不在捆绑的 lint 预设之外。
 
@@ -16,7 +16,7 @@ title: 全是铜绿规则
 | ------------------------------------ | ---: |
 | [必看](#essential-48)                |   48 |
 | [强烈推荐](#strongly-recommended-12) |   12 |
-| [推荐](#recommended-41)              |   41 |
+| [推荐](#recommended-42)              |   42 |
 | [可及性](#accessibility-31)          |   31 |
 | [HTML 符合性](#html-conformance-9)   |    9 |
 | [类型意识](#type-aware-5)            |    5 |
@@ -86,7 +86,7 @@ title: 全是铜绿规则
 | `vue/attribute-hyphenation`            | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/attribute_hyphenation.rs#L27)            | 在自定义组件上强制属性命名风格         |
 | `vue/component-definition-name-casing` | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/component_definition_name_casing.rs#L28) | 对组件定义名称强制使用PascalCase       |
 | `vue/html-quotes`                      | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/html_quotes.rs#L27)                      | 强制执行HTML属性的引号样式             |
-| `vue/html-self-closing`                | `warning` | `nuxt`，`opinionated`                            | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L27)    | 强制自闭格式                           |
+| `vue/html-self-closing`                | `warning` | `nuxt`，`opinionated`                            | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L28)    | 强制自闭格式                           |
 | `vue/mustache-interpolation-spacing`   | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/mustache_interpolation_spacing.rs#L26)   | 在胡须插值中强制保持一致间距           |
 | `vue/no-multi-spaces`                  | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_multi_spaces.rs#L24)                  | 禁止连续多个空格                       |
 | `vue/no-template-shadow`               | `warning` | `nuxt`，`opinionated`                            | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_template_shadow.rs#L34)   | 禁止使用在外部作用域中遮蔽变量的变量名 |
@@ -96,7 +96,7 @@ title: 全是铜绿规则
 | `vue/v-on-style`                       | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_on_style.rs#L28)                       | 强制执行`v-on`指令样式                 |
 | `vue/v-slot-style`                     | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated` | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_slot_style.rs#L27)                     | 执行`v-slot`指令风格                   |
 
-## 推荐（41）
+## 推荐（42）
 
 | 规则                                    | 严重程度  | 预设                                                          | 可修复 | 实现                                                                                                                                          | 描述                                          |
 | --------------------------------------- | --------- | ------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------ |
@@ -113,6 +113,7 @@ title: 全是铜绿规则
 | `vue/no-inline-style`                   | `warning` | `nuxt`，`opinionated`                                         | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_inline_style.rs#L33)                   | 不鼓励使用内联样式属性                        |
 | `vue/no-invalid-html-attribute`         | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated`              | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_invalid_html_attribute.rs#L12)                     | 禁止HTML属性的无效静态值                      |
 | `vue/no-lone-template`                  | `warning` | `happy-path`，`nuxt`，`ecosystem`，`opinionated`              | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_lone_template.rs#L32)                              | 禁止不必要的`&lt;template&gt;`元素            |
+| `vue/no-non-component-keep-alive-child` | `warning` | _无_                                                          | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_non_component_keep_alive_child.rs#L14)            | 禁止 `&lt;KeepAlive&gt;` 直下的普通元素包装器 |
 | `vue/no-multiple-objects-in-class`      | `warning` | `nuxt`，`opinionated`                                         | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_multiple_objects_in_class.rs#L29)      | 禁止在 ：class 数组绑定中同时存在多个对象文字 |
 | `vue/no-negated-v-if-condition`         | `warning` | `nuxt`，`opinionated`                                         | 不     | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_negated_v_if_condition.rs#L37)         | 当链中有v-else                                |
 | `vue/no-preprocessor-lang`              | `warning` | `nuxt`，`opinionated`                                         | 是的   | [来源](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_preprocessor_lang.rs#L22)              | 劝阻使用CSS预处理器，转而使用现代CSS          |

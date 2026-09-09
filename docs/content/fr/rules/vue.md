@@ -394,7 +394,10 @@ configurées par nom.
 `happy-path`, `nuxt`, `opinionated`.
 
 `vue/html-self-closing` impose un style de fermeture automatique. Par défaut : `warning`. Presets : `nuxt`,
-`opinionated`.
+`opinionated`. Configurez `linter.ruleOptions["vue/html-self-closing"]` avec `html.void`,
+`html.normal`, `html.component`, `svg` et `math`. Chaque valeur accepte `"always"`, `"never"` ou
+`"any"`. Par défaut, Vize utilise `"always"` pour les éléments HTML void, les composants, SVG et
+MathML, et `"any"` pour le HTML normal.
 
 `vue/multi-word-component-names` exige que les noms des composants contiennent plus d’un mot. Par défaut :
 `error`. Presets : `essential`, `nuxt`, `opinionated`.
@@ -413,6 +416,10 @@ configurées par nom.
 
 `vue/no-multi-spaces` interdit la répétition d’espaces dans les modèles. Par défaut : `warning`. Préréglages :
 `happy-path`, `nuxt`, `opinionated`.
+
+`vue/no-non-component-keep-alive-child` signale les wrappers d’élément natif directement sous
+`<KeepAlive>`, car Vue ne peut mettre en cache que des VNode de composant. Par défaut : `warning`.
+Presets : aucun (opt-in). Les wrappers avec seulement `v-show` sont ignorés.
 
 `vue/no-preprocessor-lang` décourage les langages de préprocesseurs CSS dans les blocs SFC. Par défaut : `warning`.
 Presets : `nuxt`, `opinionated`.

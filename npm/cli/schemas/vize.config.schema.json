@@ -364,6 +364,43 @@
           },
           "additionalProperties": false
         },
+        "vue/html-self-closing": {
+          "type": "object",
+          "properties": {
+            "html": {
+              "type": "object",
+              "properties": {
+                "void": {
+                  "default": "always",
+                  "type": "string",
+                  "enum": ["always", "never", "any"]
+                },
+                "normal": {
+                  "default": "any",
+                  "type": "string",
+                  "enum": ["always", "never", "any"]
+                },
+                "component": {
+                  "default": "always",
+                  "type": "string",
+                  "enum": ["always", "never", "any"]
+                }
+              },
+              "additionalProperties": false
+            },
+            "svg": {
+              "default": "always",
+              "type": "string",
+              "enum": ["always", "never", "any"]
+            },
+            "math": {
+              "default": "always",
+              "type": "string",
+              "enum": ["always", "never", "any"]
+            }
+          },
+          "additionalProperties": false
+        },
         "musea/prefer-design-tokens": {
           "$ref": "#/definitions/MuseaPreferDesignTokensOptions"
         }

@@ -60,6 +60,26 @@ pub struct PatinaLintOptionsNapi {
     pub component_name_in_template_casing: Option<String>,
     /// Casing for `script/custom-event-name-casing`: "camelCase" or "kebab-case"
     pub custom_event_name_casing: Option<String>,
+    /// Options for `vue/html-self-closing`
+    pub html_self_closing: Option<HtmlSelfClosingOptionsNapi>,
+}
+
+/// HTML self-closing options for NAPI
+#[napi(object)]
+#[derive(Default)]
+pub struct HtmlSelfClosingOptionsNapi {
+    pub html: Option<HtmlSelfClosingHtmlOptionsNapi>,
+    pub svg: Option<String>,
+    pub math: Option<String>,
+}
+
+/// HTML-family self-closing options for NAPI
+#[napi(object)]
+#[derive(Default)]
+pub struct HtmlSelfClosingHtmlOptionsNapi {
+    pub r#void: Option<String>,
+    pub normal: Option<String>,
+    pub component: Option<String>,
 }
 
 pub(super) enum PatinaPresetSelection {
@@ -123,12 +143,16 @@ pub(super) fn configure_patina_rule_options(
     mut linter: vize_patina::Linter,
     component_name_in_template_casing: Option<&str>,
     custom_event_name_casing: Option<&str>,
+    html_self_closing: Option<HtmlSelfClosingOptionsNapi>,
 ) -> vize_patina::Linter {
     if let Some(casing) = component_name_in_template_casing.and_then(component_casing_from_option) {
         linter = linter.with_component_name_in_template_casing(casing);
     }
     if let Some(casing) = custom_event_name_casing.and_then(event_name_casing_from_option) {
         linter = linter.with_custom_event_name_casing(casing);
+    }
+    if let Some(options) = html_self_closing.map(html_self_closing_from_option) {
+        linter = linter.with_html_self_closing_options(options);
     }
     linter
 }
@@ -149,6 +173,39 @@ pub(super) fn event_name_casing_from_option(
     match value {
         "camelCase" => Some(vize_patina::rules::script::EventNameCasing::CamelCase),
         "kebab-case" => Some(vize_patina::rules::script::EventNameCasing::KebabCase),
+        _ => None,
+    }
+}
+
+fn html_self_closing_from_option(
+    options: HtmlSelfClosingOptionsNapi,
+) -> vize_patina::rules::HtmlSelfClosingOptions {
+    let mut resolved = vize_patina::rules::HtmlSelfClosingOptions::default();
+    if let Some(html) = options.html {
+        if let Some(style) = html.r#void.as_deref().and_then(html_self_closing_style) {
+            resolved.html.void = style;
+        }
+        if let Some(style) = html.normal.as_deref().and_then(html_self_closing_style) {
+            resolved.html.normal = style;
+        }
+        if let Some(style) = html.component.as_deref().and_then(html_self_closing_style) {
+            resolved.html.component = style;
+        }
+    }
+    if let Some(style) = options.svg.as_deref().and_then(html_self_closing_style) {
+        resolved.svg = style;
+    }
+    if let Some(style) = options.math.as_deref().and_then(html_self_closing_style) {
+        resolved.math = style;
+    }
+    resolved
+}
+
+fn html_self_closing_style(value: &str) -> Option<vize_patina::rules::HtmlSelfClosingStyle> {
+    match value {
+        "always" => Some(vize_patina::rules::HtmlSelfClosingStyle::Always),
+        "never" => Some(vize_patina::rules::HtmlSelfClosingStyle::Never),
+        "any" => Some(vize_patina::rules::HtmlSelfClosingStyle::Any),
         _ => None,
     }
 }

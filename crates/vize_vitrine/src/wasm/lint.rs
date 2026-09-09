@@ -84,6 +84,54 @@ fn parse_custom_event_name_casing(
     }
 }
 
+fn parse_html_self_closing(
+    options: &JsValue,
+) -> Option<vize_patina::rules::HtmlSelfClosingOptions> {
+    let value = js_sys::Reflect::get(options, &JsValue::from_str("htmlSelfClosing")).ok()?;
+    if value.is_undefined() || value.is_null() {
+        return None;
+    }
+
+    let mut resolved = vize_patina::rules::HtmlSelfClosingOptions::default();
+    if let Ok(html) = js_sys::Reflect::get(&value, &JsValue::from_str("html"))
+        && !html.is_undefined()
+        && !html.is_null()
+    {
+        if let Some(style) = html_self_closing_style(&html, "void") {
+            resolved.html.void = style;
+        }
+        if let Some(style) = html_self_closing_style(&html, "normal") {
+            resolved.html.normal = style;
+        }
+        if let Some(style) = html_self_closing_style(&html, "component") {
+            resolved.html.component = style;
+        }
+    }
+    if let Some(style) = html_self_closing_style(&value, "svg") {
+        resolved.svg = style;
+    }
+    if let Some(style) = html_self_closing_style(&value, "math") {
+        resolved.math = style;
+    }
+    Some(resolved)
+}
+
+fn html_self_closing_style(
+    value: &JsValue,
+    key: &str,
+) -> Option<vize_patina::rules::HtmlSelfClosingStyle> {
+    match js_sys::Reflect::get(value, &JsValue::from_str(key))
+        .ok()
+        .and_then(|v| v.as_string())
+        .as_deref()
+    {
+        Some("always") => Some(vize_patina::rules::HtmlSelfClosingStyle::Always),
+        Some("never") => Some(vize_patina::rules::HtmlSelfClosingStyle::Never),
+        Some("any") => Some(vize_patina::rules::HtmlSelfClosingStyle::Any),
+        _ => None,
+    }
+}
+
 fn create_linter(locale: vize_patina::Locale, options: &JsValue) -> vize_patina::Linter {
     let enabled_rules = parse_enabled_rules(options);
     let preset = if enabled_rules.is_some() {
@@ -103,6 +151,9 @@ fn create_linter(locale: vize_patina::Locale, options: &JsValue) -> vize_patina:
     }
     if let Some(casing) = parse_custom_event_name_casing(options) {
         linter = linter.with_custom_event_name_casing(casing);
+    }
+    if let Some(options) = parse_html_self_closing(options) {
+        linter = linter.with_html_self_closing_options(options);
     }
     linter
 }

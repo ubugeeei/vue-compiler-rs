@@ -225,7 +225,7 @@ impl RuleRegistry {
     /// Create a registry containing rules that are exposed only for explicit
     /// opt-in. These rules do not belong to any preset.
     pub fn with_opt_in_rules() -> Self {
-        let mut registry = Self::with_capacity(8);
+        let mut registry = Self::with_capacity(16);
         crate::rules::ecosystem::register_opt_in(&mut registry);
         crate::rules::petite_vue::register_opt_in(&mut registry);
         crate::rules::vue::register_opt_in(&mut registry);
