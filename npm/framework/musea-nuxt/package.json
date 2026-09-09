@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/musea-nuxt",
-  "version": "0.404.4",
+  "version": "0.404.5",
   "description": "Nuxt mock layer for Musea - enables Nuxt component isolation in galleries",
   "keywords": [
     "component-gallery",

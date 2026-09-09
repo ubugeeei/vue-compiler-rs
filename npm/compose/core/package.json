@@ -1,6 +1,6 @@
 {
   "name": "@vizejs/composable",
-  "version": "0.404.4",
+  "version": "0.404.5",
   "description": "Lifecycle-safe composable foundations for Vize applications",
   "keywords": [
     "composables",
