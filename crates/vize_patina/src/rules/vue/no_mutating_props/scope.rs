@@ -3,7 +3,7 @@
 use vize_relief::{DirectiveNode, ExpressionNode};
 use vize_s0::{FxHashSet, String};
 
-use super::mutation_targets::is_prop_mutation_target;
+use super::mutation_targets::{MutationTargetKind, prop_mutation_target_kind};
 
 /// What the walk needs to decide whether a template mutation targets a prop.
 pub(super) struct PropScope<'names> {
@@ -22,15 +22,15 @@ pub(super) struct PropScope<'names> {
 }
 
 impl PropScope<'_> {
-    pub(super) fn is_mutation(&self, target: &str) -> bool {
+    pub(super) fn mutation_kind(&self, target: &str) -> Option<MutationTargetKind> {
         let target = target.trim();
         if self.shadowed.iter().any(|name| {
             let name = name.as_str();
             target == name || target.strip_prefix(name).is_some_and(starts_member)
         }) {
-            return false;
+            return None;
         }
-        is_prop_mutation_target(target, self.prop_names, self.has_props_object_binding)
+        prop_mutation_target_kind(target, self.prop_names, self.has_props_object_binding)
     }
 }
 

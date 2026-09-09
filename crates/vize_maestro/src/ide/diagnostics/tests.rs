@@ -259,12 +259,10 @@ const { msg = "ok" } = defineProps<{ msg?: string }>();
 fn collect_surfaces_sfc_level_lint_diagnostics() {
     let state = state_with_lsp_diagnostics(true, false);
     let uri = Url::parse("file:///OutOfOrder.vue").unwrap();
-    state.documents.open(
-        uri.clone(),
-        "<style scoped>.a {}</style>\n<script setup>const count = 1</script>".to_string(),
-        1,
-        "vue".to_string(),
-    );
+    let source = "<style scoped>.a {}</style>\n<script setup>const count = 1</script>";
+    state
+        .documents
+        .open(uri.clone(), source.into(), 1, "vue".into());
 
     let diagnostics = DiagnosticService::collect(&state, &uri);
     let diagnostic = diagnostics
@@ -277,7 +275,8 @@ fn collect_surfaces_sfc_level_lint_diagnostics() {
         .expect("SFC-level lint diagnostic");
 
     assert_eq!(diagnostic.range.start.line, 1);
-    assert!(diagnostic.message.contains("<script> should come before"));
+    let message = diagnostic.message.as_str();
+    assert!(message.contains("<script setup> should come before"));
 }
 
 #[test]

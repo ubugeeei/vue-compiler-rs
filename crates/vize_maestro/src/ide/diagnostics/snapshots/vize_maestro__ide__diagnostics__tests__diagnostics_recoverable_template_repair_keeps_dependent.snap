@@ -13,7 +13,7 @@ expression: diagnostic_snapshots(diagnostics)
         code: Some(
             "vue/sfc-element-order",
         ),
-        message: "<script> should come before <style>\n\nHelp: Recommended order: <script> and <template> (either order) -> <style>",
+        message: "<script setup> should come before <style>\n\nHelp: Recommended order: <script> and <template> (either order) -> <style>",
         range: (
             4,
             0,

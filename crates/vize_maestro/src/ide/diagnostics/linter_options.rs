@@ -134,8 +134,20 @@ pub(super) fn apply_rule_options(
     if let Some(casing) = options.custom_event_name_casing() {
         linter = linter.with_custom_event_name_casing(event_name_casing(casing));
     }
+    if let Some(options) = options.no_mutating_props() {
+        linter = linter.with_no_mutating_props_options(no_mutating_props_options(options));
+    }
+    if let Some(options) = options.sfc_element_order() {
+        linter = linter.with_sfc_element_order_options(sfc_element_order_options(options));
+    }
     if let Some(options) = options.html_self_closing() {
         linter = linter.with_html_self_closing_options(html_self_closing_options(options));
+    }
+    if let Some(style) = options.v_on_event_hyphenation() {
+        linter = linter.with_v_on_event_hyphenation(v_on_event_hyphenation_style(style));
+    }
+    if let Some(style) = options.attribute_hyphenation() {
+        linter = linter.with_attribute_hyphenation(attribute_hyphenation_style(style));
     }
     linter
 }
@@ -193,6 +205,26 @@ fn event_name_casing(
     }
 }
 
+fn no_mutating_props_options(
+    options: vize_s0::config::NoMutatingPropsOptions,
+) -> vize_patina::rules::NoMutatingPropsOptions {
+    vize_patina::rules::NoMutatingPropsOptions {
+        shallow_only: options.shallow_only,
+    }
+}
+
+fn sfc_element_order_options(
+    options: vize_s0::config::SfcElementOrderOptions,
+) -> vize_patina::rules::SfcElementOrderOptions {
+    vize_patina::rules::SfcElementOrderOptions {
+        order: options
+            .order
+            .into_iter()
+            .map(|group| vize_patina::rules::SfcElementOrderGroup::new(group.selectors()))
+            .collect(),
+    }
+}
+
 fn html_self_closing_options(
     options: vize_s0::config::HtmlSelfClosingOptions,
 ) -> vize_patina::rules::HtmlSelfClosingOptions {
@@ -218,5 +250,27 @@ fn html_self_closing_style(
             vize_patina::rules::HtmlSelfClosingStyle::Never
         }
         vize_s0::config::HtmlSelfClosingStyle::Any => vize_patina::rules::HtmlSelfClosingStyle::Any,
+    }
+}
+
+fn v_on_event_hyphenation_style(
+    style: vize_s0::config::HyphenationStyle,
+) -> vize_patina::rules::VOnEventHyphenationStyle {
+    match style {
+        vize_s0::config::HyphenationStyle::Always => {
+            vize_patina::rules::VOnEventHyphenationStyle::Always
+        }
+        vize_s0::config::HyphenationStyle::Never => {
+            vize_patina::rules::VOnEventHyphenationStyle::Never
+        }
+    }
+}
+
+fn attribute_hyphenation_style(
+    style: vize_s0::config::HyphenationStyle,
+) -> vize_patina::rules::HyphenationStyle {
+    match style {
+        vize_s0::config::HyphenationStyle::Always => vize_patina::rules::HyphenationStyle::Always,
+        vize_s0::config::HyphenationStyle::Never => vize_patina::rules::HyphenationStyle::Never,
     }
 }

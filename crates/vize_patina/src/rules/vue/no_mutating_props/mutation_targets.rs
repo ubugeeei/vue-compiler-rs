@@ -6,28 +6,46 @@
 
 use vize_s0::FxHashSet;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MutationTargetKind {
+    Direct,
+    Deep,
+}
+
+#[cfg(test)]
 pub(super) fn is_prop_mutation_target(
     content: &str,
     prop_names: &FxHashSet<&str>,
     has_props_object_binding: bool,
 ) -> bool {
+    prop_mutation_target_kind(content, prop_names, has_props_object_binding).is_some()
+}
+
+pub(super) fn prop_mutation_target_kind(
+    content: &str,
+    prop_names: &FxHashSet<&str>,
+    has_props_object_binding: bool,
+) -> Option<MutationTargetKind> {
     let content = content.trim();
     if prop_names.contains(content) {
-        return true;
+        return Some(MutationTargetKind::Direct);
     }
 
     if has_props_object_binding
         && content
             .strip_prefix("props")
-            .is_some_and(|rest| is_props_object_member_mutation(rest, prop_names))
+            .and_then(|rest| props_object_member_mutation_kind(rest, prop_names))
+            .is_some()
     {
-        return true;
+        return content
+            .strip_prefix("props")
+            .and_then(|rest| props_object_member_mutation_kind(rest, prop_names));
     }
 
-    prop_names.iter().any(|name| {
+    prop_names.iter().find_map(|name| {
         content
             .strip_prefix(*name)
-            .is_some_and(is_member_access_suffix)
+            .and_then(|rest| is_member_access_suffix(rest).then_some(MutationTargetKind::Deep))
     })
 }
 
@@ -35,28 +53,36 @@ fn is_member_access_suffix(rest: &str) -> bool {
     rest.starts_with('.') || rest.starts_with('[') || rest.starts_with("?.")
 }
 
-fn is_props_object_member_mutation(rest: &str, prop_names: &FxHashSet<&str>) -> bool {
-    if let Some(name) = props_member_root(rest) {
-        return prop_names.is_empty() || prop_names.contains(name);
+fn props_object_member_mutation_kind(
+    rest: &str,
+    prop_names: &FxHashSet<&str>,
+) -> Option<MutationTargetKind> {
+    if let Some((name, suffix)) = props_member_root(rest) {
+        if prop_names.is_empty() || prop_names.contains(name) {
+            return Some(member_suffix_kind(suffix));
+        }
+        return None;
     }
 
-    is_dynamic_props_member_access(rest)
+    dynamic_props_member_access_kind(rest)
 }
 
-fn is_dynamic_props_member_access(rest: &str) -> bool {
+fn dynamic_props_member_access_kind(rest: &str) -> Option<MutationTargetKind> {
     let mut rest = rest.trim_start();
     if let Some(after_optional) = rest.strip_prefix("?.") {
         rest = after_optional.trim_start();
     }
 
-    let Some(after_bracket) = rest.strip_prefix('[') else {
-        return false;
-    };
+    let after_bracket = rest.strip_prefix('[')?;
     let after_bracket = after_bracket.trim_start();
-    !after_bracket.starts_with('\'') && !after_bracket.starts_with('"')
+    if after_bracket.starts_with('\'') || after_bracket.starts_with('"') {
+        return None;
+    }
+    let close = after_bracket.find(']')?;
+    Some(member_suffix_kind(&after_bracket[close + 1..]))
 }
 
-fn props_member_root(rest: &str) -> Option<&str> {
+fn props_member_root(rest: &str) -> Option<(&str, &str)> {
     let mut rest = rest.trim_start();
     let mut consumed_optional = false;
     if let Some(after_optional) = rest.strip_prefix("?.") {
@@ -68,8 +94,8 @@ fn props_member_root(rest: &str) -> Option<&str> {
         return identifier_root(after_dot);
     }
 
-    if consumed_optional && let Some(name) = identifier_root(rest) {
-        return Some(name);
+    if consumed_optional && let Some(root) = identifier_root(rest) {
+        return Some(root);
     }
 
     let after_bracket = rest.strip_prefix('[')?.trim_start();
@@ -79,19 +105,29 @@ fn props_member_root(rest: &str) -> Option<&str> {
     }
     let name_start = quote.len_utf8();
     let name_end = after_bracket[name_start..].find(quote)? + name_start;
-    (name_end > name_start).then_some(&after_bracket[name_start..name_end])
+    let after_quote = &after_bracket[name_end + quote.len_utf8()..];
+    let after_close = after_quote.strip_prefix(']')?;
+    (name_end > name_start).then_some((&after_bracket[name_start..name_end], after_close))
 }
 
-fn identifier_root(source: &str) -> Option<&str> {
+fn identifier_root(source: &str) -> Option<(&str, &str)> {
     let end = source
         .find(|ch: char| !(ch == '_' || ch == '$' || ch.is_ascii_alphanumeric()))
         .unwrap_or(source.len());
-    (end > 0).then_some(&source[..end])
+    (end > 0).then_some((&source[..end], &source[end..]))
+}
+
+fn member_suffix_kind(suffix: &str) -> MutationTargetKind {
+    if is_member_access_suffix(suffix.trim_start()) {
+        MutationTargetKind::Deep
+    } else {
+        MutationTargetKind::Direct
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_prop_mutation_target;
+    use super::{MutationTargetKind, is_prop_mutation_target, prop_mutation_target_kind};
     use vize_s0::FxHashSet;
 
     #[test]
@@ -152,5 +188,43 @@ mod tests {
             &unknown_prop_names,
             true
         ));
+    }
+
+    #[test]
+    fn prop_mutation_target_kind_distinguishes_direct_and_deep() {
+        let prop_names = FxHashSet::from_iter(["count", "user"]);
+
+        assert_eq!(
+            prop_mutation_target_kind("count", &prop_names, false),
+            Some(MutationTargetKind::Direct)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("user.name", &prop_names, false),
+            Some(MutationTargetKind::Deep)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("props.count", &prop_names, true),
+            Some(MutationTargetKind::Direct)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("props.user.name", &prop_names, true),
+            Some(MutationTargetKind::Deep)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("props['count']", &prop_names, true),
+            Some(MutationTargetKind::Direct)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("props['user'].name", &prop_names, true),
+            Some(MutationTargetKind::Deep)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("props[key]", &prop_names, true),
+            Some(MutationTargetKind::Direct)
+        );
+        assert_eq!(
+            prop_mutation_target_kind("props[key].name", &prop_names, true),
+            Some(MutationTargetKind::Deep)
+        );
     }
 }

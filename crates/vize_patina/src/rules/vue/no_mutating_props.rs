@@ -15,46 +15,19 @@
 //! `v-on` inline handler. Assignments, updates, deletes, and mutating calls are
 //! checked with real oxc syntax rather than scanning source text.
 //!
-//! ## Examples
-//!
-//! ### Invalid
-//! ```vue
-//! <script setup>
-//! const props = defineProps(['count'])
-//! props.count++
-//! </script>
-//!
-//! <template>
-//!   <!-- v-model on a prop is a mutation -->
-//!   <input v-model="count" />
-//!   <!-- so is an assignment in an inline handler -->
-//!   <button @click="props.count = 0">reset</button>
-//! </template>
-//! ```
-//!
-//! ### Valid
-//! ```vue
-//! <script setup>
-//! const props = defineProps(['initialCount'])
-//! const count = ref(props.initialCount)
-//!
-//! const emit = defineEmits(['update:count'])
-//! </script>
-//!
-//! <template>
-//!   <input :value="count" @input="emit('update:count', $event.target.value)" />
-//! </template>
-//! ```
 
 #![allow(clippy::disallowed_macros)]
 
 mod handlers;
 mod mutation_targets;
+mod options;
 mod scope;
 mod script_mutations;
 #[cfg(test)]
 mod tests;
 
+use self::mutation_targets::MutationTargetKind;
+pub use self::options::NoMutatingPropsOptions;
 use self::scope::{PropScope, expression_source, push_for_aliases, push_identifier_tokens};
 use crate::context::LintContext;
 use crate::diagnostic::Severity;
@@ -74,11 +47,17 @@ static META: RuleMeta = RuleMeta {
     default_severity: Severity::Error,
 };
 
-/// Disallow mutating props
+/// Disallow mutating props.
 #[derive(Default)]
-pub struct NoMutatingProps;
+pub struct NoMutatingProps {
+    options: NoMutatingPropsOptions,
+}
 
 impl NoMutatingProps {
+    pub fn new(options: NoMutatingPropsOptions) -> Self {
+        Self { options }
+    }
+
     /// Check if a `v-model` expression mutates a prop.
     fn check_v_model_mutation<'a>(
         &self,
@@ -94,7 +73,7 @@ impl NoMutatingProps {
             return;
         };
         let content = expression_source(exp, ctx.source);
-        if !scope.is_mutation(content) {
+        if !self.should_report_template_mutation(scope.mutation_kind(content)) {
             return;
         }
         let span = exp.loc().span;
@@ -126,7 +105,7 @@ impl NoMutatingProps {
         let mut mutated: Vec<TemplateMutation> = Vec::new();
         handlers::for_each_mutation_target(expression_source(exp, ctx.source), |mutation| {
             let target = mutation.target.trim();
-            if !scope.is_mutation(target) {
+            if !self.should_report_template_mutation(scope.mutation_kind(target)) {
                 return;
             }
             let start = expression_start + mutation.span.start;
@@ -247,6 +226,14 @@ impl NoMutatingProps {
         self.check_children(ctx, &element.children, scope);
         scope.shadowed.truncate(depth);
     }
+
+    fn should_report_template_mutation(&self, kind: Option<MutationTargetKind>) -> bool {
+        match kind {
+            Some(MutationTargetKind::Direct) => true,
+            Some(MutationTargetKind::Deep) => !self.options.shallow_only,
+            None => false,
+        }
+    }
 }
 
 struct TemplateMutation {
@@ -275,6 +262,14 @@ impl Rule for NoMutatingProps {
         };
 
         for mutation in mutations {
+            if self.options.shallow_only
+                && matches!(
+                    mutation.kind,
+                    script_mutations::ScriptPropMutationKind::Deep
+                )
+            {
+                continue;
+            }
             ctx.report_in_sfc(
                 crate::diagnostic::LintDiagnostic::error(
                     ctx.current_rule,

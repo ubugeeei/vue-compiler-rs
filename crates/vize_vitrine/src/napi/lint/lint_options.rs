@@ -60,8 +60,30 @@ pub struct PatinaLintOptionsNapi {
     pub component_name_in_template_casing: Option<String>,
     /// Casing for `script/custom-event-name-casing`: "camelCase" or "kebab-case"
     pub custom_event_name_casing: Option<String>,
+    /// Options for `vue/no-mutating-props`
+    pub no_mutating_props: Option<NoMutatingPropsOptionsNapi>,
+    /// Options for `vue/sfc-element-order`
+    pub sfc_element_order: Option<SfcElementOrderOptionsNapi>,
     /// Options for `vue/html-self-closing`
     pub html_self_closing: Option<HtmlSelfClosingOptionsNapi>,
+    /// Style for `vue/v-on-event-hyphenation`: "always" or "never"
+    pub v_on_event_hyphenation: Option<String>,
+    /// Style for `vue/attribute-hyphenation`: "always" or "never"
+    pub attribute_hyphenation: Option<String>,
+}
+
+/// No-mutating-props options for NAPI
+#[napi(object)]
+#[derive(Default)]
+pub struct NoMutatingPropsOptionsNapi {
+    pub shallow_only: Option<bool>,
+}
+
+/// SFC element order options for NAPI
+#[napi(object)]
+#[derive(Default)]
+pub struct SfcElementOrderOptionsNapi {
+    pub order: Option<Vec<serde_json::Value>>,
 }
 
 /// HTML self-closing options for NAPI
@@ -143,7 +165,11 @@ pub(super) fn configure_patina_rule_options(
     mut linter: vize_patina::Linter,
     component_name_in_template_casing: Option<&str>,
     custom_event_name_casing: Option<&str>,
+    no_mutating_props: Option<NoMutatingPropsOptionsNapi>,
+    sfc_element_order: Option<SfcElementOrderOptionsNapi>,
     html_self_closing: Option<HtmlSelfClosingOptionsNapi>,
+    v_on_event_hyphenation: Option<&str>,
+    attribute_hyphenation: Option<&str>,
 ) -> vize_patina::Linter {
     if let Some(casing) = component_name_in_template_casing.and_then(component_casing_from_option) {
         linter = linter.with_component_name_in_template_casing(casing);
@@ -151,8 +177,20 @@ pub(super) fn configure_patina_rule_options(
     if let Some(casing) = custom_event_name_casing.and_then(event_name_casing_from_option) {
         linter = linter.with_custom_event_name_casing(casing);
     }
+    if let Some(options) = no_mutating_props.map(no_mutating_props_from_option) {
+        linter = linter.with_no_mutating_props_options(options);
+    }
+    if let Some(options) = sfc_element_order.map(sfc_element_order_from_option) {
+        linter = linter.with_sfc_element_order_options(options);
+    }
     if let Some(options) = html_self_closing.map(html_self_closing_from_option) {
         linter = linter.with_html_self_closing_options(options);
+    }
+    if let Some(style) = v_on_event_hyphenation.and_then(v_on_event_hyphenation_style) {
+        linter = linter.with_v_on_event_hyphenation(style);
+    }
+    if let Some(style) = attribute_hyphenation.and_then(attribute_hyphenation_style) {
+        linter = linter.with_attribute_hyphenation(style);
     }
     linter
 }
@@ -175,6 +213,45 @@ pub(super) fn event_name_casing_from_option(
         "kebab-case" => Some(vize_patina::rules::script::EventNameCasing::KebabCase),
         _ => None,
     }
+}
+
+fn no_mutating_props_from_option(
+    options: NoMutatingPropsOptionsNapi,
+) -> vize_patina::rules::NoMutatingPropsOptions {
+    vize_patina::rules::NoMutatingPropsOptions {
+        shallow_only: options.shallow_only.unwrap_or(false),
+    }
+}
+
+fn sfc_element_order_from_option(
+    options: SfcElementOrderOptionsNapi,
+) -> vize_patina::rules::SfcElementOrderOptions {
+    let Some(order) = options.order else {
+        return vize_patina::rules::SfcElementOrderOptions::default();
+    };
+    vize_patina::rules::SfcElementOrderOptions {
+        order: order
+            .into_iter()
+            .filter_map(sfc_element_order_group_from_value)
+            .collect(),
+    }
+}
+
+fn sfc_element_order_group_from_value(
+    value: serde_json::Value,
+) -> Option<vize_patina::rules::SfcElementOrderGroup> {
+    if let Some(selector) = value.as_str() {
+        return Some(vize_patina::rules::SfcElementOrderGroup::new(vec![
+            selector.into(),
+        ]));
+    }
+
+    let selectors = value
+        .as_array()?
+        .iter()
+        .filter_map(|value| value.as_str().map(Into::into))
+        .collect::<Vec<_>>();
+    (!selectors.is_empty()).then(|| vize_patina::rules::SfcElementOrderGroup::new(selectors))
 }
 
 fn html_self_closing_from_option(
@@ -206,6 +283,24 @@ fn html_self_closing_style(value: &str) -> Option<vize_patina::rules::HtmlSelfCl
         "always" => Some(vize_patina::rules::HtmlSelfClosingStyle::Always),
         "never" => Some(vize_patina::rules::HtmlSelfClosingStyle::Never),
         "any" => Some(vize_patina::rules::HtmlSelfClosingStyle::Any),
+        _ => None,
+    }
+}
+
+fn v_on_event_hyphenation_style(
+    value: &str,
+) -> Option<vize_patina::rules::VOnEventHyphenationStyle> {
+    match value {
+        "always" => Some(vize_patina::rules::VOnEventHyphenationStyle::Always),
+        "never" => Some(vize_patina::rules::VOnEventHyphenationStyle::Never),
+        _ => None,
+    }
+}
+
+fn attribute_hyphenation_style(value: &str) -> Option<vize_patina::rules::HyphenationStyle> {
+    match value {
+        "always" => Some(vize_patina::rules::HyphenationStyle::Always),
+        "never" => Some(vize_patina::rules::HyphenationStyle::Never),
         _ => None,
     }
 }

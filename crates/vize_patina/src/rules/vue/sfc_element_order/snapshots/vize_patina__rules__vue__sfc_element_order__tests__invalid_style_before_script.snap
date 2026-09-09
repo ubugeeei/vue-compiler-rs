@@ -1,12 +1,13 @@
 ---
-source: crates/vize_patina/src/rules/vue/sfc_element_order.rs
+source: crates/vize_patina/src/rules/vue/sfc_element_order/tests.rs
+assertion_line: 92
 expression: result.diagnostics
 ---
 [
     LintDiagnostic {
         rule_name: "vue/sfc-element-order",
         severity: Warning,
-        message: "<script> should come before <style>",
+        message: "<script setup> should come before <style>",
         start: 16,
         end: 39,
         help: Some(

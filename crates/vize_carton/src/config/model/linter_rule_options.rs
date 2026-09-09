@@ -13,6 +13,9 @@ use crate::String;
 
 mod casing;
 mod html_self_closing;
+mod hyphenation;
+mod no_mutating_props;
+mod sfc_element_order;
 
 pub use casing::{
     ComponentNameInTemplateCasingOptions, CustomEventNameCasing, CustomEventNameCasingOptions,
@@ -21,6 +24,10 @@ pub use casing::{
 pub use html_self_closing::{
     HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
 };
+pub use hyphenation::HyphenationStyle;
+pub use no_mutating_props::NoMutatingPropsOptions;
+#[allow(unused_imports)]
+pub use sfc_element_order::{SfcElementOrderGroup, SfcElementOrderOptions};
 
 /// Per-rule configuration keyed by rule name.
 ///
@@ -108,9 +115,21 @@ pub struct ConfigLintRuleOptions {
     /// Options for `script/custom-event-name-casing`.
     #[serde(rename = "script/custom-event-name-casing")]
     custom_event_name_casing: Option<CustomEventNameCasingOptions>,
+    /// Options for `vue/no-mutating-props`.
+    #[serde(rename = "vue/no-mutating-props")]
+    no_mutating_props: Option<NoMutatingPropsOptions>,
+    /// Options for `vue/sfc-element-order`.
+    #[serde(rename = "vue/sfc-element-order")]
+    sfc_element_order: Option<SfcElementOrderOptions>,
     /// Options for `vue/html-self-closing`.
     #[serde(rename = "vue/html-self-closing")]
     html_self_closing: Option<HtmlSelfClosingOptions>,
+    /// Options for `vue/v-on-event-hyphenation`.
+    #[serde(rename = "vue/v-on-event-hyphenation")]
+    v_on_event_hyphenation: Option<HyphenationStyle>,
+    /// Options for `vue/attribute-hyphenation`.
+    #[serde(rename = "vue/attribute-hyphenation")]
+    attribute_hyphenation: Option<HyphenationStyle>,
     /// Options for `musea/prefer-design-tokens`.
     #[serde(rename = "musea/prefer-design-tokens")]
     musea_prefer_design_tokens: Option<MuseaPreferDesignTokensOptions>,
@@ -138,7 +157,11 @@ impl ConfigLintRuleOptions {
         self.stable.is_empty()
             && self.component_name_in_template_casing.is_none()
             && self.custom_event_name_casing.is_none()
+            && self.no_mutating_props.is_none()
+            && self.sfc_element_order.is_none()
             && self.html_self_closing.is_none()
+            && self.v_on_event_hyphenation.is_none()
+            && self.attribute_hyphenation.is_none()
             && self.musea_prefer_design_tokens.is_none()
     }
 
@@ -170,10 +193,34 @@ impl ConfigLintRuleOptions {
             .map(|options| options.casing)
     }
 
+    /// Configured options for `vue/no-mutating-props`.
+    #[inline]
+    pub fn no_mutating_props(&self) -> Option<NoMutatingPropsOptions> {
+        self.no_mutating_props
+    }
+
+    /// Configured block order for `vue/sfc-element-order`.
+    #[inline]
+    pub fn sfc_element_order(&self) -> Option<SfcElementOrderOptions> {
+        self.sfc_element_order.clone()
+    }
+
     /// Configured self-closing style for `vue/html-self-closing`.
     #[inline]
     pub fn html_self_closing(&self) -> Option<HtmlSelfClosingOptions> {
         self.html_self_closing
+    }
+
+    /// Configured style for `vue/v-on-event-hyphenation`.
+    #[inline]
+    pub fn v_on_event_hyphenation(&self) -> Option<HyphenationStyle> {
+        self.v_on_event_hyphenation
+    }
+
+    /// Configured style for `vue/attribute-hyphenation`.
+    #[inline]
+    pub fn attribute_hyphenation(&self) -> Option<HyphenationStyle> {
+        self.attribute_hyphenation
     }
 
     /// Configured design-token primitive values for
@@ -201,8 +248,20 @@ impl ConfigLintRuleOptions {
         if let Some(options) = &overlay.custom_event_name_casing {
             self.custom_event_name_casing = Some(*options);
         }
+        if let Some(options) = &overlay.no_mutating_props {
+            self.no_mutating_props = Some(*options);
+        }
+        if let Some(options) = &overlay.sfc_element_order {
+            self.sfc_element_order = Some(options.clone());
+        }
         if let Some(options) = &overlay.html_self_closing {
             self.html_self_closing = Some(*options);
+        }
+        if let Some(style) = overlay.v_on_event_hyphenation {
+            self.v_on_event_hyphenation = Some(style);
+        }
+        if let Some(style) = overlay.attribute_hyphenation {
+            self.attribute_hyphenation = Some(style);
         }
         if let Some(options) = &overlay.musea_prefer_design_tokens {
             self.musea_prefer_design_tokens = Some(options.clone());

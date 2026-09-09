@@ -12,9 +12,8 @@ mod linter_rule_options;
 mod type_checker;
 mod vue;
 
-use serde::{Deserialize, Serialize};
-
 use self::{compiler::RawCompilerConfig, experimentals::RawExperimentalsConfig, vue::RawVueConfig};
+use serde::{Deserialize, Serialize};
 
 use crate::String;
 use crate::dialect::VueDialect;
@@ -37,9 +36,10 @@ pub use linter::{LintRuleSeverity, LinterConfig};
 pub use linter_rule_options::{
     ComponentNameInTemplateCasingOptions, ConfigLintRuleOptions, CustomEventNameCasing,
     CustomEventNameCasingOptions, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions,
-    HtmlSelfClosingStyle, LintRuleOptions, MuseaDesignToken, MuseaPreferDesignTokensOptions,
-    NoRestrictedGlobalsOptions, NoRestrictedMembersOptions, RestrictedGlobal, RestrictedMember,
-    TemplateComponentNameCasing,
+    HtmlSelfClosingStyle, HyphenationStyle, LintRuleOptions, MuseaDesignToken,
+    MuseaPreferDesignTokensOptions, NoMutatingPropsOptions, NoRestrictedGlobalsOptions,
+    NoRestrictedMembersOptions, RestrictedGlobal, RestrictedMember, SfcElementOrderGroup,
+    SfcElementOrderOptions, TemplateComponentNameCasing,
 };
 pub use type_checker::TypeCheckerConfig;
 pub use vue::{ParseVueVersionError, VueVersion};

@@ -63,7 +63,11 @@ pub fn lint_patina_sfc(source: String, options: Option<PatinaLintOptionsNapi>) -
     let preset = patina_preset_from_option(opts.preset.as_deref());
     let component_casing = opts.component_name_in_template_casing.as_deref();
     let event_casing = opts.custom_event_name_casing.as_deref();
+    let no_mutating_props = opts.no_mutating_props;
+    let sfc_element_order = opts.sfc_element_order;
     let html_self_closing = opts.html_self_closing;
+    let v_on_event_hyphenation = opts.v_on_event_hyphenation.as_deref();
+    let attribute_hyphenation = opts.attribute_hyphenation.as_deref();
     let enabled_rules = opts
         .enabled_rules
         .map(|rules| rules.into_iter().map(Into::into).collect());
@@ -78,7 +82,11 @@ pub fn lint_patina_sfc(source: String, options: Option<PatinaLintOptionsNapi>) -
         .with_enabled_rules(enabled_rules),
         component_casing,
         event_casing,
+        no_mutating_props,
+        sfc_element_order,
         html_self_closing,
+        v_on_event_hyphenation,
+        attribute_hyphenation,
     );
     let result = lint_source(&linter, &source, &filename);
     let lsp_diagnostics = LspEmitter::to_lsp_diagnostics_with_source(&result, &source);

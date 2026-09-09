@@ -89,4 +89,30 @@ static ENTRIES: &[(&str, &str, &str, &str)] = &[
         "この要素で許可されている標準の`rel`トークンだけを使ってください。例: リンクの`noopener noreferrer`、link要素の`stylesheet`。",
         "请只使用此元素允许的标准`rel`标记，例如链接上的`noopener noreferrer`或link元素上的`stylesheet`。",
     ),
+    // vue/v-on-event-hyphenation
+    (
+        "vue/v-on-event-hyphenation.message_never",
+        "Custom event listeners on components should not be hyphenated: '{name}'",
+        "コンポーネントのカスタムイベントリスナーはハイフン区切りにしないでください: '{name}'",
+        "组件上的自定义事件监听器不应使用连字符：'{name}'",
+    ),
+    (
+        "vue/v-on-event-hyphenation.help_never",
+        "Use camelCase or a single-word event name instead of kebab-case.",
+        "ケバブケースではなく、camelCase または単一語のイベント名を使用してください。",
+        "请使用 camelCase 或单词事件名，而不是 kebab-case。",
+    ),
+    // vue/attribute-hyphenation
+    (
+        "vue/attribute-hyphenation.message_never",
+        "Attribute should not be hyphenated",
+        "属性はハイフン区切りにしないでください",
+        "属性不应使用连字符命名",
+    ),
+    (
+        "vue/attribute-hyphenation.help_never",
+        "Use camelCase or a single-word attribute name instead of kebab-case.",
+        "ケバブケースではなく、camelCase または単一語の属性名を使用してください。",
+        "请使用 camelCase 或单词属性名，而不是 kebab-case。",
+    ),
 ];

@@ -18,6 +18,7 @@ const fixtureDir = path.join(
 const configPath = path.join(fixtureDir, ".oxlintrc.json");
 const vuePath = path.join(fixtureDir, "Casing.vue");
 const selfClosingPath = path.join(fixtureDir, "SelfClosing.vue");
+const ruleOptionsPath = path.join(fixtureDir, "RuleOptions.vue");
 const oxlintEnv = { ...process.env };
 delete oxlintEnv.GITHUB_ACTIONS;
 
@@ -186,6 +187,78 @@ assert.equal(
 assert.match(
   selfClosingPayload.diagnostics.map((diagnostic) => diagnostic.message).join("\n"),
   /Element must not use self-closing syntax/u,
+);
+
+fs.writeFileSync(
+  configPath,
+  JSON.stringify(
+    {
+      plugins: ["vue"],
+      jsPlugins: [pluginEntry],
+      settings: { vize: { helpLevel: "none", preset: "incremental" } },
+      rules: {
+        "vize/vue/no-mutating-props": ["error", { shallowOnly: true }],
+        "vize/vue/sfc-element-order": [
+          "error",
+          { order: ["template", "script:not([setup])", "script[setup]", "style"] },
+        ],
+        "vize/vue/v-on-event-hyphenation": ["error", "never"],
+        "vize/vue/attribute-hyphenation": ["error", "never"],
+      },
+    },
+    null,
+    2,
+  ),
+);
+fs.writeFileSync(
+  ruleOptionsPath,
+  `<template>
+  <MyWidget my-prop="value" @my-event="handler" />
+</template>
+
+<script setup lang="ts">
+const props = defineProps<{ count: number; profile: { name: string } }>();
+props.profile.name = 'Ada';
+props.count = 1;
+</script>
+
+<script lang="ts">
+export default {};
+</script>
+
+<style></style>
+`,
+);
+
+const ruleOptionsRun = runOxlint(["-c", ".oxlintrc.json", "-f", "json", "RuleOptions.vue"]);
+assert.notEqual(ruleOptionsRun.exitCode, 0, "configured Vue rule options should fail lint");
+assert.doesNotMatch(ruleOptionsRun.output, /does not accept options/u);
+const ruleOptionsPayload = JSON.parse(ruleOptionsRun.output) as {
+  diagnostics: Array<{ code: string; message: string }>;
+};
+assert.equal(
+  ruleOptionsPayload.diagnostics.filter(
+    (diagnostic) => diagnostic.code === "vize(vue/no-mutating-props)",
+  ).length,
+  1,
+);
+assert.equal(
+  ruleOptionsPayload.diagnostics.filter(
+    (diagnostic) => diagnostic.code === "vize(vue/sfc-element-order)",
+  ).length,
+  1,
+);
+assert.equal(
+  ruleOptionsPayload.diagnostics.filter(
+    (diagnostic) => diagnostic.code === "vize(vue/v-on-event-hyphenation)",
+  ).length,
+  1,
+);
+assert.equal(
+  ruleOptionsPayload.diagnostics.filter(
+    (diagnostic) => diagnostic.code === "vize(vue/attribute-hyphenation)",
+  ).length,
+  1,
 );
 
 console.log("✅ oxlint-plugin-vize casing option tests passed!");

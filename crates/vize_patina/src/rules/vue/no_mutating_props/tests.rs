@@ -1,7 +1,7 @@
-use super::NoMutatingProps;
+use super::{NoMutatingProps, NoMutatingPropsOptions};
 use crate::diagnostic::Severity;
 use crate::linter::{LintResult, Linter};
-use crate::rule::{Rule, RuleCategory};
+use crate::rule::{Rule, RuleCategory, RuleRegistry};
 
 mod script_mutations;
 mod template_handlers;
@@ -14,6 +14,12 @@ fn lint_sfc(sfc: &str) -> LintResult {
     Linter::new()
         .with_enabled_rules(Some(vec!["vue/no-mutating-props".into()]))
         .lint_sfc(sfc, "Probe.vue")
+}
+
+fn lint_sfc_with_rule(sfc: &str, rule: NoMutatingProps) -> LintResult {
+    let mut registry = RuleRegistry::new();
+    registry.register(Box::new(rule));
+    Linter::with_registry(registry).lint_sfc(sfc, "Probe.vue")
 }
 
 /// The full identity of every finding: rule, severity, byte range, message.
@@ -49,7 +55,7 @@ fn last_span_for(sfc: &str, needle: &str) -> (u32, u32) {
 
 #[test]
 fn test_meta() {
-    let rule = NoMutatingProps;
+    let rule = NoMutatingProps::default();
     assert_eq!(rule.meta().name, "vue/no-mutating-props");
     assert_eq!(rule.meta().category, RuleCategory::Essential);
     assert_eq!(rule.meta().default_severity, Severity::Error);
@@ -118,6 +124,34 @@ defineProps<{ msg: string }>();
             start,
             end,
             "Unexpected mutation of prop 'msg' via v-model",
+        )]
+    );
+}
+
+#[test]
+fn shallow_only_reports_direct_template_mutations_but_allows_nested_values() {
+    let sfc = r#"<script setup lang="ts">
+const props = defineProps<{ user: { name: string }; count: number }>();
+</script>
+
+<template>
+  <input v-model="props.user.name" />
+  <button @click="props.user.name = 'Ada'; props.count = 1">go</button>
+</template>
+"#;
+    let result = lint_sfc_with_rule(
+        sfc,
+        NoMutatingProps::new(NoMutatingPropsOptions { shallow_only: true }),
+    );
+    let (start, end) = span_for(sfc, "props.count = 1");
+    assert_eq!(
+        findings(&result),
+        vec![(
+            "vue/no-mutating-props",
+            Severity::Error,
+            start,
+            end,
+            "Unexpected mutation of prop 'props.count' in an inline handler",
         )]
     );
 }

@@ -67,7 +67,7 @@ pub use this_in_template::ThisInTemplate;
 pub use use_unique_element_ids::UseUniqueElementIds;
 pub use use_v_on_exact::UseVOnExact;
 pub use v_bind_style::{VBindStyle, VBindStyleOption};
-pub use v_on_event_hyphenation::VOnEventHyphenation;
+pub use v_on_event_hyphenation::{VOnEventHyphenation, VOnEventHyphenationStyle};
 pub use v_on_handler_style::VOnHandlerStyle;
 pub use warn_custom_block::WarnCustomBlock;
 pub use warn_custom_directive::WarnCustomDirective;
@@ -130,7 +130,7 @@ fn register_shared(registry: &mut RuleRegistry, flavor: PresetFlavor) {
     registry.register(Box::new(NoVText));
     registry.register(Box::new(NoUnusedRefs));
     registry.register(Box::new(PreferTrueAttributeShorthand));
-    registry.register(Box::new(VOnEventHyphenation));
+    registry.register(Box::new(VOnEventHyphenation::default()));
     registry.register(Box::new(ThisInTemplate));
     registry.register(Box::new(NoArrayIndexKey));
 }

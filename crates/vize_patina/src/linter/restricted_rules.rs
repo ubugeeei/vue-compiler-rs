@@ -10,10 +10,15 @@ use super::config::Linter;
 use crate::preset::LintPreset;
 use crate::rules::opinionated::vue::{
     ComponentCasing, ComponentNameInTemplateCasing, ComponentNameInTemplateCasingNuxt,
-    HtmlSelfClosing, HtmlSelfClosingNuxt, HtmlSelfClosingOptions,
+    HtmlSelfClosing, HtmlSelfClosingNuxt, HtmlSelfClosingOptions, VOnEventHyphenation,
+    VOnEventHyphenationStyle,
 };
 use crate::rules::script::{CustomEventNameCasing, EventNameCasing};
 use crate::rules::script::{NoRestrictedMembers, RestrictedGlobals};
+use crate::rules::vue::{
+    AttributeHyphenation, HyphenationStyle, NoMutatingProps, NoMutatingPropsOptions,
+    SfcElementOrder, SfcElementOrderOptions,
+};
 use vize_s0::String;
 
 impl Linter {
@@ -88,6 +93,38 @@ impl Linter {
             self.registry
                 .replace(Box::new(HtmlSelfClosing::new(options)));
         }
+        self
+    }
+
+    /// Configure `vue/no-mutating-props`.
+    #[inline]
+    pub fn with_no_mutating_props_options(mut self, options: NoMutatingPropsOptions) -> Self {
+        self.registry
+            .replace(Box::new(NoMutatingProps::new(options)));
+        self
+    }
+
+    /// Configure `vue/sfc-element-order`.
+    #[inline]
+    pub fn with_sfc_element_order_options(mut self, options: SfcElementOrderOptions) -> Self {
+        self.registry
+            .replace(Box::new(SfcElementOrder::new(options)));
+        self
+    }
+
+    /// Configure `vue/v-on-event-hyphenation`.
+    #[inline]
+    pub fn with_v_on_event_hyphenation(mut self, style: VOnEventHyphenationStyle) -> Self {
+        self.registry
+            .replace(Box::new(VOnEventHyphenation::new(style)));
+        self
+    }
+
+    /// Configure `vue/attribute-hyphenation`.
+    #[inline]
+    pub fn with_attribute_hyphenation(mut self, style: HyphenationStyle) -> Self {
+        self.registry
+            .replace(Box::new(AttributeHyphenation::new(style)));
         self
     }
 

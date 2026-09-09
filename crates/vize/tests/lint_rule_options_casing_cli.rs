@@ -192,3 +192,98 @@ fn lint_rule_options_configure_html_self_closing() {
 
     let _ = fs::remove_dir_all(project_root);
 }
+
+#[test]
+fn lint_rule_options_configure_misskey_vue_rules() {
+    let project_root = temp_project_dir();
+    write_project_file(
+        &project_root,
+        "src/RuleOptions.vue",
+        r#"<template>
+  <MyWidget my-prop="value" @my-event="handler" />
+</template>
+
+<script setup lang="ts">
+const props = defineProps<{ count: number; profile: { name: string } }>();
+props.profile.name = 'Ada';
+props.count = 1;
+</script>
+
+<script lang="ts">
+export default {};
+</script>
+
+<style></style>
+"#,
+    );
+    write_project_file(
+        &project_root,
+        "vize.config.json",
+        r#"{
+  "linter": {
+    "preset": "incremental",
+    "rules": {
+      "vue/no-mutating-props": "error",
+      "vue/sfc-element-order": "error",
+      "vue/v-on-event-hyphenation": "error",
+      "vue/attribute-hyphenation": "error"
+    },
+    "ruleOptions": {
+      "vue/no-mutating-props": { "shallowOnly": true },
+      "vue/sfc-element-order": {
+        "order": ["template", "script:not([setup])", "script[setup]", "style"]
+      },
+      "vue/v-on-event-hyphenation": "never",
+      "vue/attribute-hyphenation": "never"
+    }
+  }
+}"#,
+    );
+
+    let output = Command::new(env!("CARGO_BIN_EXE_vize"))
+        .current_dir(&project_root)
+        .args([
+            "lint",
+            "--config",
+            "vize.config.json",
+            "--format",
+            "json",
+            "src/RuleOptions.vue",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{}", output_details(&output));
+    assert_eq!(output.stderr, b"", "{}", output_details(&output));
+
+    let stdout = std::str::from_utf8(&output.stdout).unwrap();
+    let report: serde_json::Value = serde_json::from_str(stdout).unwrap();
+    let messages = report[0]["messages"].as_array().unwrap();
+    let mut rule_ids = messages
+        .iter()
+        .map(|message| message["ruleId"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    rule_ids.sort_unstable();
+    assert_eq!(
+        rule_ids,
+        [
+            "vue/attribute-hyphenation",
+            "vue/no-mutating-props",
+            "vue/sfc-element-order",
+            "vue/v-on-event-hyphenation",
+        ]
+    );
+    let no_mutating_props_messages = messages
+        .iter()
+        .filter(|message| message["ruleId"].as_str() == Some("vue/no-mutating-props"))
+        .map(|message| message["message"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        no_mutating_props_messages,
+        [
+            "[vize:vue/no-mutating-props] Unexpected mutation of prop 'props.count' in <script setup>"
+        ],
+        "{stdout}"
+    );
+
+    let _ = fs::remove_dir_all(project_root);
+}

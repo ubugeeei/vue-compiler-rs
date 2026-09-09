@@ -230,6 +230,12 @@ export interface LintRuleOptions {
   "script/custom-event-name-casing"?: {
     casing?: "camelCase" | "kebab-case";
   };
+  "vue/no-mutating-props"?: {
+    shallowOnly?: boolean;
+  };
+  "vue/sfc-element-order"?: {
+    order?: (string | string[])[];
+  };
   "vue/html-self-closing"?: {
     html?: {
       void?: "always" | "never" | "any";
@@ -239,6 +245,8 @@ export interface LintRuleOptions {
     svg?: "always" | "never" | "any";
     math?: "always" | "never" | "any";
   };
+  "vue/v-on-event-hyphenation"?: "always" | "never";
+  "vue/attribute-hyphenation"?: "always" | "never";
   "musea/prefer-design-tokens"?: MuseaPreferDesignTokensOptions;
 }
 export interface NoRestrictedGlobalsOptions {
