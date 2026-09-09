@@ -223,6 +223,41 @@ customEventNameCasingOptionsDef: JsonSchema = new JsonSchema {
   additionalProperties = false
 }
 
+htmlSelfClosingStyleDef: JsonSchema = new JsonSchema {
+  type = "string"
+  enum = new Listing { "always"; "never"; "any" }
+}
+
+htmlSelfClosingHtmlOptionsDef: JsonSchema = new JsonSchema {
+  type = "object"
+  properties {
+    ["void"] = (htmlSelfClosingStyleDef) {
+      default = "always"
+    }
+    ["normal"] = (htmlSelfClosingStyleDef) {
+      default = "any"
+    }
+    ["component"] = (htmlSelfClosingStyleDef) {
+      default = "always"
+    }
+  }
+  additionalProperties = false
+}
+
+htmlSelfClosingOptionsDef: JsonSchema = new JsonSchema {
+  type = "object"
+  properties {
+    ["html"] = (htmlSelfClosingHtmlOptionsDef) {}
+    ["svg"] = (htmlSelfClosingStyleDef) {
+      default = "always"
+    }
+    ["math"] = (htmlSelfClosingStyleDef) {
+      default = "always"
+    }
+  }
+  additionalProperties = false
+}
+
 museaDesignTokenDef: JsonSchema = new JsonSchema {
   type = "object"
   properties {
@@ -266,6 +301,7 @@ lintRuleOptionsDef: JsonSchema = new JsonSchema {
     }
     ["vue/component-name-in-template-casing"] = componentNameInTemplateCasingOptionsDef
     ["script/custom-event-name-casing"] = customEventNameCasingOptionsDef
+    ["vue/html-self-closing"] = htmlSelfClosingOptionsDef
     ["musea/prefer-design-tokens"] = new JsonSchema {
       `$ref` = "#/definitions/MuseaPreferDesignTokensOptions"
     }

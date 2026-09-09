@@ -4,7 +4,7 @@ title: All Patina Rules
 
 # All Patina Rules
 
-This page lists all 246 Patina rule implementations declared under `crates/vize_patina/src/rules`. The category pages keep the longer examples; this page is the compact reference for coverage, default severity, preset membership, fixability, and source implementation.
+This page lists all 247 Patina rule implementations declared under `crates/vize_patina/src/rules`. The category pages keep the longer examples; this page is the compact reference for coverage, default severity, preset membership, fixability, and source implementation.
 
 Preset names use Vize CLI terminology. The oxlint plugin metadata name `general-recommended` is shown here as `happy-path`. `_none_` means the rule is opt-in, host-driven, or outside the bundled lint presets.
 
@@ -14,7 +14,7 @@ Preset names use Vize CLI terminology. The oxlint plugin metadata name `general-
 | --- | ---: |
 | [Essential](#essential-50) | 50 |
 | [Strongly Recommended](#strongly-recommended-12) | 12 |
-| [Recommended](#recommended-42) | 42 |
+| [Recommended](#recommended-43) | 43 |
 | [Accessibility](#accessibility-31) | 31 |
 | [HTML Conformance](#html-conformance-9) | 9 |
 | [Type Aware](#type-aware-5) | 5 |
@@ -87,7 +87,7 @@ Preset names use Vize CLI terminology. The oxlint plugin metadata name `general-
 | `vue/attribute-hyphenation` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/attribute_hyphenation.rs#L25) | Enforce attribute naming style on custom components |
 | `vue/component-definition-name-casing` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/component_definition_name_casing.rs#L35) | Enforce PascalCase or kebab-case for component definition names |
 | `vue/html-quotes` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/html_quotes.rs#L53) | Enforce quotes style of HTML attributes |
-| `vue/html-self-closing` | `warning` | `nuxt`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L27) | Enforce self-closing style |
+| `vue/html-self-closing` | `warning` | `nuxt`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L28) | Enforce self-closing style |
 | `vue/mustache-interpolation-spacing` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/mustache_interpolation_spacing.rs#L35) | Enforce consistent spacing inside mustache interpolations |
 | `vue/no-multi-spaces` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_multi_spaces.rs#L26) | Disallow multiple consecutive spaces |
 | `vue/no-template-shadow` | `warning` | `nuxt`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_template_shadow.rs#L34) | Disallow variable names that shadow variables in outer scope |
@@ -97,7 +97,7 @@ Preset names use Vize CLI terminology. The oxlint plugin metadata name `general-
 | `vue/v-on-style` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_on_style.rs#L28) | Enforce `v-on` directive style |
 | `vue/v-slot-style` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_slot_style.rs#L40) | Enforce `v-slot` directive style |
 
-## Recommended (42)
+## Recommended (43)
 
 | Rule | Severity | Presets | Fixable | Implementation | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -114,6 +114,7 @@ Preset names use Vize CLI terminology. The oxlint plugin metadata name `general-
 | `vue/no-inline-style` | `warning` | `nuxt`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_inline_style.rs#L34) | Discourage use of inline style attributes |
 | `vue/no-invalid-html-attribute` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_invalid_html_attribute.rs#L12) | Disallow invalid static values for HTML attributes |
 | `vue/no-lone-template` | `warning` | `happy-path`, `nuxt`, `ecosystem`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_lone_template.rs#L32) | Disallow unnecessary `&lt;template&gt;` elements |
+| `vue/no-non-component-keep-alive-child` | `warning` | _none_ | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_non_component_keep_alive_child.rs#L14) | Disallow plain element wrappers directly below `&lt;KeepAlive&gt;` |
 | `vue/no-multiple-objects-in-class` | `warning` | `nuxt`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_multiple_objects_in_class.rs#L33) | Disallow multiple object literals inside a :class array binding |
 | `vue/no-negated-v-if-condition` | `warning` | `nuxt`, `opinionated` | No | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_negated_v_if_condition.rs#L37) | Disallow a negated v-if condition when the chain has a v-else |
 | `vue/no-preprocessor-lang` | `warning` | `nuxt`, `opinionated` | Yes | [source](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_preprocessor_lang.rs#L22) | Discourage CSS preprocessor usage in favor of modern CSS |

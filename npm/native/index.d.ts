@@ -830,6 +830,22 @@ export interface PatinaLintOptionsNapi {
   componentNameInTemplateCasing?: string;
   /** Casing for `script/custom-event-name-casing`: "camelCase" or "kebab-case" */
   customEventNameCasing?: string;
+  /** Options for `vue/html-self-closing` */
+  htmlSelfClosing?: HtmlSelfClosingOptionsNapi;
+}
+
+/** HTML self-closing options for NAPI */
+export interface HtmlSelfClosingOptionsNapi {
+  html?: HtmlSelfClosingHtmlOptionsNapi;
+  svg?: string;
+  math?: string;
+}
+
+/** HTML-family self-closing options for NAPI */
+export interface HtmlSelfClosingHtmlOptionsNapi {
+  void?: string;
+  normal?: string;
+  component?: string;
 }
 
 export declare function printCssAst(

@@ -1,7 +1,8 @@
 use super::{
     ComponentNameInTemplateCasingOptions, ConfigLintRuleOptions, CustomEventNameCasing,
-    CustomEventNameCasingOptions, LintRuleOptions, MuseaDesignToken, RestrictedGlobal,
-    RestrictedMember, TemplateComponentNameCasing,
+    CustomEventNameCasingOptions, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions,
+    HtmlSelfClosingStyle, LintRuleOptions, MuseaDesignToken, RestrictedGlobal, RestrictedMember,
+    TemplateComponentNameCasing,
 };
 
 #[test]
@@ -99,6 +100,56 @@ fn deserializes_casing_options() {
 }
 
 #[test]
+fn deserializes_html_self_closing_options() {
+    let json = r#"{
+        "vue/html-self-closing": {
+            "html": {
+                "void": "any",
+                "normal": "never",
+                "component": "any"
+            },
+            "svg": "any",
+            "math": "any"
+        }
+    }"#;
+    let options = serde_json::from_str::<ConfigLintRuleOptions>(json).unwrap();
+    assert_eq!(
+        options.html_self_closing(),
+        Some(HtmlSelfClosingOptions {
+            html: HtmlSelfClosingHtmlOptions {
+                void_elements: HtmlSelfClosingStyle::Any,
+                normal: HtmlSelfClosingStyle::Never,
+                component: HtmlSelfClosingStyle::Any,
+            },
+            svg: HtmlSelfClosingStyle::Any,
+            math: HtmlSelfClosingStyle::Any,
+        })
+    );
+}
+
+#[test]
+fn partial_html_self_closing_options_keep_vize_defaults() {
+    let json = r#"{
+        "vue/html-self-closing": {
+            "html": { "normal": "never" }
+        }
+    }"#;
+    let options = serde_json::from_str::<ConfigLintRuleOptions>(json).unwrap();
+    assert_eq!(
+        options.html_self_closing(),
+        Some(HtmlSelfClosingOptions {
+            html: HtmlSelfClosingHtmlOptions {
+                void_elements: HtmlSelfClosingStyle::Always,
+                normal: HtmlSelfClosingStyle::Never,
+                component: HtmlSelfClosingStyle::Always,
+            },
+            svg: HtmlSelfClosingStyle::Always,
+            math: HtmlSelfClosingStyle::Always,
+        })
+    );
+}
+
+#[test]
 fn deserializes_musea_design_tokens_with_default_tier() {
     let json = r##"{
         "musea/prefer-design-tokens": {
@@ -163,4 +214,21 @@ fn unknown_musea_option_fields_are_rejected() {
         }
     }"##;
     assert!(serde_json::from_str::<ConfigLintRuleOptions>(json).is_err());
+}
+
+#[test]
+fn invalid_html_self_closing_options_are_rejected() {
+    let invalid_enum = r#"{
+        "vue/html-self-closing": {
+            "html": { "normal": "sometimes" }
+        }
+    }"#;
+    assert!(serde_json::from_str::<ConfigLintRuleOptions>(invalid_enum).is_err());
+
+    let unknown_field = r#"{
+        "vue/html-self-closing": {
+            "html": { "normalHtml": "never" }
+        }
+    }"#;
+    assert!(serde_json::from_str::<ConfigLintRuleOptions>(unknown_field).is_err());
 }

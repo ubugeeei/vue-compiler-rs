@@ -22,7 +22,8 @@
 use crate::context::LintContext;
 use crate::diagnostic::Severity;
 use crate::rule::{Rule, RuleCategory, RuleMeta};
-use vize_relief::ElementNode;
+use vize_relief::{ElementNode, ElementType, Namespace};
+use vize_s0::{is_html_tag, is_math_ml_tag, is_svg_tag, is_void_tag};
 
 static META: RuleMeta = RuleMeta {
     name: "vue/html-self-closing",
@@ -32,68 +33,64 @@ static META: RuleMeta = RuleMeta {
     default_severity: Severity::Warning,
 };
 
-/// Void elements that should always self-close
-const VOID_ELEMENTS: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
-    "track", "wbr",
-];
+/// Per-element self-closing policy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HtmlSelfClosingStyle {
+    /// Empty elements must use self-closing syntax.
+    Always,
+    /// Elements must use separate start and end tags.
+    Never,
+    /// Both forms are accepted.
+    Any,
+}
 
-/// SVG elements that can self-close
-const SVG_ELEMENTS: &[&str] = &[
-    "circle",
-    "ellipse",
-    "line",
-    "path",
-    "polygon",
-    "polyline",
-    "rect",
-    "use",
-    "image",
-    "animate",
-    "animateMotion",
-    "animateTransform",
-    "set",
-    "stop",
-    "symbol",
-    "defs",
-    "g",
-    "marker",
-    "mask",
-    "pattern",
-    "linearGradient",
-    "radialGradient",
-    "clipPath",
-    "filter",
-    "foreignObject",
-];
+/// Self-closing policy for HTML element families.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HtmlSelfClosingHtmlOptions {
+    pub void: HtmlSelfClosingStyle,
+    pub normal: HtmlSelfClosingStyle,
+    pub component: HtmlSelfClosingStyle,
+}
 
-/// MathML elements
-const MATHML_ELEMENTS: &[&str] = &[
-    "math",
-    "mrow",
-    "mi",
-    "mn",
-    "mo",
-    "ms",
-    "mtext",
-    "mspace",
-    "msqrt",
-    "mroot",
-    "mfrac",
-    "msup",
-    "msub",
-    "msubsup",
-    "munder",
-    "mover",
-    "munderover",
-    "mtable",
-    "mtr",
-    "mtd",
-];
+impl Default for HtmlSelfClosingHtmlOptions {
+    fn default() -> Self {
+        Self {
+            void: HtmlSelfClosingStyle::Always,
+            normal: HtmlSelfClosingStyle::Any,
+            component: HtmlSelfClosingStyle::Always,
+        }
+    }
+}
+
+/// Config for `vue/html-self-closing`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HtmlSelfClosingOptions {
+    pub html: HtmlSelfClosingHtmlOptions,
+    pub svg: HtmlSelfClosingStyle,
+    pub math: HtmlSelfClosingStyle,
+}
+
+impl Default for HtmlSelfClosingOptions {
+    fn default() -> Self {
+        Self {
+            html: HtmlSelfClosingHtmlOptions::default(),
+            svg: HtmlSelfClosingStyle::Always,
+            math: HtmlSelfClosingStyle::Always,
+        }
+    }
+}
 
 /// HTML self-closing style rule
 #[derive(Default)]
-pub struct HtmlSelfClosing;
+pub struct HtmlSelfClosing {
+    options: HtmlSelfClosingOptions,
+}
+
+impl HtmlSelfClosing {
+    pub const fn new(options: HtmlSelfClosingOptions) -> Self {
+        Self { options }
+    }
+}
 
 impl Rule for HtmlSelfClosing {
     fn meta(&self) -> &'static RuleMeta {
@@ -101,7 +98,7 @@ impl Rule for HtmlSelfClosing {
     }
 
     fn enter_element<'a>(&self, ctx: &mut LintContext<'a>, element: &ElementNode<'a>) {
-        check_element(ctx, element, false);
+        check_element(ctx, element, self.options, false);
     }
 }
 
@@ -113,7 +110,21 @@ impl Rule for HtmlSelfClosing {
 /// their preferred closing style from source. Enabling the exemption in the
 /// Nuxt preset keeps real Nuxt + Vuetify projects out of a self-closing
 /// warning storm without loosening the rule for other presets.
-pub(crate) struct HtmlSelfClosingNuxt;
+pub(crate) struct HtmlSelfClosingNuxt {
+    options: HtmlSelfClosingOptions,
+}
+
+impl HtmlSelfClosingNuxt {
+    pub(crate) const fn new(options: HtmlSelfClosingOptions) -> Self {
+        Self { options }
+    }
+}
+
+impl Default for HtmlSelfClosingNuxt {
+    fn default() -> Self {
+        Self::new(HtmlSelfClosingOptions::default())
+    }
+}
 
 impl Rule for HtmlSelfClosingNuxt {
     fn meta(&self) -> &'static RuleMeta {
@@ -121,58 +132,130 @@ impl Rule for HtmlSelfClosingNuxt {
     }
 
     fn enter_element<'a>(&self, ctx: &mut LintContext<'a>, element: &ElementNode<'a>) {
-        check_element(ctx, element, true);
+        check_element(ctx, element, self.options, true);
     }
 }
 
 fn check_element<'a>(
     ctx: &mut LintContext<'a>,
     element: &ElementNode<'a>,
+    options: HtmlSelfClosingOptions,
     allow_vuetify_tags: bool,
 ) {
     let tag = element.tag;
     if allow_vuetify_tags && is_vuetify_tag(tag) {
         return;
     }
-    let is_void = VOID_ELEMENTS.contains(&tag);
-    let is_svg = SVG_ELEMENTS.contains(&tag);
-    let is_mathml = MATHML_ELEMENTS.contains(&tag);
-    let is_component = (tag.contains('-') || tag.chars().next().is_some_and(|c| c.is_uppercase()))
-        && !is_nuxt_builtin_component(tag);
-    let has_children = !element.children.is_empty();
-    let is_self_closing = element.is_self_closing;
 
-    // Void elements should always be self-closing
-    if is_void && !is_self_closing {
-        ctx.warn_with_help(
-            ctx.t("vue/html-self-closing.void"),
-            &element.loc,
-            ctx.t("vue/html-self-closing.help"),
-        );
-        return;
-    }
-
-    // SVG/MathML elements without children should be self-closing
-    if (is_svg || is_mathml) && !has_children && !is_self_closing {
-        ctx.warn_with_help(
-            ctx.t("vue/html-self-closing.empty"),
-            &element.loc,
-            ctx.t("vue/html-self-closing.help"),
-        );
-        return;
-    }
-
-    // Component elements without children should be self-closing
-    if is_component && !has_children && !is_self_closing {
-        ctx.warn_with_help(
+    let (style, message) = match classify_element(element) {
+        SelfClosingElementKind::VoidHtml => {
+            (options.html.void, ctx.t("vue/html-self-closing.void"))
+        }
+        SelfClosingElementKind::NormalHtml => {
+            (options.html.normal, ctx.t("vue/html-self-closing.empty"))
+        }
+        SelfClosingElementKind::Component => (
+            options.html.component,
             ctx.t("vue/html-self-closing.component"),
-            &element.loc,
-            ctx.t("vue/html-self-closing.help"),
-        );
+        ),
+        SelfClosingElementKind::Svg => (options.svg, ctx.t("vue/html-self-closing.empty")),
+        SelfClosingElementKind::Math => (options.math, ctx.t("vue/html-self-closing.empty")),
+        SelfClosingElementKind::Other => return,
+    };
+    if matches!(style, HtmlSelfClosingStyle::Any) {
+        return;
     }
 
-    // Normal HTML elements without children - configurable (default: don't require self-closing)
-    // This is intentionally not enforced for normal HTML elements like <div></div>
+    let has_children = !element.children.is_empty();
+    let is_self_closing = element.is_self_closing
+        || (matches!(style, HtmlSelfClosingStyle::Never) && authored_self_closing(ctx, element));
+
+    match style {
+        HtmlSelfClosingStyle::Always if !has_children && !is_self_closing => {
+            ctx.warn_with_help(message, &element.loc, ctx.t("vue/html-self-closing.help"));
+        }
+        HtmlSelfClosingStyle::Never if is_self_closing => {
+            ctx.warn_with_help(
+                ctx.t("vue/html-self-closing.never"),
+                &element.loc,
+                ctx.t("vue/html-self-closing.never_help"),
+            );
+        }
+        _ => {}
+    }
+}
+
+#[derive(Clone, Copy)]
+enum SelfClosingElementKind {
+    VoidHtml,
+    NormalHtml,
+    Component,
+    Svg,
+    Math,
+    Other,
+}
+
+fn classify_element(element: &ElementNode<'_>) -> SelfClosingElementKind {
+    let tag = element.tag;
+    match element.ns {
+        Namespace::Svg => return SelfClosingElementKind::Svg,
+        Namespace::MathMl => return SelfClosingElementKind::Math,
+        Namespace::Html => {}
+    }
+
+    if is_void_tag(tag) {
+        return SelfClosingElementKind::VoidHtml;
+    }
+
+    if is_svg_tag(tag) {
+        return SelfClosingElementKind::Svg;
+    }
+
+    if is_math_ml_tag(tag) {
+        return SelfClosingElementKind::Math;
+    }
+
+    if (element.tag_type == ElementType::Component || is_component_like_tag(tag))
+        && !is_nuxt_builtin_component(tag)
+    {
+        return SelfClosingElementKind::Component;
+    }
+
+    if is_html_element_name(tag) {
+        return SelfClosingElementKind::NormalHtml;
+    }
+
+    SelfClosingElementKind::Other
+}
+
+fn is_html_element_name(tag: &str) -> bool {
+    if tag.bytes().all(|b| !b.is_ascii_uppercase()) {
+        return is_html_tag(tag);
+    }
+    is_html_tag(&tag.to_lowercase())
+}
+
+fn is_component_like_tag(tag: &str) -> bool {
+    tag.contains('-') || tag.chars().next().is_some_and(char::is_uppercase)
+}
+
+fn authored_self_closing(ctx: &LintContext<'_>, element: &ElementNode<'_>) -> bool {
+    let start = element.loc.span.start as usize;
+    let end = element.loc.span.end as usize;
+    let Some(open_tag) = ctx.source.get(start..end) else {
+        return false;
+    };
+    let mut saw_close = false;
+    for byte in open_tag.bytes().rev() {
+        match byte {
+            b'>' if !saw_close => saw_close = true,
+            b'/' if saw_close => return true,
+            b' ' | b'\t' | b'\n' | b'\r' | 0x0c if saw_close => {}
+            _ if saw_close => return false,
+            _ => {}
+        }
+    }
+    false
 }
 
 fn is_nuxt_builtin_component(tag: &str) -> bool {
@@ -206,86 +289,4 @@ fn is_vuetify_tag(tag: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{HtmlSelfClosing, HtmlSelfClosingNuxt};
-    use crate::linter::Linter;
-    use crate::rule::RuleRegistry;
-
-    fn create_linter() -> Linter {
-        let mut registry = RuleRegistry::new();
-        registry.register(Box::new(HtmlSelfClosing));
-        Linter::with_registry(registry)
-    }
-
-    #[test]
-    fn test_valid_self_closing_void() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<img />"#, "test.vue");
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_invalid_void_not_self_closing() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<img>"#, "test.vue");
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_valid_component_self_closing() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<MyComponent />"#, "test.vue");
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_invalid_empty_component() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<MyComponent></MyComponent>"#, "test.vue");
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_valid_component_with_content() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<MyComponent>content</MyComponent>"#, "test.vue");
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_valid_nuxt_child_builtin() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<nuxt-child id="index"></nuxt-child>"#, "test.vue");
-        assert_eq!(result.warning_count, 0);
-    }
-
-    fn create_nuxt_linter() -> Linter {
-        let mut registry = RuleRegistry::new();
-        registry.register(Box::new(HtmlSelfClosingNuxt));
-        Linter::with_registry(registry)
-    }
-
-    #[test]
-    fn test_nuxt_preset_allows_vuetify_tags() {
-        let linter = create_nuxt_linter();
-        let result = linter.lint_template(
-            r#"<v-dialog><v-btn></v-btn><v-icon></v-icon><v-spacer /></v-dialog>"#,
-            "test.vue",
-        );
-        assert_eq!(result.warning_count, 0);
-    }
-
-    #[test]
-    fn test_default_still_flags_empty_vuetify_tags() {
-        let linter = create_linter();
-        let result = linter.lint_template(r#"<v-btn></v-btn>"#, "test.vue");
-        assert_eq!(result.warning_count, 1);
-    }
-
-    #[test]
-    fn test_nuxt_preset_still_flags_other_components() {
-        let linter = create_nuxt_linter();
-        let result = linter.lint_template(r#"<MyComponent></MyComponent>"#, "test.vue");
-        assert_eq!(result.warning_count, 1);
-    }
-}
+mod tests;

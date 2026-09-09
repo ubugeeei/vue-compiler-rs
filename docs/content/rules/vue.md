@@ -373,14 +373,12 @@ const emailId = useId();
 
 ## Syntax And Style Rules
 
-These rules do not need long examples, but they still behave as first-class rules and can be
-configured by name.
+These rules do not need long examples, but they still behave as first-class rules.
 
 `vue/attribute-hyphenation` enforces attribute naming style on custom components. Default:
 `warning`. Presets: `happy-path`, `nuxt`, `opinionated`.
 
-`vue/attribute-order` enforces a stable attribute order. Default: `warning`. Presets:
-`happy-path`, `nuxt`, `opinionated`.
+`vue/attribute-order` enforces a stable attribute order. Default: `warning`. Presets: `happy-path`, `nuxt`, `opinionated`.
 
 `vue/component-definition-name-casing` enforces PascalCase component definition names. Default:
 `warning`. Presets: `happy-path`, `nuxt`, `opinionated`.
@@ -388,14 +386,12 @@ configured by name.
 `vue/component-name-in-template-casing` enforces component name casing in templates. Default:
 `warning`. Presets: `nuxt`, `opinionated`.
 
-`vue/html-quotes` enforces quote style for HTML attributes. Default: `warning`. Presets:
-`happy-path`, `nuxt`, `opinionated`.
+`vue/html-quotes` enforces quote style for HTML attributes. Default: `warning`. Presets: `happy-path`, `nuxt`, `opinionated`.
 
-`vue/html-self-closing` enforces self-closing style. Default: `warning`. Presets: `nuxt`,
-`opinionated`.
+`vue/html-self-closing` enforces self-closing style. Default: `warning`. Presets: `nuxt`, `opinionated`.
+`linter.ruleOptions["vue/html-self-closing"]` accepts `html.void`, `html.normal`, `html.component`, `svg`, and `math`; each is `"always"`, `"never"`, or `"any"`.
 
-`vue/multi-word-component-names` requires component names to contain more than one word. Default:
-`error`. Presets: `essential`, `nuxt`, `opinionated`.
+`vue/multi-word-component-names` requires component names to contain more than one word. Default: `error`. Presets: `essential`, `nuxt`, `opinionated`.
 
 `vue/mustache-interpolation-spacing` enforces spacing inside mustache interpolation. Default:
 `warning`. Presets: `happy-path`, `nuxt`, `opinionated`.
@@ -411,6 +407,9 @@ configured by name.
 
 `vue/no-multi-spaces` disallows repeated spaces in templates. Default: `warning`. Presets:
 `happy-path`, `nuxt`, `opinionated`.
+
+`vue/no-non-component-keep-alive-child` reports plain element wrappers directly below `<KeepAlive>` because Vue only caches component VNodes. Default: `warning`. Presets: none (opt-in).
+`v-show`-only wrappers are ignored.
 
 `vue/no-preprocessor-lang` discourages CSS preprocessor languages in SFC blocks. Default: `warning`.
 Presets: `nuxt`, `opinionated`.

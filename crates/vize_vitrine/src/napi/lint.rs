@@ -63,6 +63,7 @@ pub fn lint_patina_sfc(source: String, options: Option<PatinaLintOptionsNapi>) -
     let preset = patina_preset_from_option(opts.preset.as_deref());
     let component_casing = opts.component_name_in_template_casing.as_deref();
     let event_casing = opts.custom_event_name_casing.as_deref();
+    let html_self_closing = opts.html_self_closing;
     let enabled_rules = opts
         .enabled_rules
         .map(|rules| rules.into_iter().map(Into::into).collect());
@@ -77,6 +78,7 @@ pub fn lint_patina_sfc(source: String, options: Option<PatinaLintOptionsNapi>) -
         .with_enabled_rules(enabled_rules),
         component_casing,
         event_casing,
+        html_self_closing,
     );
     let result = lint_source(&linter, &source, &filename);
     let lsp_diagnostics = LspEmitter::to_lsp_diagnostics_with_source(&result, &source);

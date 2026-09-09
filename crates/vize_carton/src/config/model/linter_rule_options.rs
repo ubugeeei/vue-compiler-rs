@@ -12,10 +12,14 @@ use serde::{Deserialize, Serialize};
 use crate::String;
 
 mod casing;
+mod html_self_closing;
 
 pub use casing::{
     ComponentNameInTemplateCasingOptions, CustomEventNameCasing, CustomEventNameCasingOptions,
     TemplateComponentNameCasing,
+};
+pub use html_self_closing::{
+    HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
 };
 
 /// Per-rule configuration keyed by rule name.
@@ -104,6 +108,9 @@ pub struct ConfigLintRuleOptions {
     /// Options for `script/custom-event-name-casing`.
     #[serde(rename = "script/custom-event-name-casing")]
     custom_event_name_casing: Option<CustomEventNameCasingOptions>,
+    /// Options for `vue/html-self-closing`.
+    #[serde(rename = "vue/html-self-closing")]
+    html_self_closing: Option<HtmlSelfClosingOptions>,
     /// Options for `musea/prefer-design-tokens`.
     #[serde(rename = "musea/prefer-design-tokens")]
     musea_prefer_design_tokens: Option<MuseaPreferDesignTokensOptions>,
@@ -131,6 +138,7 @@ impl ConfigLintRuleOptions {
         self.stable.is_empty()
             && self.component_name_in_template_casing.is_none()
             && self.custom_event_name_casing.is_none()
+            && self.html_self_closing.is_none()
             && self.musea_prefer_design_tokens.is_none()
     }
 
@@ -162,6 +170,12 @@ impl ConfigLintRuleOptions {
             .map(|options| options.casing)
     }
 
+    /// Configured self-closing style for `vue/html-self-closing`.
+    #[inline]
+    pub fn html_self_closing(&self) -> Option<HtmlSelfClosingOptions> {
+        self.html_self_closing
+    }
+
     /// Configured design-token primitive values for
     /// `musea/prefer-design-tokens` as `(value, path, tier)` tuples. Empty
     /// when unconfigured.
@@ -186,6 +200,9 @@ impl ConfigLintRuleOptions {
         }
         if let Some(options) = &overlay.custom_event_name_casing {
             self.custom_event_name_casing = Some(*options);
+        }
+        if let Some(options) = &overlay.html_self_closing {
+            self.html_self_closing = Some(*options);
         }
         if let Some(options) = &overlay.musea_prefer_design_tokens {
             self.musea_prefer_design_tokens = Some(options.clone());

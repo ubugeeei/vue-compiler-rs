@@ -14,7 +14,9 @@ pub(crate) mod url;
 pub mod vapor;
 pub mod vue;
 
-pub use opinionated::vue::ComponentCasing;
+pub use opinionated::vue::{
+    ComponentCasing, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
+};
 
 /// Register every rule that belongs to the Nuxt preset but not to the broader
 /// presets it builds on.

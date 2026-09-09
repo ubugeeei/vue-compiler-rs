@@ -8,6 +8,7 @@ typealias RuleCategory = "correctness"|"suspicious"|"style"|"perf"|"a11y"|"secur
 typealias LintPreset = "happy-path"|"opinionated"|"essential"|"incremental"|"ecosystem"|"nuxt"
 typealias TemplateComponentNameCasing = "PascalCase"|"kebab-case"
 typealias CustomEventNameCasing = "camelCase"|"kebab-case"
+typealias HtmlSelfClosingStyle = "always"|"never"|"any"
 
 /// A restricted global identifier for `script/no-restricted-globals`.
 class RestrictedGlobal {
@@ -52,6 +53,20 @@ class CustomEventNameCasingOptions {
   casing: CustomEventNameCasing = "camelCase"
 }
 
+/// HTML-family options for `vue/html-self-closing`.
+class HtmlSelfClosingHtmlOptions {
+  `void`: HtmlSelfClosingStyle = "always"
+  normal: HtmlSelfClosingStyle = "any"
+  component: HtmlSelfClosingStyle = "always"
+}
+
+/// Options for `vue/html-self-closing`.
+class HtmlSelfClosingOptions {
+  html: HtmlSelfClosingHtmlOptions = new HtmlSelfClosingHtmlOptions {}
+  svg: HtmlSelfClosingStyle = "always"
+  math: HtmlSelfClosingStyle = "always"
+}
+
 /// A design token recognized by `musea/prefer-design-tokens`.
 class MuseaDesignToken {
   /// Token path (e.g. `color.primary`).
@@ -75,6 +90,7 @@ class LintRuleOptions {
   `script/no-restricted-members`: NoRestrictedMembersOptions? = null
   `vue/component-name-in-template-casing`: ComponentNameInTemplateCasingOptions? = null
   `script/custom-event-name-casing`: CustomEventNameCasingOptions? = null
+  `vue/html-self-closing`: HtmlSelfClosingOptions? = null
   `musea/prefer-design-tokens`: MuseaPreferDesignTokensOptions? = null
 }
 

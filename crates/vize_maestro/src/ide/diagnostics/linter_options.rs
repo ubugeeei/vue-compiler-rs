@@ -134,6 +134,9 @@ pub(super) fn apply_rule_options(
     if let Some(casing) = options.custom_event_name_casing() {
         linter = linter.with_custom_event_name_casing(event_name_casing(casing));
     }
+    if let Some(options) = options.html_self_closing() {
+        linter = linter.with_html_self_closing_options(html_self_closing_options(options));
+    }
     linter
 }
 
@@ -187,5 +190,33 @@ fn event_name_casing(
         vize_s0::config::CustomEventNameCasing::KebabCase => {
             vize_patina::rules::script::EventNameCasing::KebabCase
         }
+    }
+}
+
+fn html_self_closing_options(
+    options: vize_s0::config::HtmlSelfClosingOptions,
+) -> vize_patina::rules::HtmlSelfClosingOptions {
+    vize_patina::rules::HtmlSelfClosingOptions {
+        html: vize_patina::rules::HtmlSelfClosingHtmlOptions {
+            void: html_self_closing_style(options.html.void_elements),
+            normal: html_self_closing_style(options.html.normal),
+            component: html_self_closing_style(options.html.component),
+        },
+        svg: html_self_closing_style(options.svg),
+        math: html_self_closing_style(options.math),
+    }
+}
+
+fn html_self_closing_style(
+    style: vize_s0::config::HtmlSelfClosingStyle,
+) -> vize_patina::rules::HtmlSelfClosingStyle {
+    match style {
+        vize_s0::config::HtmlSelfClosingStyle::Always => {
+            vize_patina::rules::HtmlSelfClosingStyle::Always
+        }
+        vize_s0::config::HtmlSelfClosingStyle::Never => {
+            vize_patina::rules::HtmlSelfClosingStyle::Never
+        }
+        vize_s0::config::HtmlSelfClosingStyle::Any => vize_patina::rules::HtmlSelfClosingStyle::Any,
     }
 }

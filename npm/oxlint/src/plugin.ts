@@ -13,6 +13,7 @@ import { formatPatinaMessage } from "./format.js";
 import type {
   ComponentNameInTemplateCasingOption,
   HelpLevel,
+  HtmlSelfClosingOption,
   PatinaDiagnostic,
   PatinaRuleOptions,
   PatinaRuleMeta,
@@ -137,9 +138,32 @@ function ruleOptionsSchema(ruleName: string): unknown[] {
       return [{ enum: ["PascalCase", "kebab-case"] }];
     case "script/custom-event-name-casing":
       return [{ enum: ["camelCase", "kebab-case"] }];
+    case "vue/html-self-closing":
+      return [htmlSelfClosingSchema()];
     default:
       return [];
   }
+}
+
+function htmlSelfClosingSchema(): unknown {
+  const style = { enum: ["always", "never", "any"] };
+  return {
+    type: "object",
+    properties: {
+      html: {
+        type: "object",
+        properties: {
+          void: style,
+          normal: style,
+          component: style,
+        },
+        additionalProperties: false,
+      },
+      svg: style,
+      math: style,
+    },
+    additionalProperties: false,
+  };
 }
 
 function contextOptions(context: unknown): readonly unknown[] {
@@ -163,6 +187,11 @@ function getRuleOptions(
         return { customEventNameCasing: firstOption };
       }
       break;
+    case "vue/html-self-closing":
+      if (isHtmlSelfClosingOption(firstOption)) {
+        return { htmlSelfClosing: firstOption };
+      }
+      break;
   }
   return undefined;
 }
@@ -175,6 +204,35 @@ function isComponentNameInTemplateCasingOption(
 
 function isCustomEventNameCasingOption(value: unknown): value is CustomEventNameCasingOption {
   return value === "camelCase" || value === "kebab-case";
+}
+
+function isHtmlSelfClosingOption(value: unknown): value is HtmlSelfClosingOption {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    hasOnlyKeys(value, ["html", "svg", "math"]) &&
+    optionField(value.svg) &&
+    optionField(value.math) &&
+    (value.html === undefined ||
+      (isRecord(value.html) &&
+        hasOnlyKeys(value.html, ["void", "normal", "component"]) &&
+        optionField(value.html.void) &&
+        optionField(value.html.normal) &&
+        optionField(value.html.component)))
+  );
+}
+
+function optionField(value: unknown): boolean {
+  return value === undefined || value === "always" || value === "never" || value === "any";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
 }
 
 const patinaRules = Object.fromEntries(

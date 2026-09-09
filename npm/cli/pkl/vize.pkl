@@ -17,6 +17,7 @@ typealias RuleSeverity = "off" | "warn" | "error"
 typealias LintPreset = "happy-path" | "opinionated" | "essential" | "incremental" | "ecosystem" | "nuxt"
 typealias TemplateComponentNameCasing = "PascalCase" | "kebab-case"
 typealias CustomEventNameCasing = "camelCase" | "kebab-case"
+typealias HtmlSelfClosingStyle = "always" | "never" | "any"
 typealias TrailingComma = "all" | "none" | "es5"
 typealias FilterPattern = String | Listing<String>
 typealias GlobalTypeValue = String | GlobalTypeDeclaration
@@ -96,6 +97,18 @@ class CustomEventNameCasingOptions {
   casing: CustomEventNameCasing = "camelCase"
 }
 
+class HtmlSelfClosingHtmlOptions {
+  `void`: HtmlSelfClosingStyle = "always"
+  normal: HtmlSelfClosingStyle = "any"
+  component: HtmlSelfClosingStyle = "always"
+}
+
+class HtmlSelfClosingOptions {
+  html: HtmlSelfClosingHtmlOptions = new HtmlSelfClosingHtmlOptions {}
+  svg: HtmlSelfClosingStyle = "always"
+  math: HtmlSelfClosingStyle = "always"
+}
+
 class MuseaDesignToken {
   path: String
   value: String
@@ -111,6 +124,7 @@ class LintRuleOptions {
   `script/no-restricted-members`: NoRestrictedMembersOptions? = null
   `vue/component-name-in-template-casing`: ComponentNameInTemplateCasingOptions? = null
   `script/custom-event-name-casing`: CustomEventNameCasingOptions? = null
+  `vue/html-self-closing`: HtmlSelfClosingOptions? = null
   `musea/prefer-design-tokens`: MuseaPreferDesignTokensOptions? = null
 }
 

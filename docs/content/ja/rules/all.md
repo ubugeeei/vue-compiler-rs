@@ -6,7 +6,7 @@ title: 緑青のすべてのルール
 
 # すべての緑青ルール
 
-このページには、`crates/vize_patina/src/rules` で宣言された 238 個の Patina ルール実装がすべてリストされています。カテゴリ ページには長い例が保存されています。このページは、対象範囲、デフォルトの重大度、プリセット メンバーシップ、修正可能性、およびソース実装に関するコンパクトなリファレンスです。
+このページには、`crates/vize_patina/src/rules` で宣言された 239 個の Patina ルール実装がすべてリストされています。カテゴリ ページには長い例が保存されています。このページは、対象範囲、デフォルトの重大度、プリセット メンバーシップ、修正可能性、およびソース実装に関するコンパクトなリファレンスです。
 
 プリセット名には Vize CLI の用語が使用されています。 oxlint プラグインのメタデータ名 `general-recommended` は、ここでは `happy-path` として示されています。 `_none_` は、ルールがオプトイン、ホスト主導、またはバンドルされた lint プリセットの範囲外であることを意味します。
 
@@ -16,7 +16,7 @@ title: 緑青のすべてのルール
 | -------------------------------------- | -----: |
 | [必須](#essential-48)                  |     48 |
 | [強くお勧め](#strongly-recommended-12) |     12 |
-| [おすすめ](#recommended-41)            |     41 |
+| [おすすめ](#recommended-42)            |     42 |
 | [アクセシビリティ](#accessibility-31)  |     31 |
 | [HTML 準拠](#html-conformance-9)       |      9 |
 | [タイプ認識](#type-aware-5)            |      5 |
@@ -86,7 +86,7 @@ title: 緑青のすべてのルール
 | `vue/attribute-hyphenation`            | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/attribute_hyphenation.rs#L27)            | カスタム コンポーネントに属性命名スタイルを強制する  |
 | `vue/component-definition-name-casing` | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | いいえ   | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/component_definition_name_casing.rs#L28) | コンポーネント定義名に PascalCase を適用する         |
 | `vue/html-quotes`                      | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/html_quotes.rs#L27)                      | HTML 属性の引用符スタイルを強制する                  |
-| `vue/html-self-closing`                | `warning` | `nuxt`、`opinionated`                            | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L27)    | 自動終了スタイルを強制する                           |
+| `vue/html-self-closing`                | `warning` | `nuxt`、`opinionated`                            | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/html_self_closing.rs#L28)    | 自動終了スタイルを強制する                           |
 | `vue/mustache-interpolation-spacing`   | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/mustache_interpolation_spacing.rs#L26)   | 口ひげ補間内の一貫した間隔を強制する                 |
 | `vue/no-multi-spaces`                  | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_multi_spaces.rs#L24)                  | 複数の連続したスペースを許可しない                   |
 | `vue/no-template-shadow`               | `warning` | `nuxt`、`opinionated`                            | いいえ   | [出典](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_template_shadow.rs#L34)     | 外側のスコープ内の変数をシャドウする変数名を禁止する |
@@ -96,7 +96,7 @@ title: 緑青のすべてのルール
 | `vue/v-on-style`                       | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_on_style.rs#L28)                       | `v-on` ディレクティブ スタイルを強制する             |
 | `vue/v-slot-style`                     | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated` | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/v_slot_style.rs#L27)                     | `v-slot` ディレクティブ スタイルを強制する           |
 
-## 推奨 (41)
+## 推奨 (42)
 
 | ルール                                  | 重大度    | プリセット                                                    | 修正可能 | 実装                                                                                                                                          | 説明                                                                       |
 | --------------------------------------- | --------- | ------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------- |
@@ -113,6 +113,7 @@ title: 緑青のすべてのルール
 | `vue/no-inline-style`                   | `warning` | `nuxt`、`opinionated`                                         | いいえ   | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_inline_style.rs#L33)                 | インライン スタイル属性の使用を避ける                                      |
 | `vue/no-invalid-html-attribute`         | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated`              | いいえ   | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_invalid_html_attribute.rs#L12)                   | HTML 属性の無効な静的値を禁止する                                          |
 | `vue/no-lone-template`                  | `warning` | `happy-path`、`nuxt`、`ecosystem`、`opinionated`              | いいえ   | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_lone_template.rs#L32)                            | 不要な `&lt;template&gt;` 要素を禁止する                                   |
+| `vue/no-non-component-keep-alive-child` | `warning` | _なし_                                                        | いいえ   | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/vue/no_non_component_keep_alive_child.rs#L14)            | `&lt;KeepAlive&gt;` 直下のプレーン要素ラッパーを禁止する                   |
 | `vue/no-multiple-objects-in-class`      | `warning` | `nuxt`、`opinionated`                                         | いいえ   | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_multiple_objects_in_class.rs#L29)    | :class 配列バインディング内の複数のオブジェクト リテラルを禁止する         |
 | `vue/no-negated-v-if-condition`         | `warning` | `nuxt`、`opinionated`                                         | いいえ   | [出典](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_negated_v_if_condition.rs#L37)         | チェーンに v-else                                                          | がある場合、否定された v-if 条件を禁止します。     |
 | `vue/no-preprocessor-lang`              | `warning` | `nuxt`、`opinionated`                                         | はい     | [ソース](https://github.com/ubugeeei-prod/vize/blob/main/crates/vize_patina/src/rules/opinionated/vue/no_preprocessor_lang.rs#L22)            | 最新の CSS を優先して CSS プリプロセッサの使用を阻止する                   |

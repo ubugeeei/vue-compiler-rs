@@ -185,6 +185,7 @@ export const LINT_RULE_NAMES = [
   "vue/no-multiple-template-root",
   "vue/no-mutating-props",
   "vue/no-negated-v-if-condition",
+  "vue/no-non-component-keep-alive-child",
   "vue/no-preprocessor-lang",
   "vue/no-reserved-component-names",
   "vue/no-root-v-if",
