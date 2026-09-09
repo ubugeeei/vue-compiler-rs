@@ -204,7 +204,9 @@ function configuredRuleCacheKey(ruleName: string, ruleOptions: PatinaRuleOptions
   ].join("\0");
 }
 
-function htmlSelfClosingCacheKey(options: NonNullable<PatinaRuleOptions["htmlSelfClosing"]>): string {
+function htmlSelfClosingCacheKey(
+  options: NonNullable<PatinaRuleOptions["htmlSelfClosing"]>,
+): string {
   return [
     options.html?.void ?? "",
     options.html?.normal ?? "",

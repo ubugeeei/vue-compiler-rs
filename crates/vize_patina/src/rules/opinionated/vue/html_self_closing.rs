@@ -289,5 +289,4 @@ fn is_vuetify_tag(tag: &str) -> bool {
 }
 
 #[cfg(test)]
-#[path = "html_self_closing_tests.rs"]
 mod tests;
