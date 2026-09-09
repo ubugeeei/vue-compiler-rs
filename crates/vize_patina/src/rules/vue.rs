@@ -149,7 +149,7 @@ pub use crate::rules::opinionated::vue::{
     HtmlSelfClosing, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
 };
 pub use crate::rules::opinionated::vue::{VBindStyle, VBindStyleOption};
-pub use attribute_hyphenation::AttributeHyphenation;
+pub use attribute_hyphenation::{AttributeHyphenation, HyphenationStyle};
 pub use component_definition_name_casing::ComponentDefinitionNameCasing;
 pub use html_quotes::{HtmlQuotes, HtmlQuotesOption};
 pub use mustache_interpolation_spacing::MustacheInterpolationSpacing;
@@ -169,7 +169,7 @@ pub use crate::rules::opinionated::vue::ScopedEventNames;
 pub use attribute_order::AttributeOrder;
 pub use no_lone_template::NoLoneTemplate;
 pub use no_non_component_keep_alive_child::NoNonComponentKeepAliveChild;
-pub use sfc_element_order::SfcElementOrder;
+pub use sfc_element_order::{SfcElementOrder, SfcElementOrderGroup, SfcElementOrderOptions};
 
 // Security rules exports
 pub use no_template_target_blank::NoTemplateTargetBlank;
@@ -178,7 +178,7 @@ pub use no_unsandboxed_iframe::NoUnsandboxedIframe;
 pub use no_v_html::NoVHtml;
 
 // Semantic analysis rules exports
-pub use no_mutating_props::NoMutatingProps;
+pub use no_mutating_props::{NoMutatingProps, NoMutatingPropsOptions};
 pub use no_undefined_refs::NoUndefinedRefs;
 pub use no_unused_components::NoUnusedComponents;
 pub use no_unused_properties::NoUnusedProperties;

@@ -830,8 +830,26 @@ export interface PatinaLintOptionsNapi {
   componentNameInTemplateCasing?: string;
   /** Casing for `script/custom-event-name-casing`: "camelCase" or "kebab-case" */
   customEventNameCasing?: string;
+  /** Options for `vue/no-mutating-props` */
+  noMutatingProps?: NoMutatingPropsOptionsNapi;
+  /** Options for `vue/sfc-element-order` */
+  sfcElementOrder?: SfcElementOrderOptionsNapi;
   /** Options for `vue/html-self-closing` */
   htmlSelfClosing?: HtmlSelfClosingOptionsNapi;
+  /** Style for `vue/v-on-event-hyphenation`: "always" or "never" */
+  vOnEventHyphenation?: string;
+  /** Style for `vue/attribute-hyphenation`: "always" or "never" */
+  attributeHyphenation?: string;
+}
+
+/** No-mutating-props options for NAPI */
+export interface NoMutatingPropsOptionsNapi {
+  shallowOnly?: boolean;
+}
+
+/** SFC element order options for NAPI */
+export interface SfcElementOrderOptionsNapi {
+  order?: Array<string | Array<string>>;
 }
 
 /** HTML self-closing options for NAPI */

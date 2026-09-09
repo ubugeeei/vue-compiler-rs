@@ -16,6 +16,10 @@ pub mod vue;
 
 pub use opinionated::vue::{
     ComponentCasing, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
+    VOnEventHyphenationStyle,
+};
+pub use vue::{
+    HyphenationStyle, NoMutatingPropsOptions, SfcElementOrderGroup, SfcElementOrderOptions,
 };
 
 /// Register every rule that belongs to the Nuxt preset but not to the broader

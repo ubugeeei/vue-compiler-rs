@@ -24,13 +24,14 @@ pub use model::{
     ConfigEntryIgnore, ConfigFeatureFlags, ConfigLintRuleOptions, CustomEventNameCasing,
     CustomEventNameCasingOptions, EndOfLine, FormatterConfig, GlobalTypeDeclaration,
     GlobalTypesConfig, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions, HtmlSelfClosingStyle,
-    JsxCompat, JsxMode, LanguageServerConfig, LanguageServerUnstableFlags, LintRuleOptions,
-    LintRuleSeverity, LinterConfig, LinterConfigEntry, LinterConfigPlan,
+    HyphenationStyle, JsxCompat, JsxMode, LanguageServerConfig, LanguageServerUnstableFlags,
+    LintRuleOptions, LintRuleSeverity, LinterConfig, LinterConfigEntry, LinterConfigPlan,
     LinterConfigPlanWithConfigRuleOptions, LinterConfigPlanWithRuleOptions, LinterFeatureFlags,
-    LspConfig, MuseaDesignToken, MuseaPreferDesignTokensOptions, NoRestrictedGlobalsOptions,
-    NoRestrictedMembersOptions, ParseVueVersionError, QuoteProps, ResolvedLinterConfig,
-    ResolvedLinterConfigWithConfigRuleOptions, RestrictedGlobal, RestrictedMember,
-    TemplateComponentNameCasing, TrailingComma, TypeCheckerConfig, VizeConfig, VueVersion,
+    LspConfig, MuseaDesignToken, MuseaPreferDesignTokensOptions, NoMutatingPropsOptions,
+    NoRestrictedGlobalsOptions, NoRestrictedMembersOptions, ParseVueVersionError, QuoteProps,
+    ResolvedLinterConfig, ResolvedLinterConfigWithConfigRuleOptions, RestrictedGlobal,
+    RestrictedMember, SfcElementOrderGroup, SfcElementOrderOptions, TemplateComponentNameCasing,
+    TrailingComma, TypeCheckerConfig, VizeConfig, VueVersion,
 };
 pub use normalize::normalize_public_config_value;
 

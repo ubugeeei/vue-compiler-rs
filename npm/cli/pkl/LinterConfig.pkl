@@ -9,6 +9,7 @@ typealias LintPreset = "happy-path"|"opinionated"|"essential"|"incremental"|"eco
 typealias TemplateComponentNameCasing = "PascalCase"|"kebab-case"
 typealias CustomEventNameCasing = "camelCase"|"kebab-case"
 typealias HtmlSelfClosingStyle = "always"|"never"|"any"
+typealias HyphenationStyle = "always"|"never"
 
 /// A restricted global identifier for `script/no-restricted-globals`.
 class RestrictedGlobal {
@@ -53,6 +54,19 @@ class CustomEventNameCasingOptions {
   casing: CustomEventNameCasing = "camelCase"
 }
 
+/// Options for `vue/no-mutating-props`.
+class NoMutatingPropsOptions {
+  shallowOnly: Boolean = false
+}
+
+/// Options for `vue/sfc-element-order`.
+class SfcElementOrderOptions {
+  order: Listing<String | Listing<String>> = new Listing {
+    new Listing { "script"; "template" }
+    "style"
+  }
+}
+
 /// HTML-family options for `vue/html-self-closing`.
 class HtmlSelfClosingHtmlOptions {
   `void`: HtmlSelfClosingStyle = "always"
@@ -90,7 +104,11 @@ class LintRuleOptions {
   `script/no-restricted-members`: NoRestrictedMembersOptions? = null
   `vue/component-name-in-template-casing`: ComponentNameInTemplateCasingOptions? = null
   `script/custom-event-name-casing`: CustomEventNameCasingOptions? = null
+  `vue/no-mutating-props`: NoMutatingPropsOptions? = null
+  `vue/sfc-element-order`: SfcElementOrderOptions? = null
   `vue/html-self-closing`: HtmlSelfClosingOptions? = null
+  `vue/v-on-event-hyphenation`: HyphenationStyle? = null
+  `vue/attribute-hyphenation`: HyphenationStyle? = null
   `musea/prefer-design-tokens`: MuseaPreferDesignTokensOptions? = null
 }
 

@@ -281,7 +281,7 @@ impl RuleRegistry {
         registry.register(Box::new(crate::rules::vue::NoVTextVHtmlOnComponent));
         registry.register(Box::new(crate::rules::vue::RequireComponentIs));
         registry.register(Box::new(crate::rules::vue::RequireScopedStyle));
-        registry.register(Box::new(crate::rules::vue::SfcElementOrder));
+        registry.register(Box::new(crate::rules::vue::SfcElementOrder::default()));
         registry.register(Box::new(crate::rules::vue::SingleStyleBlock));
         registry.register(Box::new(crate::rules::vue::NoUselessTemplateAttributes));
         registry.register(Box::new(crate::rules::vue::NoDeprecatedSlotAttribute));
@@ -332,7 +332,7 @@ impl RuleRegistry {
 
         // Semantic analysis rules.
         registry.register(Box::new(crate::rules::vue::NoUnusedComponents::default()));
-        registry.register(Box::new(crate::rules::vue::NoMutatingProps));
+        registry.register(Box::new(crate::rules::vue::NoMutatingProps::default()));
         registry.register(Box::new(crate::rules::vue::NoUnusedProperties::default()));
         #[cfg(not(target_arch = "wasm32"))]
         registry.register(Box::new(
@@ -359,7 +359,7 @@ impl RuleRegistry {
         registry.register(Box::new(crate::rules::vue::ValidVFor));
         registry.register(Box::new(crate::rules::vue::NoUseVIfWithVFor));
         registry.register(Box::new(crate::rules::vue::NoUnusedVars::default()));
-        registry.register(Box::new(crate::rules::vue::NoMutatingProps));
+        registry.register(Box::new(crate::rules::vue::NoMutatingProps::default()));
         registry.register(Box::new(crate::rules::vue::NoDuplicateAttributes::default()));
         registry.register(Box::new(crate::rules::vue::NoTemplateKey));
         registry.register(Box::new(crate::rules::vue::NoTextareaMustache));

@@ -14,10 +14,13 @@ import type {
   ComponentNameInTemplateCasingOption,
   HelpLevel,
   HtmlSelfClosingOption,
+  HyphenationStyle,
+  NoMutatingPropsOption,
   PatinaDiagnostic,
   PatinaRuleOptions,
   PatinaRuleMeta,
   CustomEventNameCasingOption,
+  SfcElementOrderOption,
   SfcBlock,
   SingleScriptMap,
 } from "./model.js";
@@ -138,11 +141,50 @@ function ruleOptionsSchema(ruleName: string): unknown[] {
       return [{ enum: ["PascalCase", "kebab-case"] }];
     case "script/custom-event-name-casing":
       return [{ enum: ["camelCase", "kebab-case"] }];
+    case "vue/no-mutating-props":
+      return [noMutatingPropsSchema()];
+    case "vue/sfc-element-order":
+      return [sfcElementOrderSchema()];
     case "vue/html-self-closing":
       return [htmlSelfClosingSchema()];
+    case "vue/v-on-event-hyphenation":
+    case "vue/attribute-hyphenation":
+      return [{ enum: ["always", "never"] }];
     default:
       return [];
   }
+}
+
+function noMutatingPropsSchema(): unknown {
+  return {
+    type: "object",
+    properties: {
+      shallowOnly: { type: "boolean" },
+    },
+    additionalProperties: false,
+  };
+}
+
+function sfcElementOrderSchema(): unknown {
+  const selector = { type: "string" };
+  return {
+    type: "object",
+    properties: {
+      order: {
+        type: "array",
+        items: {
+          oneOf: [
+            selector,
+            {
+              type: "array",
+              items: selector,
+            },
+          ],
+        },
+      },
+    },
+    additionalProperties: false,
+  };
 }
 
 function htmlSelfClosingSchema(): unknown {
@@ -187,9 +229,29 @@ function getRuleOptions(
         return { customEventNameCasing: firstOption };
       }
       break;
+    case "vue/no-mutating-props":
+      if (isNoMutatingPropsOption(firstOption)) {
+        return { noMutatingProps: firstOption };
+      }
+      break;
+    case "vue/sfc-element-order":
+      if (isSfcElementOrderOption(firstOption)) {
+        return { sfcElementOrder: firstOption };
+      }
+      break;
     case "vue/html-self-closing":
       if (isHtmlSelfClosingOption(firstOption)) {
         return { htmlSelfClosing: firstOption };
+      }
+      break;
+    case "vue/v-on-event-hyphenation":
+      if (isHyphenationStyle(firstOption)) {
+        return { vOnEventHyphenation: firstOption };
+      }
+      break;
+    case "vue/attribute-hyphenation":
+      if (isHyphenationStyle(firstOption)) {
+        return { attributeHyphenation: firstOption };
       }
       break;
   }
@@ -204,6 +266,28 @@ function isComponentNameInTemplateCasingOption(
 
 function isCustomEventNameCasingOption(value: unknown): value is CustomEventNameCasingOption {
   return value === "camelCase" || value === "kebab-case";
+}
+
+function isNoMutatingPropsOption(value: unknown): value is NoMutatingPropsOption {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return hasOnlyKeys(value, ["shallowOnly"]) && optionalBooleanField(value.shallowOnly);
+}
+
+function isSfcElementOrderOption(value: unknown): value is SfcElementOrderOption {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    hasOnlyKeys(value, ["order"]) &&
+    (value.order === undefined ||
+      (Array.isArray(value.order) && value.order.every(isSfcElementOrderGroup)))
+  );
+}
+
+function isSfcElementOrderGroup(value: unknown): boolean {
+  return typeof value === "string" || (Array.isArray(value) && value.every(isString));
 }
 
 function isHtmlSelfClosingOption(value: unknown): value is HtmlSelfClosingOption {
@@ -223,8 +307,20 @@ function isHtmlSelfClosingOption(value: unknown): value is HtmlSelfClosingOption
   );
 }
 
+function isHyphenationStyle(value: unknown): value is HyphenationStyle {
+  return value === "always" || value === "never";
+}
+
 function optionField(value: unknown): boolean {
   return value === undefined || value === "always" || value === "never" || value === "any";
+}
+
+function optionalBooleanField(value: unknown): boolean {
+  return value === undefined || typeof value === "boolean";
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

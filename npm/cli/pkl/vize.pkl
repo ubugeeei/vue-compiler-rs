@@ -18,6 +18,7 @@ typealias LintPreset = "happy-path" | "opinionated" | "essential" | "incremental
 typealias TemplateComponentNameCasing = "PascalCase" | "kebab-case"
 typealias CustomEventNameCasing = "camelCase" | "kebab-case"
 typealias HtmlSelfClosingStyle = "always" | "never" | "any"
+typealias HyphenationStyle = "always" | "never"
 typealias TrailingComma = "all" | "none" | "es5"
 typealias FilterPattern = String | Listing<String>
 typealias GlobalTypeValue = String | GlobalTypeDeclaration
@@ -97,6 +98,17 @@ class CustomEventNameCasingOptions {
   casing: CustomEventNameCasing = "camelCase"
 }
 
+class NoMutatingPropsOptions {
+  shallowOnly: Boolean = false
+}
+
+class SfcElementOrderOptions {
+  order: Listing<String | Listing<String>> = new Listing {
+    new Listing { "script"; "template" }
+    "style"
+  }
+}
+
 class HtmlSelfClosingHtmlOptions {
   `void`: HtmlSelfClosingStyle = "always"
   normal: HtmlSelfClosingStyle = "any"
@@ -124,7 +136,11 @@ class LintRuleOptions {
   `script/no-restricted-members`: NoRestrictedMembersOptions? = null
   `vue/component-name-in-template-casing`: ComponentNameInTemplateCasingOptions? = null
   `script/custom-event-name-casing`: CustomEventNameCasingOptions? = null
+  `vue/no-mutating-props`: NoMutatingPropsOptions? = null
+  `vue/sfc-element-order`: SfcElementOrderOptions? = null
   `vue/html-self-closing`: HtmlSelfClosingOptions? = null
+  `vue/v-on-event-hyphenation`: HyphenationStyle? = null
+  `vue/attribute-hyphenation`: HyphenationStyle? = null
   `musea/prefer-design-tokens`: MuseaPreferDesignTokensOptions? = null
 }
 

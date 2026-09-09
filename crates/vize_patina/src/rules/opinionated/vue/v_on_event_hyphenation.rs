@@ -40,10 +40,27 @@ static META: RuleMeta = RuleMeta {
     default_severity: Severity::Warning,
 };
 
-/// Enforce kebab-case custom event names in `v-on` on components.
-pub struct VOnEventHyphenation;
+/// Event hyphenation style for `vue/v-on-event-hyphenation`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum VOnEventHyphenationStyle {
+    /// Require hyphenated event names.
+    #[default]
+    Always,
+    /// Forbid hyphenated event names.
+    Never,
+}
+
+/// Enforce custom event naming in `v-on` on components.
+#[derive(Default)]
+pub struct VOnEventHyphenation {
+    style: VOnEventHyphenationStyle,
+}
 
 impl VOnEventHyphenation {
+    pub fn new(style: VOnEventHyphenationStyle) -> Self {
+        Self { style }
+    }
+
     /// Whether `element` is a Vue component (and therefore receives custom,
     /// kebab-case events rather than native lowercase DOM events).
     ///
@@ -91,31 +108,57 @@ impl Rule for VOnEventHyphenation {
 
         // camelCase if it contains an uppercase ASCII letter. (Native modifiers
         // are stripped into `directive.modifiers`, so the arg is the bare name.)
-        if !event_name.bytes().any(|b| b.is_ascii_uppercase()) {
-            return;
-        }
+        match self.style {
+            VOnEventHyphenationStyle::Always => {
+                if !event_name.bytes().any(|b| b.is_ascii_uppercase()) {
+                    return;
+                }
 
-        let hyphenated = hyphenate(event_name);
-        ctx.warn_with_help(
-            ctx.t_fmt(
-                "vue/v-on-event-hyphenation.message",
-                &[("name", hyphenated.as_str())],
-            ),
-            &directive.loc,
-            ctx.t("vue/v-on-event-hyphenation.help"),
-        );
+                let hyphenated = hyphenate(event_name);
+                ctx.warn_with_help(
+                    ctx.t_fmt(
+                        "vue/v-on-event-hyphenation.message",
+                        &[("name", hyphenated.as_str())],
+                    ),
+                    &directive.loc,
+                    ctx.t("vue/v-on-event-hyphenation.help"),
+                );
+            }
+            VOnEventHyphenationStyle::Never => {
+                if !event_name.contains('-') {
+                    return;
+                }
+
+                ctx.warn_with_help(
+                    ctx.t_fmt(
+                        "vue/v-on-event-hyphenation.message_never",
+                        &[("name", event_name)],
+                    ),
+                    &directive.loc,
+                    ctx.t("vue/v-on-event-hyphenation.help_never"),
+                );
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::VOnEventHyphenation;
+    use super::{VOnEventHyphenation, VOnEventHyphenationStyle};
     use crate::linter::Linter;
     use crate::rule::RuleRegistry;
 
     fn create_linter() -> Linter {
         let mut registry = RuleRegistry::new();
-        registry.register(Box::new(VOnEventHyphenation));
+        registry.register(Box::new(VOnEventHyphenation::default()));
+        Linter::with_registry(registry)
+    }
+
+    fn create_never_linter() -> Linter {
+        let mut registry = RuleRegistry::new();
+        registry.register(Box::new(VOnEventHyphenation::new(
+            VOnEventHyphenationStyle::Never,
+        )));
         Linter::with_registry(registry)
     }
 
@@ -181,5 +224,23 @@ mod tests {
             "message should suggest the kebab-case form, got: {}",
             result.diagnostics[0].message
         );
+    }
+
+    #[test]
+    fn test_never_reports_hyphenated_event_on_component() {
+        let result = create_never_linter().lint_template(
+            r#"<MyComponent @my-event="handler" @myEvent="handler" />"#,
+            "test.vue",
+        );
+        assert_eq!(result.warning_count, 1);
+    }
+
+    #[test]
+    fn test_never_skips_native_and_dynamic_arguments() {
+        let result = create_never_linter().lint_template(
+            r#"<div @my-event="handler" /><MyComponent @[myEvent]="handler" />"#,
+            "test.vue",
+        );
+        assert_eq!(result.warning_count, 0);
     }
 }

@@ -46,7 +46,11 @@ export interface PatinaBinding {
       corsaPath?: string;
       componentNameInTemplateCasing?: ComponentNameInTemplateCasingOption;
       customEventNameCasing?: CustomEventNameCasingOption;
+      noMutatingProps?: NoMutatingPropsOption;
+      sfcElementOrder?: SfcElementOrderOption;
       htmlSelfClosing?: HtmlSelfClosingOption;
+      vOnEventHyphenation?: HyphenationStyle;
+      attributeHyphenation?: HyphenationStyle;
     },
   ): PatinaLintResult;
   getPatinaRules(): PatinaRuleMeta[];
@@ -72,7 +76,11 @@ export interface PatinaSettings {
 export interface PatinaRuleOptions {
   componentNameInTemplateCasing?: ComponentNameInTemplateCasingOption;
   customEventNameCasing?: CustomEventNameCasingOption;
+  noMutatingProps?: NoMutatingPropsOption;
+  sfcElementOrder?: SfcElementOrderOption;
   htmlSelfClosing?: HtmlSelfClosingOption;
+  vOnEventHyphenation?: HyphenationStyle;
+  attributeHyphenation?: HyphenationStyle;
 }
 
 export interface LineColumn {
@@ -82,6 +90,13 @@ export interface LineColumn {
 
 export type ComponentNameInTemplateCasingOption = "PascalCase" | "kebab-case";
 export type CustomEventNameCasingOption = "camelCase" | "kebab-case";
+export interface NoMutatingPropsOption {
+  shallowOnly?: boolean;
+}
+export type SfcElementOrderGroup = string | string[];
+export interface SfcElementOrderOption {
+  order?: SfcElementOrderGroup[];
+}
 export type HtmlSelfClosingStyle = "always" | "never" | "any";
 export interface HtmlSelfClosingOption {
   html?: {
@@ -92,6 +107,7 @@ export interface HtmlSelfClosingOption {
   svg?: HtmlSelfClosingStyle;
   math?: HtmlSelfClosingStyle;
 }
+export type HyphenationStyle = "always" | "never";
 
 export type SfcBlockKind = "template" | "script" | "script-setup" | "style" | "custom";
 

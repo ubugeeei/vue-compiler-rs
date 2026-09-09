@@ -200,8 +200,26 @@ function configuredRuleCacheKey(ruleName: string, ruleOptions: PatinaRuleOptions
     ruleName,
     ruleOptions.componentNameInTemplateCasing ?? "",
     ruleOptions.customEventNameCasing ?? "",
+    ruleOptions.noMutatingProps == null ? "" : noMutatingPropsCacheKey(ruleOptions.noMutatingProps),
+    ruleOptions.sfcElementOrder == null ? "" : sfcElementOrderCacheKey(ruleOptions.sfcElementOrder),
     ruleOptions.htmlSelfClosing == null ? "" : htmlSelfClosingCacheKey(ruleOptions.htmlSelfClosing),
+    ruleOptions.vOnEventHyphenation ?? "",
+    ruleOptions.attributeHyphenation ?? "",
   ].join("\0");
+}
+
+function noMutatingPropsCacheKey(
+  options: NonNullable<PatinaRuleOptions["noMutatingProps"]>,
+): string {
+  return options.shallowOnly === true ? "1" : "0";
+}
+
+function sfcElementOrderCacheKey(
+  options: NonNullable<PatinaRuleOptions["sfcElementOrder"]>,
+): string {
+  return (options.order ?? [])
+    .map((group) => (Array.isArray(group) ? group.join("\u001f") : group))
+    .join("\u001e");
 }
 
 function htmlSelfClosingCacheKey(

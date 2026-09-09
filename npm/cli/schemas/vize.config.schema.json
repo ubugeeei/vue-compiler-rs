@@ -364,6 +364,38 @@
           },
           "additionalProperties": false
         },
+        "vue/no-mutating-props": {
+          "type": "object",
+          "properties": {
+            "shallowOnly": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "vue/sfc-element-order": {
+          "type": "object",
+          "properties": {
+            "order": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "vue/html-self-closing": {
           "type": "object",
           "properties": {
@@ -400,6 +432,14 @@
             }
           },
           "additionalProperties": false
+        },
+        "vue/v-on-event-hyphenation": {
+          "type": "string",
+          "enum": ["always", "never"]
+        },
+        "vue/attribute-hyphenation": {
+          "type": "string",
+          "enum": ["always", "never"]
         },
         "musea/prefer-design-tokens": {
           "$ref": "#/definitions/MuseaPreferDesignTokensOptions"

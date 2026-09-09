@@ -1,4 +1,4 @@
-use super::{findings, lint_sfc};
+use super::{NoMutatingProps, NoMutatingPropsOptions, findings, lint_sfc, lint_sfc_with_rule};
 use crate::{LintPreset, Linter, Severity};
 use vize_s0::String;
 
@@ -168,6 +168,34 @@ items.sort()
     let result = lint_sfc(sfc);
     let actual = findings(&result);
     let expected = expected_script_finding(sfc, "items", "items.sort()", 0);
+
+    assert_eq!(actual.len(), 1);
+    assert_eq!(
+        (actual[0].2, actual[0].3, actual[0].4),
+        (expected.2, expected.3, expected.4.as_str())
+    );
+}
+
+#[test]
+fn shallow_only_reports_direct_script_mutations_but_allows_nested_values() {
+    let sfc = r#"<script setup lang="ts">
+const props = defineProps<{
+  count: number
+  items: string[]
+  profile: { name?: string }
+}>()
+props.count = 1
+props.profile.name = 'Ada'
+props.items.push('x')
+delete props.profile.name
+</script>
+"#;
+    let result = lint_sfc_with_rule(
+        sfc,
+        NoMutatingProps::new(NoMutatingPropsOptions { shallow_only: true }),
+    );
+    let expected = expected_script_finding(sfc, "props.count", "props.count = 1", 0);
+    let actual = findings(&result);
 
     assert_eq!(actual.len(), 1);
     assert_eq!(

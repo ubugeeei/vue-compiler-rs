@@ -5,11 +5,17 @@
 //! status. Only unresolved calls to Vue's compiler macros are accepted; a
 //! user-defined function named `defineProps` is an ordinary local initializer.
 
+mod depth;
+
+pub(super) use self::depth::ScriptPropMutationKind;
+use self::depth::{MutationOperation, PropBindingKind, script_mutation_kind};
+
 use crate::rules::script::script_source_type;
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    Argument, AssignmentExpression, CallExpression, Expression, IdentifierReference, Program,
-    SimpleAssignmentTarget, Statement, UnaryExpression, UpdateExpression,
+    Argument, AssignmentExpression, BindingPattern, CallExpression, Expression,
+    IdentifierReference, Program, SimpleAssignmentTarget, Statement, UnaryExpression,
+    UpdateExpression,
 };
 use oxc_ast_visit::{
     Visit,
@@ -23,7 +29,7 @@ use oxc_semantic::{Scoping, SemanticBuilder};
 use oxc_span::{GetSpan, Span};
 use oxc_syntax::operator::UnaryOperator;
 use oxc_syntax::symbol::SymbolId;
-use vize_s0::{FxHashSet, String};
+use vize_s0::{FxHashMap, String};
 
 const MUTATING_ARRAY_METHODS: &[&str] = &[
     "push",
@@ -40,6 +46,7 @@ const MUTATING_ARRAY_METHODS: &[&str] = &[
 pub(super) struct ScriptPropMutation {
     pub(super) target: String,
     pub(super) span: Span,
+    pub(super) kind: ScriptPropMutationKind,
 }
 
 pub(super) fn find_prop_mutations(source: &str) -> Vec<ScriptPropMutation> {
@@ -73,8 +80,11 @@ pub(super) fn find_prop_mutations(source: &str) -> Vec<ScriptPropMutation> {
     collector.mutations
 }
 
-fn collect_prop_symbols(program: &Program<'_>, scoping: &Scoping) -> FxHashSet<SymbolId> {
-    let mut symbols = FxHashSet::default();
+fn collect_prop_symbols(
+    program: &Program<'_>,
+    scoping: &Scoping,
+) -> FxHashMap<SymbolId, PropBindingKind> {
+    let mut symbols = FxHashMap::default();
     for statement in &program.body {
         let Statement::VariableDeclaration(declaration) = statement else {
             continue;
@@ -86,9 +96,19 @@ fn collect_prop_symbols(program: &Program<'_>, scoping: &Scoping) -> FxHashSet<S
             if !is_props_initializer(initializer, scoping) {
                 continue;
             }
-            for identifier in declarator.id.get_binding_identifiers() {
-                if let Some(symbol_id) = identifier.symbol_id.get() {
-                    symbols.insert(symbol_id);
+
+            match &declarator.id {
+                BindingPattern::BindingIdentifier(identifier) => {
+                    if let Some(symbol_id) = identifier.symbol_id.get() {
+                        symbols.insert(symbol_id, PropBindingKind::Object);
+                    }
+                }
+                pattern => {
+                    for identifier in pattern.get_binding_identifiers() {
+                        if let Some(symbol_id) = identifier.symbol_id.get() {
+                            symbols.insert(symbol_id, PropBindingKind::Value);
+                        }
+                    }
                 }
             }
         }
@@ -135,24 +155,47 @@ fn is_unresolved_macro_call(call: &CallExpression<'_>, name: &str, scoping: &Sco
 struct MutationCollector<'s> {
     source: &'s str,
     scoping: &'s Scoping,
-    prop_symbols: &'s FxHashSet<SymbolId>,
+    prop_symbols: &'s FxHashMap<SymbolId, PropBindingKind>,
     mutations: Vec<ScriptPropMutation>,
 }
 
 impl MutationCollector<'_> {
-    fn record(&mut self, target: &SimpleAssignmentTarget<'_>, mutation_span: Span) {
+    fn record_assignment(&mut self, target: &SimpleAssignmentTarget<'_>, mutation_span: Span) {
         let Some(reference) = target_reference(target) else {
             return;
         };
-        self.record_reference(reference, target.span(), mutation_span);
+        self.record_reference(
+            reference,
+            target.span(),
+            mutation_span,
+            MutationOperation::Assign,
+        );
     }
 
-    fn record_expression(&mut self, target: &Expression<'_>, mutation_span: Span) {
+    fn record_delete(&mut self, target: &Expression<'_>, mutation_span: Span) {
         let target = target.get_inner_expression();
         let Some(reference) = root_reference(target) else {
             return;
         };
-        self.record_reference(reference, target.span(), mutation_span);
+        self.record_reference(
+            reference,
+            target.span(),
+            mutation_span,
+            MutationOperation::Assign,
+        );
+    }
+
+    fn record_mutating_call(&mut self, target: &Expression<'_>, mutation_span: Span) {
+        let target = target.get_inner_expression();
+        let Some(reference) = root_reference(target) else {
+            return;
+        };
+        self.record_reference(
+            reference,
+            target.span(),
+            mutation_span,
+            MutationOperation::MutatingCall,
+        );
     }
 
     fn record_reference(
@@ -160,6 +203,7 @@ impl MutationCollector<'_> {
         reference: &IdentifierReference<'_>,
         target_span: Span,
         mutation_span: Span,
+        operation: MutationOperation,
     ) {
         let Some(reference_id) = reference.reference_id.get() else {
             return;
@@ -167,9 +211,9 @@ impl MutationCollector<'_> {
         let Some(symbol_id) = self.scoping.get_reference(reference_id).symbol_id() else {
             return;
         };
-        if !self.prop_symbols.contains(&symbol_id) {
+        let Some(binding_kind) = self.prop_symbols.get(&symbol_id).copied() else {
             return;
-        }
+        };
 
         let Some(target) = self
             .source
@@ -180,6 +224,7 @@ impl MutationCollector<'_> {
         self.mutations.push(ScriptPropMutation {
             target: String::from(target),
             span: mutation_span,
+            kind: script_mutation_kind(reference.name.as_str(), target, binding_kind, operation),
         });
     }
 }
@@ -187,26 +232,26 @@ impl MutationCollector<'_> {
 impl<'a> Visit<'a> for MutationCollector<'_> {
     fn visit_assignment_expression(&mut self, expression: &AssignmentExpression<'a>) {
         if let Some(target) = expression.left.as_simple_assignment_target() {
-            self.record(target, expression.span);
+            self.record_assignment(target, expression.span);
         }
         walk_assignment_expression(self, expression);
     }
 
     fn visit_update_expression(&mut self, expression: &UpdateExpression<'a>) {
-        self.record(&expression.argument, expression.span);
+        self.record_assignment(&expression.argument, expression.span);
         walk_update_expression(self, expression);
     }
 
     fn visit_unary_expression(&mut self, expression: &UnaryExpression<'a>) {
         if expression.operator == UnaryOperator::Delete {
-            self.record_expression(&expression.argument, expression.span);
+            self.record_delete(&expression.argument, expression.span);
         }
         walk_unary_expression(self, expression);
     }
 
     fn visit_call_expression(&mut self, expression: &CallExpression<'a>) {
         if let Some(target) = mutating_call_target(expression) {
-            self.record_expression(target, expression.span);
+            self.record_mutating_call(target, expression.span);
         }
         walk_call_expression(self, expression);
     }

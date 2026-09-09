@@ -1,8 +1,9 @@
 use super::{
     ComponentNameInTemplateCasingOptions, ConfigLintRuleOptions, CustomEventNameCasing,
     CustomEventNameCasingOptions, HtmlSelfClosingHtmlOptions, HtmlSelfClosingOptions,
-    HtmlSelfClosingStyle, LintRuleOptions, MuseaDesignToken, RestrictedGlobal, RestrictedMember,
-    TemplateComponentNameCasing,
+    HtmlSelfClosingStyle, HyphenationStyle, LintRuleOptions, MuseaDesignToken,
+    NoMutatingPropsOptions, RestrictedGlobal, RestrictedMember, SfcElementOrderGroup,
+    SfcElementOrderOptions, TemplateComponentNameCasing,
 };
 
 #[test]
@@ -128,6 +129,64 @@ fn deserializes_html_self_closing_options() {
 }
 
 #[test]
+fn deserializes_vue_rule_options_requested_by_misskey() {
+    let json = r#"{
+        "vue/no-mutating-props": { "shallowOnly": true },
+        "vue/sfc-element-order": {
+            "order": ["template", "script:not([setup])", "script[setup]", "style"]
+        },
+        "vue/v-on-event-hyphenation": "never",
+        "vue/attribute-hyphenation": "never"
+    }"#;
+    let options = serde_json::from_str::<ConfigLintRuleOptions>(json).unwrap();
+
+    assert_eq!(
+        options.no_mutating_props(),
+        Some(NoMutatingPropsOptions { shallow_only: true })
+    );
+    assert_eq!(
+        options.sfc_element_order(),
+        Some(SfcElementOrderOptions {
+            order: vec![
+                SfcElementOrderGroup::Single("template".into()),
+                SfcElementOrderGroup::Single("script:not([setup])".into()),
+                SfcElementOrderGroup::Single("script[setup]".into()),
+                SfcElementOrderGroup::Single("style".into()),
+            ],
+        })
+    );
+    assert_eq!(
+        options.v_on_event_hyphenation(),
+        Some(HyphenationStyle::Never)
+    );
+    assert_eq!(
+        options.attribute_hyphenation(),
+        Some(HyphenationStyle::Never)
+    );
+}
+
+#[test]
+fn sfc_element_order_accepts_nested_groups() {
+    let json = r#"{
+        "vue/sfc-element-order": {
+            "order": [["script", "template"], "i18n", "style"]
+        }
+    }"#;
+    let options = serde_json::from_str::<ConfigLintRuleOptions>(json).unwrap();
+
+    assert_eq!(
+        options.sfc_element_order(),
+        Some(SfcElementOrderOptions {
+            order: vec![
+                SfcElementOrderGroup::Any(vec!["script".into(), "template".into()]),
+                SfcElementOrderGroup::Single("i18n".into()),
+                SfcElementOrderGroup::Single("style".into()),
+            ],
+        })
+    );
+}
+
+#[test]
 fn partial_html_self_closing_options_keep_vize_defaults() {
     let json = r#"{
         "vue/html-self-closing": {
@@ -229,6 +288,19 @@ fn invalid_html_self_closing_options_are_rejected() {
         "vue/html-self-closing": {
             "html": { "normalHtml": "never" }
         }
+    }"#;
+    assert!(serde_json::from_str::<ConfigLintRuleOptions>(unknown_field).is_err());
+}
+
+#[test]
+fn invalid_vue_rule_options_are_rejected() {
+    let invalid_hyphenation = r#"{
+        "vue/v-on-event-hyphenation": "sometimes"
+    }"#;
+    assert!(serde_json::from_str::<ConfigLintRuleOptions>(invalid_hyphenation).is_err());
+
+    let unknown_field = r#"{
+        "vue/no-mutating-props": { "shallow": true }
     }"#;
     assert!(serde_json::from_str::<ConfigLintRuleOptions>(unknown_field).is_err());
 }

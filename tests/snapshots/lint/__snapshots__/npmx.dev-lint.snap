@@ -2189,7 +2189,7 @@
         "ruleId": "vue/sfc-element-order",
         "ruleDocsPath": "docs/content/rules/vue.md",
         "severity": 1,
-        "message": "[vize:vue/sfc-element-order] <script> should come before <style>",
+        "message": "[vize:vue/sfc-element-order] <script setup> should come before <style>",
         "line": 13,
         "column": 1,
         "endLine": 100,

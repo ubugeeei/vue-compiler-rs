@@ -223,9 +223,50 @@ customEventNameCasingOptionsDef: JsonSchema = new JsonSchema {
   additionalProperties = false
 }
 
+noMutatingPropsOptionsDef: JsonSchema = new JsonSchema {
+  type = "object"
+  properties {
+    ["shallowOnly"] = new JsonSchema {
+      type = "boolean"
+      default = false
+    }
+  }
+  additionalProperties = false
+}
+
+sfcElementOrderGroupDef: JsonSchema = new JsonSchema {
+  oneOf = new Listing {
+    new JsonSchema {
+      type = "string"
+    }
+    new JsonSchema {
+      type = "array"
+      items = new JsonSchema {
+        type = "string"
+      }
+    }
+  }
+}
+
+sfcElementOrderOptionsDef: JsonSchema = new JsonSchema {
+  type = "object"
+  properties {
+    ["order"] = new JsonSchema {
+      type = "array"
+      items = sfcElementOrderGroupDef
+    }
+  }
+  additionalProperties = false
+}
+
 htmlSelfClosingStyleDef: JsonSchema = new JsonSchema {
   type = "string"
   enum = new Listing { "always"; "never"; "any" }
+}
+
+hyphenationStyleDef: JsonSchema = new JsonSchema {
+  type = "string"
+  enum = new Listing { "always"; "never" }
 }
 
 htmlSelfClosingHtmlOptionsDef: JsonSchema = new JsonSchema {
@@ -293,18 +334,16 @@ museaPreferDesignTokensOptionsDef: JsonSchema = new JsonSchema {
 lintRuleOptionsDef: JsonSchema = new JsonSchema {
   type = "object"
   properties {
-    ["script/no-restricted-globals"] = new JsonSchema {
-      `$ref` = "#/definitions/NoRestrictedGlobalsOptions"
-    }
-    ["script/no-restricted-members"] = new JsonSchema {
-      `$ref` = "#/definitions/NoRestrictedMembersOptions"
-    }
+    ["script/no-restricted-globals"] = new JsonSchema { `$ref` = "#/definitions/NoRestrictedGlobalsOptions" }
+    ["script/no-restricted-members"] = new JsonSchema { `$ref` = "#/definitions/NoRestrictedMembersOptions" }
     ["vue/component-name-in-template-casing"] = componentNameInTemplateCasingOptionsDef
     ["script/custom-event-name-casing"] = customEventNameCasingOptionsDef
+    ["vue/no-mutating-props"] = noMutatingPropsOptionsDef
+    ["vue/sfc-element-order"] = sfcElementOrderOptionsDef
     ["vue/html-self-closing"] = htmlSelfClosingOptionsDef
-    ["musea/prefer-design-tokens"] = new JsonSchema {
-      `$ref` = "#/definitions/MuseaPreferDesignTokensOptions"
-    }
+    ["vue/v-on-event-hyphenation"] = hyphenationStyleDef
+    ["vue/attribute-hyphenation"] = hyphenationStyleDef
+    ["musea/prefer-design-tokens"] = new JsonSchema { `$ref` = "#/definitions/MuseaPreferDesignTokensOptions" }
   }
   additionalProperties = false
 }
