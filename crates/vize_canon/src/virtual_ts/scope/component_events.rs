@@ -175,7 +175,7 @@ pub(super) fn generate_component_event_types(
             "unknown[] extends {args_type} ? ((...args: any[]) => any) : ((...args: {listener_args_type}) => any)"
         )
     };
-    let has_script_component_binding = summary.binding_spans.get(component_name.as_str()).is_some();
+    let has_script_component_binding = summary.binding_spans.contains_key(component_name.as_str());
     let requires_unresolved_handler =
         requires_unresolved_handler_implicit_any(summary, component_name, data, scope);
     let handler_type_expr = (!legacy_vue2

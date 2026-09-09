@@ -19,8 +19,8 @@ mod config;
 mod package_routes;
 
 use super::build::{
-    RegisteredFile, VirtualBuildContext, build_registered_file, build_script_registered_file,
-    build_vue_registered_file, source_type_for_path,
+    RegisteredFile, ScriptBuildOptions, VirtualBuildContext, build_registered_file,
+    build_script_registered_file, build_vue_registered_file, source_type_for_path,
 };
 use super::setup_props::RuntimePropResolveCache;
 use super::{VirtualProject, project_virtual_root};
@@ -264,12 +264,14 @@ impl VirtualProject {
         let registered = build_script_registered_file(
             path,
             content,
-            source_type,
-            (&self.project_root, &self.virtual_root),
-            &self.rewriter,
-            Some(self.alias_rewrite_policy()),
-            self.is_package_route_path(path),
-            self.session_scripts,
+            ScriptBuildOptions {
+                source_type,
+                roots: (&self.project_root, &self.virtual_root),
+                rewriter: &self.rewriter,
+                alias_rewrite_policy: Some(self.alias_rewrite_policy()),
+                preserve_relative_declarations: self.is_package_route_path(path),
+                preserve_declaration_spelling: self.session_scripts,
+            },
         )?;
         self.absorb_registered_file(registered);
         Ok(())

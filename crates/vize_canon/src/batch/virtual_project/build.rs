@@ -21,7 +21,7 @@ mod css_modules;
 mod script_build;
 pub(super) use super::paths::source_type_for_path;
 pub(super) use css_modules::virtual_ts_options_for_descriptor;
-pub(super) use script_build::build_script_registered_file;
+pub(super) use script_build::{ScriptBuildOptions, build_script_registered_file};
 
 use super::VirtualFile;
 use super::diagnostics::collect_sfc_block_ranges;
@@ -84,12 +84,14 @@ pub(super) fn build_registered_file(
         return build_script_registered_file(
             path,
             content,
-            SourceType::ts(),
-            (context.project_root, context.virtual_root),
-            context.rewriter,
-            context.alias_rewrite_policy,
-            context.preserve_relative_declarations,
-            context.preserve_declaration_spelling,
+            ScriptBuildOptions {
+                source_type: SourceType::ts(),
+                roots: (context.project_root, context.virtual_root),
+                rewriter: context.rewriter,
+                alias_rewrite_policy: context.alias_rewrite_policy,
+                preserve_relative_declarations: context.preserve_relative_declarations,
+                preserve_declaration_spelling: context.preserve_declaration_spelling,
+            },
         );
     }
 
@@ -109,12 +111,14 @@ pub(super) fn build_registered_file(
     build_script_registered_file(
         path,
         content,
-        source_type,
-        (context.project_root, context.virtual_root),
-        context.rewriter,
-        context.alias_rewrite_policy,
-        context.preserve_relative_declarations,
-        context.preserve_declaration_spelling,
+        ScriptBuildOptions {
+            source_type,
+            roots: (context.project_root, context.virtual_root),
+            rewriter: context.rewriter,
+            alias_rewrite_policy: context.alias_rewrite_policy,
+            preserve_relative_declarations: context.preserve_relative_declarations,
+            preserve_declaration_spelling: context.preserve_declaration_spelling,
+        },
     )
 }
 

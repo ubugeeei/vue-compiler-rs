@@ -12,16 +12,29 @@ use super::super::esm_declaration_spelling::should_preserve_esm_declaration_spel
 use super::super::passthrough::collect_passthrough_modules;
 use super::RegisteredFile;
 
+pub(in crate::batch::virtual_project) struct ScriptBuildOptions<'a> {
+    pub(in crate::batch::virtual_project) source_type: SourceType,
+    pub(in crate::batch::virtual_project) roots: (&'a Path, &'a Path),
+    pub(in crate::batch::virtual_project) rewriter: &'a ImportRewriter,
+    pub(in crate::batch::virtual_project) alias_rewrite_policy:
+        Option<&'a VirtualAliasRewritePolicy>,
+    pub(in crate::batch::virtual_project) preserve_relative_declarations: bool,
+    pub(in crate::batch::virtual_project) preserve_declaration_spelling: bool,
+}
+
 pub(in crate::batch::virtual_project) fn build_script_registered_file(
     path: &Path,
     content: &str,
-    source_type: SourceType,
-    roots: (&Path, &Path),
-    rewriter: &ImportRewriter,
-    alias_rewrite_policy: Option<&VirtualAliasRewritePolicy>,
-    preserve_relative_declarations: bool,
-    preserve_declaration_spelling: bool,
+    options: ScriptBuildOptions<'_>,
 ) -> CorsaResult<RegisteredFile> {
+    let ScriptBuildOptions {
+        source_type,
+        roots,
+        rewriter,
+        alias_rewrite_policy,
+        preserve_relative_declarations,
+        preserve_declaration_spelling,
+    } = options;
     let rewritten = profile!("canon.import.rewrite.script", {
         if preserve_relative_declarations {
             rewriter.rewrite_for_package_shadow_with_alias_policy(

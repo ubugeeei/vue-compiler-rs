@@ -6,6 +6,7 @@
 //! changes the unresolved target and can introduce false TS2307 diagnostics.
 
 use serde_json::{Map, Value};
+use vize_carton::{String, cstr};
 
 #[derive(Debug, Default)]
 pub(crate) struct VirtualAliasRewritePolicy {
@@ -14,8 +15,8 @@ pub(crate) struct VirtualAliasRewritePolicy {
 
 #[derive(Debug)]
 struct PathAliasPattern {
-    prefix: std::string::String,
-    suffix: std::string::String,
+    prefix: String,
+    suffix: String,
     wildcard: bool,
 }
 
@@ -34,7 +35,7 @@ impl VirtualAliasRewritePolicy {
         if !is_policy_controlled_vue_specifier(specifier) {
             return true;
         }
-        self.matches(&format!("{specifier}.ts"))
+        self.matches(cstr!("{specifier}.ts").as_str())
     }
 
     fn matches(&self, specifier: &str) -> bool {
@@ -48,14 +49,14 @@ impl PathAliasPattern {
     fn new(pattern: &str) -> Self {
         let Some(wildcard) = pattern.find('*') else {
             return Self {
-                prefix: pattern.to_owned(),
-                suffix: std::string::String::new(),
+                prefix: pattern.into(),
+                suffix: String::default(),
                 wildcard: false,
             };
         };
         Self {
-            prefix: pattern[..wildcard].to_owned(),
-            suffix: pattern[wildcard + 1..].to_owned(),
+            prefix: pattern[..wildcard].into(),
+            suffix: pattern[wildcard + 1..].into(),
             wildcard: true,
         }
     }
