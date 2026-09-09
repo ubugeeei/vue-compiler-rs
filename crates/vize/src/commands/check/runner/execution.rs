@@ -12,7 +12,10 @@ use super::nuxt_tsconfig::{
     PreparedCheckerTsconfig, wait_for_active_config_test_barrier,
     wait_for_prepared_config_test_barrier,
 };
-use super::{collect_project_global_component_stubs, resolve_checker_tsconfig_path};
+use super::{
+    GlobalComponentStubOptions, collect_project_global_component_stubs,
+    resolve_checker_tsconfig_path,
+};
 use crate::commands::check::nuxt;
 
 #[derive(Clone)]
@@ -54,6 +57,7 @@ pub(super) struct ProgramExecutionInput<'a> {
     pub(super) tsconfig_path: Option<PathBuf>,
     pub(super) nuxt_project_root: &'a std::path::Path,
     pub(super) package_route_resolver: vize_canon::PackageRouteResolver,
+    pub(super) discover_global_component_declarations: bool,
 }
 
 pub(super) fn execute_program(
@@ -73,6 +77,9 @@ pub(super) fn execute_program(
         input.files,
         input.project_root,
         input.tsconfig_path.as_deref(),
+        GlobalComponentStubOptions {
+            discover_workspace_declarations: input.discover_global_component_declarations,
+        },
     );
     let checker_tsconfig = resolve_checker_tsconfig_path(
         input.tsconfig_path.as_deref(),

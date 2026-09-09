@@ -29,6 +29,22 @@ pub struct TemplateUsedIdentifiers {
     pub v_model_ids: FxHashSet<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct TemplateIdentifierAnalysis {
+    used_ids: FxHashSet<String>,
+    read_ids: FxHashSet<String>,
+    v_model_ids: FxHashSet<String>,
+}
+
+impl From<TemplateIdentifierAnalysis> for TemplateUsedIdentifiers {
+    fn from(value: TemplateIdentifierAnalysis) -> Self {
+        Self {
+            used_ids: value.used_ids,
+            v_model_ids: value.v_model_ids,
+        }
+    }
+}
+
 /// Check if an identifier is used in the SFC's template.
 pub fn is_used_in_template(identifier: &str, root: &RootNode) -> bool {
     resolve_template_used_identifiers(root)
@@ -43,7 +59,16 @@ pub fn resolve_template_v_model_identifiers(root: &RootNode) -> FxHashSet<String
 
 /// Resolve all identifiers used in the template.
 pub fn resolve_template_used_identifiers(root: &RootNode) -> TemplateUsedIdentifiers {
-    resolve_template_analysis_result(root, true)
+    resolve_template_analysis_result(root, true).into()
+}
+
+/// Resolve identifiers that should count as TypeScript reads.
+///
+/// Static string refs are intentionally excluded: Vue observes `ref="name"` at
+/// runtime, but vue-tsc does not count that attribute as a script read for
+/// `noUnusedLocals`.
+pub fn resolve_template_read_identifiers(root: &RootNode) -> FxHashSet<String> {
+    resolve_template_analysis_result(root, true).read_ids
 }
 
 /// Analyze the template and extract identifiers.
@@ -53,8 +78,8 @@ pub fn resolve_template_used_identifiers(root: &RootNode) -> TemplateUsedIdentif
 fn resolve_template_analysis_result(
     root: &RootNode,
     collect_used_ids: bool,
-) -> TemplateUsedIdentifiers {
-    let mut result = TemplateUsedIdentifiers::default();
+) -> TemplateIdentifierAnalysis {
+    let mut result = TemplateIdentifierAnalysis::default();
 
     for child in root.children.iter() {
         walk_node(child, &mut result, collect_used_ids);
@@ -66,7 +91,7 @@ fn resolve_template_analysis_result(
 /// Walk a template child node and collect identifiers.
 fn walk_node(
     node: &TemplateChildNode,
-    result: &mut TemplateUsedIdentifiers,
+    result: &mut TemplateIdentifierAnalysis,
     collect_used_ids: bool,
 ) {
     match node {
@@ -75,14 +100,14 @@ fn walk_node(
         }
         TemplateChildNode::Interpolation(interpolation) => {
             if collect_used_ids {
-                extract_identifiers_from_expression(&interpolation.content, &mut result.used_ids);
+                extract_read_identifiers_from_expression(&interpolation.content, result);
             }
         }
         TemplateChildNode::If(if_node) => {
             for branch in if_node.branches.iter() {
                 // Walk condition expression if present
                 if collect_used_ids && let Some(ref condition) = branch.condition {
-                    extract_identifiers_from_expression(condition, &mut result.used_ids);
+                    extract_read_identifiers_from_expression(condition, result);
                 }
                 // Walk children
                 for child in branch.children.iter() {
@@ -93,7 +118,7 @@ fn walk_node(
         TemplateChildNode::For(for_node) => {
             // Walk source expression
             if collect_used_ids {
-                extract_identifiers_from_expression(&for_node.source, &mut result.used_ids);
+                extract_read_identifiers_from_expression(&for_node.source, result);
             }
             // Walk children
             for child in for_node.children.iter() {
@@ -104,10 +129,10 @@ fn walk_node(
             if collect_used_ids {
                 match &text_call.content {
                     vize_atelier_core::TextCallContent::Interpolation(interp) => {
-                        extract_identifiers_from_expression(&interp.content, &mut result.used_ids);
+                        extract_read_identifiers_from_expression(&interp.content, result);
                     }
                     vize_atelier_core::TextCallContent::Compound(compound) => {
-                        extract_identifiers_from_compound(compound, &mut result.used_ids);
+                        extract_read_identifiers_from_compound(compound, result);
                     }
                     _ => {}
                 }
@@ -115,7 +140,7 @@ fn walk_node(
         }
         TemplateChildNode::CompoundExpression(compound) => {
             if collect_used_ids {
-                extract_identifiers_from_compound(compound, &mut result.used_ids);
+                extract_read_identifiers_from_compound(compound, result);
             }
         }
         // Text, Comment, IfBranch, Hoisted don't need processing
@@ -126,7 +151,7 @@ fn walk_node(
 /// Walk an element node and collect identifiers.
 fn walk_element(
     element: &ElementNode,
-    result: &mut TemplateUsedIdentifiers,
+    result: &mut TemplateIdentifierAnalysis,
     collect_used_ids: bool,
 ) {
     // Process tag name - check if it's a component
@@ -142,8 +167,8 @@ fn walk_element(
         // Add both camelCase and PascalCase versions
         let camelized = camelize(tag);
         let capitalized = capitalize(&camelized);
-        result.used_ids.insert(camelized.to_compact_string());
-        result.used_ids.insert(capitalized.to_compact_string());
+        insert_read_identifier(result, camelized.to_compact_string());
+        insert_read_identifier(result, capitalized.to_compact_string());
     }
 
     // Process props
@@ -174,7 +199,7 @@ fn walk_element(
 /// Process a directive and collect identifiers.
 fn process_directive(
     directive: &DirectiveNode,
-    result: &mut TemplateUsedIdentifiers,
+    result: &mut TemplateIdentifierAnalysis,
     collect_used_ids: bool,
 ) {
     let name = directive.name;
@@ -186,7 +211,7 @@ fn process_directive(
         let mut directive_name = String::with_capacity(1 + cap.len());
         directive_name.push('v');
         directive_name.push_str(&cap);
-        result.used_ids.insert(directive_name);
+        insert_read_identifier(result, directive_name);
     }
 
     // Collect v-model target identifiers (simple identifiers only)
@@ -206,7 +231,7 @@ fn process_directive(
         && let ExpressionNode::Simple(simple_arg) = arg
         && !simple_arg.is_static
     {
-        extract_identifiers_from_expression(arg, &mut result.used_ids);
+        extract_read_identifiers_from_expression(arg, result);
     }
 
     // Process directive expression
@@ -214,14 +239,14 @@ fn process_directive(
         if name == "for" {
             // For v-for, use the parsed source expression if available
             if let Some(ref for_result) = directive.for_parse_result {
-                extract_identifiers_from_expression(&for_result.source, &mut result.used_ids);
+                extract_read_identifiers_from_expression(&for_result.source, result);
             } else if let Some(ref exp) = directive.exp {
                 // Before transform, v-for expression is in exp (e.g., "item in items")
                 // We need to extract the source part after "in" or "of"
-                extract_v_for_source_identifiers(exp, &mut result.used_ids);
+                extract_v_for_source_read_identifiers(exp, result);
             }
         } else if let Some(ref exp) = directive.exp {
-            extract_identifiers_from_expression(exp, &mut result.used_ids);
+            extract_read_identifiers_from_expression(exp, result);
         } else if name == "bind" {
             // v-bind shorthand name as identifier
             if let Some(ref arg) = directive.arg
@@ -229,14 +254,55 @@ fn process_directive(
                 && simple_arg.is_static
             {
                 let identifier = camelize(simple_arg.content);
-                result.used_ids.insert(identifier.to_compact_string());
+                insert_read_identifier(result, identifier.to_compact_string());
             }
         }
     }
 }
 
+fn insert_read_identifier(result: &mut TemplateIdentifierAnalysis, identifier: String) {
+    result.used_ids.insert(identifier.clone());
+    result.read_ids.insert(identifier);
+}
+
+fn insert_read_identifiers(
+    result: &mut TemplateIdentifierAnalysis,
+    identifiers: FxHashSet<String>,
+) {
+    for identifier in identifiers {
+        insert_read_identifier(result, identifier);
+    }
+}
+
+fn extract_read_identifiers_from_expression(
+    node: &ExpressionNode,
+    result: &mut TemplateIdentifierAnalysis,
+) {
+    let mut ids = FxHashSet::default();
+    extract_identifiers_from_expression(node, &mut ids);
+    insert_read_identifiers(result, ids);
+}
+
+fn extract_read_identifiers_from_compound(
+    node: &vize_atelier_core::CompoundExpressionNode,
+    result: &mut TemplateIdentifierAnalysis,
+) {
+    let mut ids = FxHashSet::default();
+    extract_identifiers_from_compound(node, &mut ids);
+    insert_read_identifiers(result, ids);
+}
+
 /// Extract source identifiers from v-for expression.
 /// Handles expressions like "item in items", "(item, index) in items", "item of items"
+fn extract_v_for_source_read_identifiers(
+    exp: &ExpressionNode,
+    result: &mut TemplateIdentifierAnalysis,
+) {
+    let mut ids = FxHashSet::default();
+    extract_v_for_source_identifiers(exp, &mut ids);
+    insert_read_identifiers(result, ids);
+}
+
 fn extract_v_for_source_identifiers(exp: &ExpressionNode, ids: &mut FxHashSet<String>) {
     if let ExpressionNode::Simple(simple) = exp {
         let content = simple.content;
@@ -411,117 +477,4 @@ fn extract_identifiers_from_compound(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{TemplateUsedIdentifiers, is_used_in_template, resolve_template_used_identifiers};
-    use vize_atelier_core::parser::parse;
-    use vize_carton::Allocator;
-
-    fn analyze_template(source: &str) -> TemplateUsedIdentifiers {
-        let allocator = Allocator::new();
-        let (root, _) = parse(&allocator, source);
-        resolve_template_used_identifiers(&root)
-    }
-
-    fn snapshot_identifiers(result: &TemplateUsedIdentifiers) -> (Vec<&str>, Vec<&str>) {
-        let mut used_ids: Vec<_> = result.used_ids.iter().map(|id| id.as_str()).collect();
-        used_ids.sort_unstable();
-
-        let mut v_model_ids: Vec<_> = result.v_model_ids.iter().map(|id| id.as_str()).collect();
-        v_model_ids.sort_unstable();
-
-        (used_ids, v_model_ids)
-    }
-
-    #[test]
-    fn test_component_usage() {
-        let result = analyze_template("<MyComponent />");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_component_usage_kebab() {
-        let result = analyze_template("<my-component />");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_component_with_dot() {
-        let result = analyze_template("<Foo.Bar />");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_interpolation() {
-        let result = analyze_template("<div>{{ msg }}</div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_v_bind() {
-        let result = analyze_template("<div :class=\"classes\"></div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_v_on() {
-        let result = analyze_template("<div @click=\"handleClick\"></div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_v_model() {
-        let result = analyze_template("<input v-model=\"value\" />");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_v_model_complex() {
-        // Complex expressions should not be added to v_model_ids
-        let result = analyze_template("<input v-model=\"obj.value\" />");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_v_for() {
-        let result = analyze_template("<div v-for=\"item in items\">{{ item }}</div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_v_if() {
-        let result = analyze_template("<div v-if=\"show\">content</div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_custom_directive() {
-        let result = analyze_template("<div v-focus></div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_ref_attribute() {
-        let result = analyze_template("<div ref=\"myRef\"></div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_native_tag_not_added() {
-        let result = analyze_template("<div></div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_builtin_directive_not_added() {
-        let result = analyze_template("<div v-if=\"show\" v-show=\"visible\"></div>");
-        insta::assert_debug_snapshot!(snapshot_identifiers(&result));
-    }
-
-    #[test]
-    fn test_is_used_in_template() {
-        let allocator = Allocator::new();
-        let (root, _) = parse(&allocator, "<div>{{ msg }}</div>");
-        assert!(is_used_in_template("msg", &root));
-        assert!(!is_used_in_template("other", &root));
-    }
-}
+mod tests;

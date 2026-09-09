@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use vize_s0::FxHashSet;
 
@@ -25,6 +28,7 @@ pub(super) struct ExplicitAmbientImportContext<'a> {
     cwd: &'a Path,
     tsconfig_path: &'a Path,
     explicit_input_root: &'a Path,
+    additional_ambient_declarations: &'a [PathBuf],
     import_options: ImportFileOptions,
 }
 
@@ -57,6 +61,7 @@ impl<'a> ExplicitAmbientImportContext<'a> {
         cwd: &'a Path,
         tsconfig_path: &'a Path,
         explicit_input_root: &'a Path,
+        additional_ambient_declarations: &'a [PathBuf],
         import_options: ImportFileOptions,
     ) -> Self {
         Self {
@@ -64,6 +69,7 @@ impl<'a> ExplicitAmbientImportContext<'a> {
             cwd,
             tsconfig_path,
             explicit_input_root,
+            additional_ambient_declarations,
             import_options,
         }
     }
@@ -153,7 +159,7 @@ pub(super) fn register_explicit_ambient_imports(
 ) -> Vec<vize_canon::PackageRouteBinding> {
     let keep_package_local =
         super::resolve::project_root_has_package_boundary(context.project_root);
-    let ambient_declarations = collect_ambient_declaration_files(
+    let mut ambient_declarations = collect_ambient_declaration_files(
         context.project_root,
         Some(context.tsconfig_path),
         tsconfig_input_cache,
@@ -161,6 +167,20 @@ pub(super) fn register_explicit_ambient_imports(
     .into_iter()
     .filter(|path| !keep_package_local || path.starts_with(context.project_root))
     .collect::<Vec<_>>();
+    ambient_declarations.extend(
+        context
+            .additional_ambient_declarations
+            .iter()
+            .filter(|path| !keep_package_local || path.starts_with(context.project_root))
+            .cloned(),
+    );
+    ambient_declarations.sort();
+    ambient_declarations.dedup();
+    let program_ambient_declarations = ambient_declarations
+        .iter()
+        .filter(|path| should_register_explicit_ambient_declaration(path))
+        .cloned()
+        .collect::<Vec<_>>();
     let discovered = collect_transitive_local_imports_from(
         &ambient_declarations,
         LocalImportContext {
@@ -174,10 +194,36 @@ pub(super) fn register_explicit_ambient_imports(
         package_routes,
     );
     files.extend(discovered.registrations);
-    files.extend(ambient_declarations);
+    files.extend(program_ambient_declarations);
     files.sort();
     files.dedup();
     discovered.package_routes
+}
+
+fn should_register_explicit_ambient_declaration(path: &Path) -> bool {
+    let Ok(content) = fs::read_to_string(path) else {
+        return true;
+    };
+    !is_non_module_vue_ambient_declaration(&content)
+}
+
+fn is_non_module_vue_ambient_declaration(content: &str) -> bool {
+    contains_vue_module_declaration(content) && !has_external_module_marker(content)
+}
+
+fn contains_vue_module_declaration(content: &str) -> bool {
+    content.contains("declare module \"vue\"") || content.contains("declare module 'vue'")
+}
+
+fn has_external_module_marker(content: &str) -> bool {
+    content.lines().any(|line| {
+        let line = line.trim_start();
+        line.starts_with("import ")
+            || line.starts_with("import\"")
+            || line.starts_with("import'")
+            || line.starts_with("export {}")
+            || line.starts_with("export{}")
+    })
 }
 
 pub(super) fn canonical_file_set(

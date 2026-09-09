@@ -69,7 +69,7 @@ fn branded_ref_template_arguments_keep_their_brand() {
     );
     let virtual_ts = result.virtual_ts.expect("virtual ts should be generated");
     assert!(
-        virtual_ts.contains("keyof T extends keyof string ? string : T"),
+        virtual_ts.contains("T extends string ? string extends T ? string : T"),
         "primitive widening must preserve branded string intersections:\n{virtual_ts}"
     );
 

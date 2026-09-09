@@ -1,12 +1,7 @@
 //! Scope-aware component props type checks, including recursion into nested
 //! v-for/v-slot closure scopes.
 
-use vize_carton::FxHashMap;
-use vize_carton::FxHashSet;
-use vize_carton::String;
-use vize_carton::append;
-use vize_carton::cstr;
-use vize_carton::profile;
+use vize_carton::{FxHashMap, FxHashSet, String, append, camelize, capitalize, cstr, profile};
 
 use vize_croquis::{Croquis, Scope, ScopeData, ScopeKind, analysis::ComponentUsage};
 
@@ -241,8 +236,19 @@ pub(super) fn component_usage_has_checkable_binding(
     let name = usage.name.as_str();
     summary.bindings.bindings.contains_key(name)
         || (!legacy_vue2
-            && (external_template_bindings.contains(name)
+            && (component_name_matches_external_template_binding(name, external_template_bindings)
                 || check_unresolved_global_components.allows(name)))
+}
+
+fn component_name_matches_external_template_binding(
+    name: &str,
+    external_template_bindings: &FxHashSet<&str>,
+) -> bool {
+    let camel_name = camelize(name);
+    let pascal_name = capitalize(camel_name.as_str());
+    [name, camel_name.as_str(), pascal_name.as_str()]
+        .iter()
+        .any(|candidate| external_template_bindings.contains(candidate))
 }
 
 fn generate_closure_component_props_recursive(

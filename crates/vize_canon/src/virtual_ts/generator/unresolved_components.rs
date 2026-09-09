@@ -1,6 +1,6 @@
 //! Template component value declarations that preserve real imported values.
 
-use vize_carton::{CompactString, FxHashSet, String, append};
+use vize_carton::{CompactString, FxHashSet, String, append, camelize, capitalize};
 use vize_croquis::Croquis;
 
 use super::global_components::GlobalComponentPlan;
@@ -34,7 +34,7 @@ pub(super) fn emit_unresolved_components(
         let name = component.as_str();
         if (summary.bindings.bindings.contains_key(name)
             && !contains_compact_name(syntactic_type_only_imported_names, name))
-            || external_template_bindings.contains(name)
+            || component_name_matches_external_template_binding(name, &external_template_bindings)
             || global_components.keeps_unresolved_binding(name)
         {
             continue;
@@ -61,4 +61,15 @@ pub(super) fn emit_unresolved_components(
         );
         append!(*ts, "  void {safe};\n");
     }
+}
+
+fn component_name_matches_external_template_binding(
+    name: &str,
+    external_template_bindings: &FxHashSet<&str>,
+) -> bool {
+    let camel_name = camelize(name);
+    let pascal_name = capitalize(camel_name.as_str());
+    [name, camel_name.as_str(), pascal_name.as_str()]
+        .iter()
+        .any(|candidate| external_template_bindings.contains(candidate))
 }

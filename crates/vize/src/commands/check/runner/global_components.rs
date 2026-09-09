@@ -19,6 +19,12 @@ use crate::commands::check::tsconfig_inputs::{
     collect_tsconfig_type_packages, reference_type_packages, resolve_type_package_declaration_files,
 };
 
+mod specifier_rewrite;
+mod workspace_declarations;
+use specifier_rewrite::rewrite_global_component_imports_for_virtual_project;
+use workspace_declarations::collect_workspace_global_component_declarations;
+pub(super) use workspace_declarations::collect_workspace_global_component_declarations_for_files;
+
 pub(super) fn build_virtual_ts_options(
     config: &crate::config::VizeConfig,
     config_dir: &Path,
@@ -84,11 +90,17 @@ pub(super) fn template_syntax_mode(
     }
 }
 
+#[derive(Clone, Copy, Default)]
+pub(super) struct GlobalComponentStubOptions {
+    pub(super) discover_workspace_declarations: bool,
+}
+
 pub(super) fn collect_project_global_component_stubs(
     options: &mut vize_canon::virtual_ts::VirtualTsOptions,
     files: &[PathBuf],
     project_root: &Path,
     tsconfig_path: Option<&Path>,
+    stub_options: GlobalComponentStubOptions,
 ) {
     let mut seen_names = options
         .auto_import_stubs
@@ -104,25 +116,40 @@ pub(super) fn collect_project_global_component_stubs(
     let mut collected = Vec::new();
     let mut package_reference_stubs = Vec::new();
     let mut seen_package_references = FxHashSet::default();
+    let mut seen_declaration_paths = FxHashSet::default();
 
-    let mut declaration_sources = files
-        .iter()
-        .filter(|path| is_declaration_path(path))
-        .map(|path| GlobalComponentDeclarationSource {
-            path: path.clone(),
-            type_package: None,
-        })
-        .collect::<Vec<_>>();
+    let mut declaration_sources = Vec::new();
+    for path in files.iter().filter(|path| is_declaration_path(path)) {
+        push_declaration_source(
+            &mut declaration_sources,
+            &mut seen_declaration_paths,
+            path.clone(),
+            None,
+        );
+    }
+
+    if stub_options.discover_workspace_declarations {
+        for path in collect_workspace_global_component_declarations(project_root) {
+            push_declaration_source(
+                &mut declaration_sources,
+                &mut seen_declaration_paths,
+                path,
+                None,
+            );
+        }
+    }
 
     let type_package_search_start = tsconfig_path.unwrap_or(project_root);
     for package in collect_global_component_type_packages(files, tsconfig_path) {
         for path in
             resolve_type_package_declaration_files(type_package_search_start, package.as_str())
         {
-            declaration_sources.push(GlobalComponentDeclarationSource {
+            push_declaration_source(
+                &mut declaration_sources,
+                &mut seen_declaration_paths,
                 path,
-                type_package: Some(package.clone()),
-            });
+                Some(package.clone()),
+            );
         }
     }
 
@@ -173,6 +200,17 @@ pub(super) fn collect_project_global_component_stubs(
     let mut external_template_bindings = external_template_bindings.into_iter().collect::<Vec<_>>();
     external_template_bindings.sort();
     options.external_template_bindings = external_template_bindings;
+}
+
+fn push_declaration_source(
+    declaration_sources: &mut Vec<GlobalComponentDeclarationSource>,
+    seen_declaration_paths: &mut FxHashSet<PathBuf>,
+    path: PathBuf,
+    type_package: Option<String>,
+) {
+    if seen_declaration_paths.insert(path.clone()) {
+        declaration_sources.push(GlobalComponentDeclarationSource { path, type_package });
+    }
 }
 
 struct GlobalComponentDeclarationSource {
@@ -255,72 +293,6 @@ fn normalize_global_component_binding_name(name: &str) -> Option<String> {
         return Some(name.into());
     }
     None
-}
-
-fn rewrite_global_component_imports_for_virtual_project(
-    type_annotation: &str,
-    project_root: &Path,
-) -> String {
-    let bytes = type_annotation.as_bytes();
-    let mut out = String::with_capacity(type_annotation.len());
-    let mut i = 0usize;
-
-    while i < bytes.len() {
-        let quote = if type_annotation[i..].starts_with("import('") {
-            Some('\'')
-        } else if type_annotation[i..].starts_with("import(\"") {
-            Some('"')
-        } else {
-            None
-        };
-
-        let Some(quote) = quote else {
-            out.push(bytes[i] as char);
-            i += 1;
-            continue;
-        };
-
-        out.push_str("import(");
-        out.push(quote);
-        i += 8;
-
-        let start = i;
-        while i < bytes.len() && bytes[i] != quote as u8 {
-            i += 1;
-        }
-
-        let specifier = &type_annotation[start..i];
-        out.push_str(&virtual_project_global_component_specifier(
-            specifier,
-            project_root,
-        ));
-
-        if i < bytes.len() {
-            out.push(quote);
-            i += 1;
-        }
-    }
-
-    out
-}
-
-fn virtual_project_global_component_specifier(specifier: &str, project_root: &Path) -> String {
-    if !specifier.ends_with(".vue") {
-        return specifier.into();
-    }
-
-    let specifier_path = Path::new(specifier);
-    if let Some(relative) = specifier_path
-        .is_absolute()
-        .then(|| specifier_path.strip_prefix(project_root).ok())
-        .flatten()
-    {
-        let mut rendered = cstr!("./{}", relative.display());
-        rendered.push_str(".ts");
-        return rendered;
-    }
-
-    cstr!("{specifier}.ts")
 }
 
 /// Parse a `.d.ts` file containing `ComponentCustomProperties` augmentation.

@@ -128,7 +128,7 @@ fn kebab_case_slot_host_uses_ambient_pascal_global_component() {
             .code
             .matches("__VizeSlotsResolver<typeof ElBadge>")
             .count(),
-        1,
+        2,
         "{}",
         output.code,
     );
@@ -187,7 +187,7 @@ type BadgeInstance = typeof ElBadge
             .code
             .matches("__VizeSlotsResolver<typeof __VizeComponent_el_badge>")
             .count(),
-        1,
+        2,
         "{}",
         output.code,
     );

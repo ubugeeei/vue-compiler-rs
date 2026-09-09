@@ -50,7 +50,8 @@ use diagnostics::is_suppressed_false_positive;
 pub(crate) use direct::run_direct;
 use execution::{CheckerSettings, ProgramExecution, ProgramExecutionInput, execute_program};
 use global_components::{
-    build_virtual_ts_options, collect_project_global_component_stubs, dialect_from_features,
+    GlobalComponentStubOptions, build_virtual_ts_options, collect_project_global_component_stubs,
+    collect_workspace_global_component_declarations_for_files, dialect_from_features,
     template_syntax_mode,
 };
 use ignores::load_check_ignore_set;
@@ -235,6 +236,11 @@ fn prepare_and_execute(
     if !args.patterns.is_empty()
         && let Some(program_tsconfig_path) = program_tsconfig_path.as_deref()
     {
+        let workspace_global_component_declarations =
+            collect_workspace_global_component_declarations_for_files(
+                &project_root,
+                &candidate.files,
+            );
         let import_start = Instant::now();
         package_routes.extend(register_explicit_ambient_imports(
             &mut candidate.files,
@@ -243,6 +249,7 @@ fn prepare_and_execute(
                 cwd,
                 program_tsconfig_path,
                 explicit_input_root,
+                &workspace_global_component_declarations,
                 import_options,
             ),
             cache,
@@ -260,6 +267,8 @@ fn prepare_and_execute(
     }
 
     sort_package_route_bindings(&mut package_routes);
+    let discover_global_component_declarations =
+        !args.patterns.is_empty() && program_tsconfig_path.is_none();
     let mut execution = execute_program(
         ProgramExecutionInput {
             files: &candidate.files,
@@ -270,6 +279,7 @@ fn prepare_and_execute(
             tsconfig_path: program_tsconfig_path,
             nuxt_project_root,
             package_route_resolver: package_route_resolver.clone(),
+            discover_global_component_declarations,
         },
         settings,
     )?;

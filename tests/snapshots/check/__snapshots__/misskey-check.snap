@@ -1656,10 +1656,7 @@
     },
     {
       "file": "src/pages/admin-user.vue",
-      "diagnostics": [
-        "error:190:30 [TS2322] Type 'string' is not assignable to type 'ChartSrc'.",
-        "error:192:30 [TS2322] Type 'string' is not assignable to type 'ChartSrc'."
-      ]
+      "diagnostics": []
     },
     {
       "file": "src/pages/admin/RolesEditorFormula.vue",
@@ -3842,7 +3839,7 @@
       ]
     }
   ],
-  "errorCount": 554,
+  "errorCount": 552,
   "warningCount": 0,
   "fileCount": 794
 }

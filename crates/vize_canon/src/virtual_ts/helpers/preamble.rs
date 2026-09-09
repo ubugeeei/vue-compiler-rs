@@ -139,7 +139,7 @@ pub const SHARED_PREAMBLE_DTS: &str = concat!(
     "\n",
     "// Shared type helpers used by generated virtual modules\n",
     vue_type_helpers_text!(),
-    "\n\n// Template-ref widening. Hoisted-only, deliberately absent from the per-file\n// preamble: a module-scope copy is dead code (TS6196) in every component whose\n// template scope emits no __U, and only generated template scopes use it.\ntype __VizeIsUnion<T, __U = T> = T extends unknown ? ([__U] extends [T] ? false : true) : false;\ntype __VizeWidenTemplateRef<T> = __VizeIsUnion<T> extends true ? T : T extends string ? keyof T extends keyof string ? string : T : T extends number ? keyof T extends keyof number ? number : T : T extends boolean ? keyof T extends keyof boolean ? boolean : T : T;\n\n",
+    "\n\n// Template-ref widening. Hoisted-only, deliberately absent from the per-file\n// preamble: a module-scope copy is dead code (TS6196) in every component whose\n// template scope emits no __U, and only generated template scopes use it.\ntype __VizeIsUnion<T, __U = T> = T extends unknown ? ([__U] extends [T] ? false : true) : false;\ntype __VizeWidenTemplateRef<T> = __VizeIsAny<T> extends true ? T : __VizeIsUnion<T> extends true ? T : T extends string ? string extends T ? string : T : T extends number ? number extends T ? number : T : T extends boolean ? boolean extends T ? boolean : T : T;\n\n",
     "// Emit-overload helpers (consumed by the per-file __EmitProps alias)\n",
     emit_overload_helpers_text!(),
     "\n",
